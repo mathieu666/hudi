@@ -139,7 +139,7 @@ public class HoodieDeltaStreamer implements Serializable {
     UPSERT, INSERT, BULK_INSERT
   }
 
-  private static class OperationConvertor implements IStringConverter<Operation> {
+  private static class OperationConverter implements IStringConverter<Operation> {
 
     @Override
     public Operation convert(String value) throws ParameterException {
@@ -206,7 +206,7 @@ public class HoodieDeltaStreamer implements Serializable {
     public long sourceLimit = Long.MAX_VALUE;
 
     @Parameter(names = {"--op"}, description = "Takes one of these values : UPSERT (default), INSERT (use when input "
-        + "is purely new data/inserts to gain speed)", converter = OperationConvertor.class)
+        + "is purely new data/inserts to gain speed)", converter = OperationConverter.class)
     public Operation operation = Operation.UPSERT;
 
     @Parameter(names = {"--filter-dupes"},

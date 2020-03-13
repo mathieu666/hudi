@@ -113,7 +113,7 @@ public abstract class ITTestBase {
   static String getPrestoConsoleCommand(String commandFile) {
     StringBuilder builder = new StringBuilder().append("presto --server " + PRESTO_COORDINATOR_URL)
         .append(" --catalog hive --schema default")
-        .append(" -f " + commandFile );
+        .append(" -f " + commandFile);
     System.out.println("Presto comamnd " + builder.toString());
     return builder.toString();
   }

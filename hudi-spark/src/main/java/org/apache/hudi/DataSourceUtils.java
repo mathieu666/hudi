@@ -218,6 +218,13 @@ public class DataSourceUtils {
     return new HoodieRecord<>(hKey, payload);
   }
 
+  /**
+   * Drop duplicate records, whose location (file group/file id) mapped by index exists.
+   *
+   * @param jssc                  JavaSparkContext
+   * @param incomingHoodieRecords HoodieRecords to deduplicate
+   * @param writeConfig           HoodieWriteConfig
+   */
   @SuppressWarnings("unchecked")
   public static JavaRDD<HoodieRecord> dropDuplicates(JavaSparkContext jssc, JavaRDD<HoodieRecord> incomingHoodieRecords,
                                                      HoodieWriteConfig writeConfig) {
@@ -227,7 +234,7 @@ public class DataSourceUtils {
           .filter(r -> !((HoodieRecord<HoodieRecordPayload>) r).isCurrentLocationKnown());
     } catch (TableNotFoundException e) {
       // this will be executed when there is no hoodie table yet
-      // so no dups to drop
+      // so no dupes to drop
       return incomingHoodieRecords;
     }
   }

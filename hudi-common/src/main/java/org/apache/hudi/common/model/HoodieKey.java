@@ -24,12 +24,10 @@ import java.util.Objects;
 /**
  * HoodieKey consists of
  * <p>
- * - recordKey : a recordKey that acts as primary key for a record - partitionPath : path to the partition that contains
- * the record.
+ * - recordKey : a recordKey that acts as primary key for a record.
  * - partitionPath : the partition path of a record.
  */
 public class HoodieKey implements Serializable {
-
 
   private final String recordKey;
 
