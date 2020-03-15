@@ -224,7 +224,7 @@ public abstract class ITTestBase {
     return Pair.of(callback.getStdout().toString().trim(), callback.getStderr().toString().trim());
   }
 
-  void executePrestoCopyCommand(String fromFile, String remotePath){
+  void executePrestoCopyCommand(String fromFile, String remotePath) {
     Container sparkWorkerContainer = runningContainers.get(PRESTO_COORDINATOR);
     dockerClient.copyArchiveToContainerCmd(sparkWorkerContainer.getId())
         .withHostResource(fromFile)

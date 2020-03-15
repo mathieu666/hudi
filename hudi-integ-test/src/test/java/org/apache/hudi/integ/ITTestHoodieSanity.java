@@ -145,10 +145,10 @@ public class ITTestHoodieSanity extends ITTestBase {
     }
     executeCommandStringInDocker(ADHOC_1_CONTAINER, cmd, true);
 
-    String snapshotTableName = tableType.equals(HoodieTableType.MERGE_ON_READ.name()) ?
-        hiveTableName + "_rt" : hiveTableName;
-    Option<String> roTableName = tableType.equals(HoodieTableType.MERGE_ON_READ.name()) ?
-        Option.of(hiveTableName +"_ro") : Option.empty();
+    String snapshotTableName = tableType.equals(HoodieTableType.MERGE_ON_READ.name())
+         ? hiveTableName + "_rt" : hiveTableName;
+    Option<String> roTableName = tableType.equals(HoodieTableType.MERGE_ON_READ.name())
+         ? Option.of(hiveTableName + "_ro") : Option.empty();
 
     // Ensure table does exist
     stdOutErr = executeHiveCommand("show tables like '" + snapshotTableName + "'");
