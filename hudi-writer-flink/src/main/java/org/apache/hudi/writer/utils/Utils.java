@@ -1,4 +1,4 @@
-package org.apache.hudi.writer;
+package org.apache.hudi.writer.utils;
 
 import java.io.IOException;
 import org.apache.avro.generic.GenericRecord;
