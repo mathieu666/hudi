@@ -18,6 +18,8 @@
 
 package org.apache.hudi.writer.config;
 
+import org.apache.hudi.common.config.DefaultHoodieConfig;
+
 import javax.annotation.concurrent.Immutable;
 import java.io.File;
 import java.io.FileReader;

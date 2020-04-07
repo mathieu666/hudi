@@ -26,6 +26,7 @@ import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
 import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.writer.WriteStatus;
 import org.apache.hudi.writer.index.HoodieIndex;
+import org.apache.hudi.writer.table.compact.strategy.CompactionStrategy;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import javax.annotation.concurrent.Immutable;
@@ -38,7 +39,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 /**
- * Class storing configs for the {@link HoodieWriteClient}.
+ * Class storing configs for the {@link org.apache.hudi.writer.client.HoodieWriteClient}.
  */
 @Immutable
 public class HoodieWriteConfig extends DefaultHoodieConfig {
@@ -463,9 +464,6 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
     return Boolean.parseBoolean(props.getProperty(HoodieMetricsConfig.METRICS_ON));
   }
 
-  public MetricsReporterType getMetricsReporterType() {
-    return MetricsReporterType.valueOf(props.getProperty(HoodieMetricsConfig.METRICS_REPORTER_TYPE));
-  }
 
   public String getGraphiteServerHost() {
     return props.getProperty(HoodieMetricsConfig.GRAPHITE_SERVER_HOST);
@@ -622,21 +620,9 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       return this;
     }
 
-    public Builder withCompactionConfig(HoodieCompactionConfig compactionConfig) {
-      props.putAll(compactionConfig.getProps());
-      isCompactionConfigSet = true;
-      return this;
-    }
-
     public Builder withMetricsConfig(HoodieMetricsConfig metricsConfig) {
       props.putAll(metricsConfig.getProps());
       isMetricsConfigSet = true;
-      return this;
-    }
-
-    public Builder withMemoryConfig(HoodieMemoryConfig memoryConfig) {
-      props.putAll(memoryConfig.getProps());
-      isMemoryConfigSet = true;
       return this;
     }
 
@@ -714,14 +700,6 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
           FAIL_ON_TIMELINE_ARCHIVING_ENABLED_PROP, DEFAULT_FAIL_ON_TIMELINE_ARCHIVING_ENABLED);
 
       // Make sure the props is propagated
-      setDefaultOnCondition(props, !isIndexConfigSet, HoodieIndexConfig.newBuilder().fromProperties(props).build());
-      setDefaultOnCondition(props, !isStorageConfigSet, HoodieStorageConfig.newBuilder().fromProperties(props).build());
-      setDefaultOnCondition(props, !isCompactionConfigSet,
-          HoodieCompactionConfig.newBuilder().fromProperties(props).build());
-      setDefaultOnCondition(props, !isMetricsConfigSet, HoodieMetricsConfig.newBuilder().fromProperties(props).build());
-      setDefaultOnCondition(props, !isMemoryConfigSet, HoodieMemoryConfig.newBuilder().fromProperties(props).build());
-      setDefaultOnCondition(props, !isViewConfigSet,
-          FileSystemViewStorageConfig.newBuilder().fromProperties(props).build());
       setDefaultOnCondition(props, !isConsistencyGuardSet,
           ConsistencyGuardConfig.newBuilder().fromProperties(props).build());
 

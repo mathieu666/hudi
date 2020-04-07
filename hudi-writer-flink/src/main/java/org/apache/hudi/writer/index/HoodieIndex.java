@@ -47,8 +47,7 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
     this.config = config;
   }
 
-  public static <T extends HoodieRecordPayload> HoodieIndex<T> createIndex(HoodieWriteConfig config,
-                                                                           Configuration hadoopConf) throws HoodieIndexException {
+  public static <T extends HoodieRecordPayload> HoodieIndex<T> createIndex(HoodieWriteConfig config) throws HoodieIndexException {
     switch (config.getIndexType()) {
       case HBASE:
         return new HBaseIndex<>(config);
@@ -68,7 +67,7 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
    * optional is empty, then the key is not found.
    */
   public abstract List<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(
-      List<HoodieKey> hoodieKeys, final Configuration hadoopConf, HoodieTable<T> hoodieTable);
+      List<HoodieKey> hoodieKeys, final Configuration jsc, HoodieTable<T> hoodieTable);
 
   /**
    * Looks up the index and tags each incoming record with a location of a file that contains the row (if it is actually
