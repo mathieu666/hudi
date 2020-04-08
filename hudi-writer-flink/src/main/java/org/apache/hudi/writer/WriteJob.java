@@ -11,6 +11,7 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
+import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.source.SourceReader;
 
 import java.util.ArrayList;
@@ -143,10 +144,6 @@ public class WriteJob {
       return !continuousMode && !forceDisableCompaction
           && HoodieTableType.MERGE_ON_READ.equals(HoodieTableType.valueOf(tableType));
     }
-  }
-
-  public enum Operation {
-    UPSERT, INSERT, BULK_INSERT
   }
 
   private static class OperationConvertor implements IStringConverter<Operation> {

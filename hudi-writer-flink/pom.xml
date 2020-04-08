@@ -30,6 +30,11 @@
       <artifactId>hudi-timeline-service</artifactId>
       <version>${project.version}</version>
     </dependency>
+<!--    <dependency>-->
+<!--      <groupId>org.apache.hudi</groupId>-->
+<!--      <artifactId>hudi-hive-sync</artifactId>-->
+<!--      <version>${project.version}</version>-->
+<!--    </dependency>-->
 
     <!-- Avro -->
     <dependency>
