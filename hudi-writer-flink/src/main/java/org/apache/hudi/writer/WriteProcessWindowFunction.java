@@ -26,14 +26,13 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
 /**
  *
  */
-public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieRecord, String, String, TimeWindow> {
+public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieRecord, List<WriteStatus>, String, TimeWindow> {
 
   private static final Logger LOG = LogManager.getLogger(WriteProcessWindowFunction.class);
 
@@ -104,13 +103,13 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
   }
 
   @Override
-  public void process(String s, Context context, Iterable<HoodieRecord> inputs, Collector<String> out) throws Exception {
+  public void process(String s, Context context, Iterable<HoodieRecord> inputs, Collector<List<WriteStatus>> out) throws Exception {
     List<HoodieRecord> records = IteratorUtils.toList(inputs.iterator());
     // Refresh Timeline
     refreshTimeline();
 
     Option<String> scheduledCompaction = Option.empty();
-    Option<String> scheduledCompactionInstant = Option.empty();
+
 
     // filter dupes if needed
     if (cfg.filterDupes) {
@@ -118,8 +117,6 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
       cfg.operation = cfg.operation == Operation.UPSERT ? Operation.INSERT : cfg.operation;
       records = DataSourceUtils.dropDuplicates(serializableHadoopConf.get(), records, writeClient.getConfig());
     }
-
-    boolean isEmpty = records.isEmpty();
 
     // try to start commit
     String instantTime = startCommit();
@@ -136,65 +133,7 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
     } else {
       throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
     }
-
-    long totalErrorRecords = writeStatus.stream().map(WriteStatus::getTotalErrorRecords).count();
-    long totalRecords = writeStatus.stream().map(WriteStatus::getTotalRecords).count();
-    boolean hasErrors = totalErrorRecords > 0;
-
-    if (!hasErrors || cfg.commitOnErrors) {
-      HashMap<String, String> checkpointCommitMetadata = new HashMap<>();
-      checkpointCommitMetadata.put(CHECKPOINT_KEY, checkpointStr);
-      if (cfg.checkpoint != null) {
-        checkpointCommitMetadata.put(CHECKPOINT_RESET_KEY, cfg.checkpoint);
-      }
-
-      if (hasErrors) {
-        LOG.warn("Some records failed to be merged but forcing commit since commitOnErrors set. Errors/Total="
-            + totalErrorRecords + "/" + totalRecords);
-      }
-
-      boolean success = writeClient.commit(instantTime, writeStatus, Option.of(checkpointCommitMetadata));
-      if (success) {
-        LOG.info("Commit " + instantTime + " successful!");
-
-        // Schedule compaction if needed
-        if (cfg.isAsyncCompactionEnabled()) {
-          scheduledCompactionInstant = writeClient.scheduleCompaction(Option.empty());
-        }
-
-        if (!isEmpty) {
-          syncHive();
-        }
-      } else {
-        LOG.info("Commit " + instantTime + " failed!");
-        throw new HoodieException("Commit " + instantTime + " failed!");
-      }
-    } else {
-      LOG.error("Delta Sync found errors when writing. Errors/Total=" + totalErrorRecords + "/" + totalRecords);
-      LOG.error("Printing out the top 100 errors");
-      writeStatus.stream().filter(WriteStatus::hasErrors).limit(100).forEach(ws -> {
-        LOG.error("Global error :", ws.getGlobalError());
-        if (ws.getErrors().size() > 0) {
-          ws.getErrors().forEach((key, value) -> LOG.trace("Error for key:" + key + " is " + value));
-        }
-      });
-      // Rolling back instant
-      writeClient.rollback(instantTime);
-      throw new HoodieException("Commit " + instantTime + " failed and rolled-back !");
-    }
-  }
-
-  /**
-   * Sync to Hive.
-   */
-  private void syncHive() {
-    if (cfg.enableHiveSync) {
-      HiveSyncConfig hiveSyncConfig = DataSourceUtils.buildHiveSyncConfig(props, cfg.targetBasePath);
-      LOG.info("Syncing target hoodie table with hive table(" + hiveSyncConfig.tableName + "). Hive metastore URL :"
-          + hiveSyncConfig.jdbcUrl + ", basePath :" + cfg.targetBasePath);
-
-      new HiveSyncTool(hiveSyncConfig, hiveConf, fs).syncHoodieTable();
-    }
+    out.collect(writeStatus);
   }
 
   private String startCommit() {

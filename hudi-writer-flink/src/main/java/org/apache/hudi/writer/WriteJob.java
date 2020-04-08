@@ -35,7 +35,9 @@ public class WriteJob {
 
     incomingRecords.keyBy(HoodieRecord::getPartitionPath)
         .timeWindow(Time.seconds(5))
-        .process(new WriteProcessWindowFunction());
+        .process(new WriteProcessWindowFunction()).uid("write_process").name("write_process")
+        .setParallelism(1)
+        .process(new CommitAndRollbackProcessFunction()).uid("commit_and_rollback").name("commit_and_rollback");
 
     env.execute("Hudi upsert via Flink");
   }
