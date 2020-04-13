@@ -4,10 +4,11 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.operators.KeyedProcessOperator;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
@@ -21,23 +22,29 @@ public class WriteJob {
 
   public static void main(String[] args) throws Exception {
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
     final Config cfg = new Config();
     JCommander cmd = new JCommander(cfg, null, args);
     if (cfg.help || args.length == 0) {
       cmd.usage();
       System.exit(1);
     }
+    env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
-    // read from source
+    // 0. read from source
     DataStream<HoodieRecord> incomingRecords = env.addSource(new SourceReader());
 
-    incomingRecords.keyBy(HoodieRecord::getPartitionPath)
-        .timeWindow(Time.seconds(5))
-        .process(new WriteProcessWindowFunction()).uid("write_process").name("write_process")
-        .setParallelism(1)
-        .process(new CommitAndRollbackProcessFunction()).uid("commit_and_rollback").name("commit_and_rollback");
+    // 1. generate instantTime
+    // 2. partition by partitionPath
+    // 3. collect records, tag location, prepare write operations
+    // 4. trigger write operation, start compact and rollback (if any)
+    incomingRecords
+        .transform("instantTimeGenerator", TypeInformation.of(HoodieRecord.class), new InstantGenerateOperator())
+        .setMaxParallelism(1)
+        .keyBy(HoodieRecord::getPartitionPath)
+        .process(new WriteProcessWindowFunction())
+        .addSink(new CommitAndRollbackSink())
+        .setParallelism(1);
 
     env.execute("Hudi upsert via Flink");
   }
@@ -133,6 +140,12 @@ public class WriteJob {
      */
     @Parameter(names = {"--checkpoint"}, description = "Resume Delta Streamer from this checkpoint.")
     public String checkpoint = null;
+
+    /**
+     *  FLink checkpoint interval.
+     */
+    @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
+    public Long checkpointInterval = 1000 * 60L;
 
     @Parameter(names = {"--help", "-h"}, help = true)
     public Boolean help = false;

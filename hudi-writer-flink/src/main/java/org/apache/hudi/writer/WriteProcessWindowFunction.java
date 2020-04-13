@@ -1,9 +1,10 @@
 package org.apache.hudi.writer;
 
-import org.apache.commons.collections.IteratorUtils;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -26,16 +27,15 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
  *
  */
-public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieRecord, List<WriteStatus>, String, TimeWindow> {
+public class WriteProcessWindowFunction extends KeyedProcessFunction<String, HoodieRecord, List<WriteStatus>> implements CheckpointedFunction {
 
   private static final Logger LOG = LogManager.getLogger(WriteProcessWindowFunction.class);
-
   /**
    * Job conf.
    */
@@ -71,6 +71,58 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
    */
   private transient HoodieWriteClient writeClient;
 
+  /**
+   * Incoming records.
+   */
+  private List<HoodieRecord> records = new LinkedList<>();
+  private Collector<List<WriteStatus>> output;
+
+  @Override
+  public void processElement(HoodieRecord value, Context ctx, Collector<List<WriteStatus>> out) throws Exception {
+    records.add(value);
+    if (output == null) {
+      output = out;
+    }
+  }
+
+  @Override
+  public void snapshotState(FunctionSnapshotContext context) throws Exception {
+    // Refresh Timeline
+    refreshTimeline();
+
+    Option<String> scheduledCompaction = Option.empty();
+
+    // filter dupes if needed
+    if (cfg.filterDupes) {
+      records = DataSourceUtils.dropDuplicates(serializableHadoopConf.get(), records, writeClient.getConfig());
+    }
+
+    // try to start commit
+    String instantTime = getInstantTime();
+    startCommit();
+    LOG.info("Starting commit  : " + instantTime);
+
+    // start write and get the result
+    List<WriteStatus> writeStatus;
+    if (cfg.operation == Operation.INSERT) {
+      writeStatus = writeClient.insert(records, instantTime);
+    } else if (cfg.operation == Operation.UPSERT) {
+      writeStatus = writeClient.upsert(records, instantTime);
+    } else if (cfg.operation == Operation.BULK_INSERT) {
+      writeStatus = writeClient.bulkInsert(records, instantTime);
+    } else {
+      throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
+    }
+    // 输出writeStatus
+    output.collect(writeStatus);
+    records.clear();
+  }
+
+  @Override
+  public void initializeState(FunctionInitializationContext context) throws Exception {
+
+  }
+
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
@@ -94,46 +146,6 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
 
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
-  }
-
-
-  private HoodieWriteConfig getHoodieWriteConfig() {
-    // TODO
-    return HoodieWriteConfig.newBuilder().build();
-  }
-
-  @Override
-  public void process(String s, Context context, Iterable<HoodieRecord> inputs, Collector<List<WriteStatus>> out) throws Exception {
-    List<HoodieRecord> records = IteratorUtils.toList(inputs.iterator());
-    // Refresh Timeline
-    refreshTimeline();
-
-    Option<String> scheduledCompaction = Option.empty();
-
-
-    // filter dupes if needed
-    if (cfg.filterDupes) {
-      // turn upserts to insert
-      cfg.operation = cfg.operation == Operation.UPSERT ? Operation.INSERT : cfg.operation;
-      records = DataSourceUtils.dropDuplicates(serializableHadoopConf.get(), records, writeClient.getConfig());
-    }
-
-    // try to start commit
-    String instantTime = startCommit();
-    LOG.info("Starting commit  : " + instantTime);
-
-    // start write and get the result
-    List<WriteStatus> writeStatus;
-    if (cfg.operation == Operation.INSERT) {
-      writeStatus = writeClient.insert(records, instantTime);
-    } else if (cfg.operation == Operation.UPSERT) {
-      writeStatus = writeClient.upsert(records, instantTime);
-    } else if (cfg.operation == Operation.BULK_INSERT) {
-      writeStatus = writeClient.bulkInsert(records, instantTime);
-    } else {
-      throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
-    }
-    out.collect(writeStatus);
   }
 
   private String startCommit() {
@@ -179,5 +191,10 @@ public class WriteProcessWindowFunction extends ProcessWindowFunction<HoodieReco
       HoodieTableMetaClient.initTableType(new org.apache.hadoop.conf.Configuration(serializableHadoopConf.get()), cfg.targetBasePath,
           cfg.tableType, cfg.targetTableName, "archived", cfg.payloadClassName);
     }
+  }
+
+  private HoodieWriteConfig getHoodieWriteConfig() {
+    // TODO
+    return HoodieWriteConfig.newBuilder().build();
   }
 }
