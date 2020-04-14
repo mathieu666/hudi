@@ -8,7 +8,6 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.operators.KeyedProcessOperator;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
@@ -146,6 +145,12 @@ public class WriteJob {
      */
     @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
     public Long checkpointInterval = 1000 * 60L;
+
+    /**
+     *  InstantTime save path.
+     */
+    @Parameter(names = {"--instant-time-path"}, description = "InstantTime save path.")
+    public String instantTimePath = propsFilePath;
 
     @Parameter(names = {"--help", "-h"}, help = true)
     public Boolean help = false;

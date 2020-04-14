@@ -21,8 +21,6 @@ package org.apache.hudi.writer.config;
 import com.google.common.base.Preconditions;
 import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
-import org.apache.hudi.table.compact.strategy.CompactionStrategy;
-import org.apache.hudi.table.compact.strategy.LogFileSizeBasedCompactionStrategy;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.File;

@@ -13,6 +13,7 @@ import org.apache.hudi.common.table.timeline.TimelineMetadataUtils;
 import org.apache.hudi.common.util.CompactionUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ValidationUtils;
+import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.writer.WriteStatus;
 import org.apache.hudi.writer.client.embedded.EmbeddedTimelineService;
@@ -32,8 +33,10 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * HoodieWriteClient.
@@ -131,7 +134,7 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     // partition using the insert partitioner
     final Partitioner partitioner = getPartitioner(hoodieTable, isUpsert, profile);
     List<HoodieRecord<T>> partitionedRecords = partition(preppedRecords, partitioner);
-    List<WriteStatus> writeStatusRDD = partitionedRecords.mapPartitionsWithIndex((partition, recordItr) -> {
+    List<WriteStatus> writeStatusRDD = partitionedRecords.stream().mapPartitionsWithIndex((partition, recordItr) -> {
       if (isUpsert) {
         return hoodieTable.handleUpsertPartition(instantTime, partition, recordItr, partitioner);
       } else {
@@ -311,19 +314,15 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
    */
   List<HoodieRecord<T>> deduplicateRecords(List<HoodieRecord<T>> records, int parallelism) {
     boolean isIndexingGlobal = getIndex().isGlobal();
-    return records.mapToPair(record -> {
+    Stream<Tuple2<Object, HoodieRecord<T>>> tuple2Stream = records.stream().map(record -> {
       HoodieKey hoodieKey = record.getKey();
       // If index used is global, then records are expected to differ in their partitionPath
       Object key = isIndexingGlobal ? hoodieKey.getRecordKey() : hoodieKey;
       return new Tuple2<>(key, record);
-    }).reduceByKey((rec1, rec2) -> {
-      @SuppressWarnings("unchecked")
-      T reducedData = (T) rec1.getData().preCombine(rec2.getData());
-      // we cannot allow the user to change the key or partitionPath, since that will affect
-      // everything
-      // so pick it from one of the records.
-      return new HoodieRecord<T>(rec1.getKey(), reducedData);
-    }, parallelism).map(Tuple2::_2);
+    });
+//    Stream<Tuple2<Object, HoodieRecord<T>>> pairStream = tuple2Stream.collect(Collectors.groupingBy(Tuple2::_1))
+
+    return null;
   }
 
   /**

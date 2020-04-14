@@ -620,6 +620,12 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       return this;
     }
 
+    public Builder withCompactionConfig(HoodieCompactionConfig compactionConfig) {
+      props.putAll(compactionConfig.getProps());
+      isCompactionConfigSet = true;
+      return this;
+    }
+
     public Builder withMetricsConfig(HoodieMetricsConfig metricsConfig) {
       props.putAll(metricsConfig.getProps());
       isMetricsConfigSet = true;

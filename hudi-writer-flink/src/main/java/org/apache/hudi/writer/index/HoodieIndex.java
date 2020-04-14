@@ -66,15 +66,15 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
    * Checks if the given [Keys] exists in the hoodie table and returns [Key, Option[partitionPath, fileID]] If the
    * optional is empty, then the key is not found.
    */
-  public abstract List<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(
-      List<HoodieKey> hoodieKeys, final Configuration jsc, HoodieTable<T> hoodieTable);
+  public abstract List<HoodieKey> fetchRecordLocation(
+      List<HoodieKey> hoodieKeys, final Configuration hadoopConf, HoodieTable<T> hoodieTable);
 
   /**
    * Looks up the index and tags each incoming record with a location of a file that contains the row (if it is actually
    * present).
    */
   public abstract List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> recordRDD, Configuration hadoopConf,
-                                                       HoodieTable<T> hoodieTable) throws HoodieIndexException;
+                                                    HoodieTable<T> hoodieTable) throws HoodieIndexException;
 
   /**
    * Extracts the location of written records, and updates the index.
@@ -115,7 +115,8 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
   /**
    * Each index type should implement it's own logic to release any resources acquired during the process.
    */
-  public void close() {}
+  public void close() {
+  }
 
   public enum IndexType {
     HBASE, INMEMORY, BLOOM, GLOBAL_BLOOM

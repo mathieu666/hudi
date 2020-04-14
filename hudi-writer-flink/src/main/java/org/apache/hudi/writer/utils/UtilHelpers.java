@@ -18,15 +18,26 @@
 
 package org.apache.hudi.writer.utils;
 
+import com.google.common.base.Preconditions;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.config.DFSPropertiesConfiguration;
+import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.exception.HoodieIOException;
+import org.apache.hudi.writer.WriteJob;
+import org.apache.hudi.writer.config.HoodieCompactionConfig;
+import org.apache.hudi.writer.config.HoodieIndexConfig;
+import org.apache.hudi.writer.config.HoodieWriteConfig;
+import org.apache.hudi.writer.index.HoodieIndex;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.List;
 
@@ -58,5 +69,75 @@ public class UtilHelpers {
     }
 
     return conf;
+  }
+
+  public static HoodieWriteConfig getHoodieClientConfig(WriteJob.Config cfg) {
+    FileSystem fs = FSUtils.getFs(cfg.targetBasePath, getHadoopConf());
+    HoodieWriteConfig.Builder builder =
+        HoodieWriteConfig.newBuilder().withPath(cfg.targetBasePath).combineInput(cfg.filterDupes, true)
+            .withCompactionConfig(HoodieCompactionConfig.newBuilder().withPayloadClass(cfg.payloadClassName)
+                // Inline compaction is disabled for continuous mode. otherwise enabled for MOR
+                .withInlineCompaction(cfg.isInlineCompactionEnabled()).build())
+            .forTable(cfg.targetTableName)
+            .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(HoodieIndex.IndexType.HBASE).build())
+            .withAutoCommit(false).withProps(readConfig(fs, new Path(cfg.propsFilePath), cfg.configs).getConfig());
+
+    HoodieWriteConfig config = builder.build();
+
+    // Validate what deltastreamer assumes of write-config to be really safe
+    Preconditions.checkArgument(config.isInlineCompaction() == cfg.isInlineCompactionEnabled());
+    Preconditions.checkArgument(!config.shouldAutoCommit());
+    Preconditions.checkArgument(config.shouldCombineBeforeInsert() == cfg.filterDupes);
+    Preconditions.checkArgument(config.shouldCombineBeforeUpsert());
+
+    return config;
+  }
+
+  public static Configuration getHadoopConf() {
+    return new Configuration();
+  }
+
+  public static void saveInstantTimeToHDFS(String instantTime, String instantTimePath) {
+    FileSystem fs = FSUtils.getFs(instantTimePath, getHadoopConf());
+    FSDataOutputStream hdfsOutStream = null;
+    try {
+      hdfsOutStream = fs.create(new Path(instantTimePath));
+      hdfsOutStream.writeBytes(instantTime);
+    } catch (IOException e) {
+      LOG.error("save instant time to hdfs failed ", e);
+    } finally {
+      try {
+        if (hdfsOutStream != null) {
+          hdfsOutStream.close();
+        }
+        fs.close();
+      } catch (IOException e) {
+        LOG.error("release fs failed ", e);
+      }
+    }
+  }
+
+  public static String getInstantTimeFromHDFS(String instantTimePath) {
+    FileSystem fs = FSUtils.getFs(instantTimePath, getHadoopConf());
+    FSDataInputStream hdfsInStream = null;
+    BufferedReader bf = null;
+    try {
+      hdfsInStream = fs.open(new Path(instantTimePath));
+      bf = new BufferedReader(new InputStreamReader(hdfsInStream));
+      // only one row => instantTime
+      return bf.readLine();
+    } catch (IOException e) {
+      LOG.error("read instant time from hdfs failed ", e);
+    } finally {
+      try {
+        if (bf != null) {
+          bf.close();
+        }
+        fs.close();
+      } catch (IOException e) {
+        LOG.error("release fs failed ", e);
+      }
+    }
+    return null;
   }
 }

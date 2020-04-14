@@ -8,6 +8,7 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
+import org.apache.hudi.writer.utils.UtilHelpers;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -41,9 +42,9 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
   List<WriteStatus> writeResults = new ArrayList<>();
   @Override
   public void notifyCheckpointComplete(long l) throws Exception {
-    String instantTime = getInstantTime();
+    String instantTime = UtilHelpers.getInstantTimeFromHDFS(cfg.instantTimePath);
     // read from source
-    String checkpointStr = getCheckpointStr();
+    String checkpointStr = null;
     // commit and rollback
     long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).count();
     long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).count();

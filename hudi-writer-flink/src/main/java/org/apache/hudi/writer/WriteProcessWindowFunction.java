@@ -21,7 +21,6 @@ import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.exception.HoodieDeltaStreamerException;
 import org.apache.hudi.writer.index.HoodieIndex;
-import org.apache.hudi.writer.utils.DataSourceUtils;
 import org.apache.hudi.writer.utils.UtilHelpers;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -57,8 +56,11 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
   /**
    * Bag of properties with source, hoodie client, key generator etc.
    */
-  TypedProperties props;
+  private TypedProperties props;
 
+  /**
+   * HoodieIndex.
+   */
   private HoodieIndex hoodieIndex;
 
   /**
@@ -75,6 +77,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
    * Incoming records.
    */
   private List<HoodieRecord> records = new LinkedList<>();
+
   private Collector<List<WriteStatus>> output;
 
   @Override
@@ -90,17 +93,8 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     // Refresh Timeline
     refreshTimeline();
 
-    Option<String> scheduledCompaction = Option.empty();
-
-    // filter dupes if needed
-    if (cfg.filterDupes) {
-      records = DataSourceUtils.dropDuplicates(serializableHadoopConf.get(), records, writeClient.getConfig());
-    }
-
     // try to start commit
-    String instantTime = getInstantTime();
-    startCommit();
-    LOG.info("Starting commit  : " + instantTime);
+    String instantTime = UtilHelpers.getInstantTimeFromHDFS(cfg.instantTimePath);
 
     // start write and get the result
     List<WriteStatus> writeStatus;
@@ -146,27 +140,6 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
 
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
-  }
-
-  private String startCommit() {
-    final int maxRetries = 2;
-    int retryNum = 1;
-    RuntimeException lastException = null;
-    while (retryNum <= maxRetries) {
-      try {
-        return writeClient.startCommit();
-      } catch (IllegalArgumentException ie) {
-        lastException = ie;
-        LOG.error("Got error trying to start a new commit. Retrying after sleeping for a sec", ie);
-        retryNum++;
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          // No-Op
-        }
-      }
-    }
-    throw lastException;
   }
 
   /**
