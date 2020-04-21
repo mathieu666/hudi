@@ -380,6 +380,7 @@ public class TestHoodieActiveTimeline extends HoodieCommonTestHarness {
 
     checkFilter.accept(timeline.filter(i -> false), new HashSet<>());
     checkFilter.accept(timeline.filterInflights(), Collections.singleton(State.INFLIGHT));
+    checkFilter.accept(timeline.filterRequested(), Collections.singleton(State.REQUESTED));
     checkFilter.accept(timeline.filterInflightsAndRequested(),
             CollectionUtils.createSet(State.INFLIGHT, State.REQUESTED));
 

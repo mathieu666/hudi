@@ -43,22 +43,20 @@ import java.util.stream.Stream;
  */
 public interface HoodieTimeline extends Serializable {
 
+  // Actions
   String COMMIT_ACTION = "commit";
   String DELTA_COMMIT_ACTION = "deltacommit";
   String CLEAN_ACTION = "clean";
   String ROLLBACK_ACTION = "rollback";
   String SAVEPOINT_ACTION = "savepoint";
-  String INFLIGHT_EXTENSION = ".inflight";
   // With Async Compaction, compaction instant can be in 3 states :
   // (compaction-requested), (compaction-inflight), (completed)
   String COMPACTION_ACTION = "compaction";
-  String REQUESTED_EXTENSION = ".requested";
   String RESTORE_ACTION = "restore";
 
-  String[] VALID_ACTIONS_IN_TIMELINE = {COMMIT_ACTION, DELTA_COMMIT_ACTION,
-      CLEAN_ACTION, SAVEPOINT_ACTION, RESTORE_ACTION, ROLLBACK_ACTION,
-      COMPACTION_ACTION};
-
+  // Action extensions
+  String REQUESTED_EXTENSION = ".requested";
+  String INFLIGHT_EXTENSION = ".inflight";
   String COMMIT_EXTENSION = "." + COMMIT_ACTION;
   String DELTA_COMMIT_EXTENSION = "." + DELTA_COMMIT_ACTION;
   String CLEAN_EXTENSION = "." + CLEAN_ACTION;
@@ -79,7 +77,18 @@ public interface HoodieTimeline extends Serializable {
   String INFLIGHT_RESTORE_EXTENSION = "." + RESTORE_ACTION + INFLIGHT_EXTENSION;
   String RESTORE_EXTENSION = "." + RESTORE_ACTION;
 
+  String[] VALID_ACTIONS_IN_TIMELINE = {COMMIT_ACTION, DELTA_COMMIT_ACTION,
+      CLEAN_ACTION, SAVEPOINT_ACTION, RESTORE_ACTION, ROLLBACK_ACTION,
+      COMPACTION_ACTION};
+
   String INVALID_INSTANT_TS = "0";
+
+  /**
+   * Filter this timeline to just include the requested.
+   *
+   * @return New instance of HoodieTimeline with just requested
+   */
+  HoodieTimeline filterRequested();
 
   /**
    * Filter this timeline to just include the in-flights.

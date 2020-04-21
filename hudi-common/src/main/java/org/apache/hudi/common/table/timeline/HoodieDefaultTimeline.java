@@ -79,6 +79,11 @@ public class HoodieDefaultTimeline implements HoodieTimeline {
   public HoodieDefaultTimeline() {}
 
   @Override
+  public HoodieTimeline filterRequested() {
+    return new HoodieDefaultTimeline(instants.stream().filter(HoodieInstant::isRequested), details);
+  }
+
+  @Override
   public HoodieTimeline filterInflights() {
     return new HoodieDefaultTimeline(instants.stream().filter(HoodieInstant::isInflight), details);
   }
