@@ -22,14 +22,14 @@ import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordLocation;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.Option;
-import org.apache.spark.api.java.JavaRDD;
-import scala.Tuple2;
+import org.apache.hudi.common.util.collection.Pair;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Information about incoming records for upsert/insert obtained either via sampling or introspecting the data fully.
@@ -60,15 +60,15 @@ public class WorkloadProfile<T extends HoodieRecordPayload> implements Serializa
 
   private void buildProfile() {
 
-    Map<Tuple2<String, Option<HoodieRecordLocation>>, Long> partitionLocationCounts = taggedRecords
-        .mapToPair(record -> new Tuple2<>(
-            new Tuple2<>(record.getPartitionPath(), Option.ofNullable(record.getCurrentLocation())), record))
-        .countByKey();
+    Map<Pair<String, Option<HoodieRecordLocation>>, Long> partitionLocationCounts = taggedRecords
+        .stream()
+        .map(record -> Pair.of(Pair.of(record.getPartitionPath(), Option.ofNullable(record.getCurrentLocation())), record))
+        .collect(Collectors.groupingBy(Pair::getLeft, Collectors.counting()));
 
-    for (Map.Entry<Tuple2<String, Option<HoodieRecordLocation>>, Long> e : partitionLocationCounts.entrySet()) {
-      String partitionPath = e.getKey()._1();
+    for (Map.Entry<Pair<String, Option<HoodieRecordLocation>>, Long> e : partitionLocationCounts.entrySet()) {
+      String partitionPath = e.getKey().getLeft();
       Long count = e.getValue();
-      Option<HoodieRecordLocation> locOption = e.getKey()._2();
+      Option<HoodieRecordLocation> locOption = e.getKey().getRight();
 
       if (!partitionPathStatMap.containsKey(partitionPath)) {
         partitionPathStatMap.put(partitionPath, new WorkloadStat());

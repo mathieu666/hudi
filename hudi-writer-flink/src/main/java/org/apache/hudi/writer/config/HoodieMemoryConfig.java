@@ -18,9 +18,6 @@
 
 package org.apache.hudi.writer.config;
 
-import org.apache.spark.SparkEnv;
-import org.apache.spark.util.Utils;
-
 import javax.annotation.concurrent.Immutable;
 import java.io.File;
 import java.io.FileReader;
@@ -129,23 +126,7 @@ public class HoodieMemoryConfig extends DefaultHoodieConfig {
       // https://github.com/apache/spark/blob/576c43fb4226e4efa12189b41c3bc862019862c6/core/src/main/scala/org/apache/
       // spark/SparkContext.scala#L471} so have to re-define this here
       final String DEFAULT_SPARK_EXECUTOR_MEMORY_MB = "1024"; // in MB
-
-      if (SparkEnv.get() != null) {
-        // 1 GB is the default conf used by Spark, look at SparkContext.scala
-        long executorMemoryInBytes = Utils.memoryStringToMb(
-            SparkEnv.get().conf().get(SPARK_EXECUTOR_MEMORY_PROP, DEFAULT_SPARK_EXECUTOR_MEMORY_MB)) * 1024 * 1024L;
-        // 0.6 is the default value used by Spark,
-        // look at {@link
-        // https://github.com/apache/spark/blob/master/core/src/main/scala/org/apache/spark/SparkConf.scala#L507}
-        double memoryFraction = Double.parseDouble(
-            SparkEnv.get().conf().get(SPARK_EXECUTOR_MEMORY_FRACTION_PROP, DEFAULT_SPARK_EXECUTOR_MEMORY_FRACTION));
-        double maxMemoryFractionForMerge = Double.parseDouble(maxMemoryFraction);
-        double userAvailableMemory = executorMemoryInBytes * (1 - memoryFraction);
-        long maxMemoryForMerge = (long) Math.floor(userAvailableMemory * maxMemoryFractionForMerge);
-        return Math.max(DEFAULT_MIN_MEMORY_FOR_SPILLABLE_MAP_IN_BYTES, maxMemoryForMerge);
-      } else {
-        return DEFAULT_MAX_MEMORY_FOR_SPILLABLE_MAP_IN_BYTES;
-      }
+      return DEFAULT_MAX_MEMORY_FOR_SPILLABLE_MAP_IN_BYTES;
     }
 
     public HoodieMemoryConfig build() {

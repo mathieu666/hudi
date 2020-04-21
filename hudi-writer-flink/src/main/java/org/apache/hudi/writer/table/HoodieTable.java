@@ -238,6 +238,13 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
   }
 
   /**
+   * Return the index.
+   */
+  public HoodieIndex<T> getIndex() {
+    return index;
+  }
+
+  /**
    * Get only the completed (no-inflights) savepoint timeline.
    */
   public HoodieTimeline getCompletedSavepointTimeline() {

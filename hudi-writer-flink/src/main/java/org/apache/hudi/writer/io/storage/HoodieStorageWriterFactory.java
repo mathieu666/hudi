@@ -26,6 +26,7 @@ import org.apache.hudi.common.bloom.BloomFilter;
 import org.apache.hudi.common.bloom.BloomFilterFactory;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.writer.client.SparkTaskContextSupplier;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.table.HoodieTable;
 import org.apache.parquet.avro.AvroSchemaConverter;

@@ -178,7 +178,6 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
 
 
   private List<HoodieRecord<T>> partition(List<HoodieRecord<T>> dedupedRecords, Partitioner partitioner) {
-    dedupedRecords.stream().map(record -> Pair.of(Pair.of(record.getKey(), Option.ofNullable(record.getCurrentLocation())),record))
     // todo
     return new ArrayList<>();
   }

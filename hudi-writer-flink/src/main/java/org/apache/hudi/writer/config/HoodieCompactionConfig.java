@@ -18,9 +18,11 @@
 
 package org.apache.hudi.writer.config;
 
-import com.google.common.base.Preconditions;
 import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
+import org.apache.hudi.common.util.ValidationUtils;
+import org.apache.hudi.writer.table.compact.strategy.CompactionStrategy;
+import org.apache.hudi.writer.table.compact.strategy.LogFileSizeBasedCompactionStrategy;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.File;
@@ -288,8 +290,8 @@ public class HoodieCompactionConfig extends DefaultHoodieConfig {
       int maxInstantsToKeep = Integer.parseInt(props.getProperty(HoodieCompactionConfig.MAX_COMMITS_TO_KEEP_PROP));
       int cleanerCommitsRetained =
           Integer.parseInt(props.getProperty(HoodieCompactionConfig.CLEANER_COMMITS_RETAINED_PROP));
-      Preconditions.checkArgument(maxInstantsToKeep > minInstantsToKeep);
-      Preconditions.checkArgument(minInstantsToKeep > cleanerCommitsRetained,
+      ValidationUtils.checkArgument(maxInstantsToKeep > minInstantsToKeep);
+      ValidationUtils.checkArgument(minInstantsToKeep > cleanerCommitsRetained,
           String.format(
               "Increase %s=%d to be greater than %s=%d. Otherwise, there is risk of incremental pull "
                   + "missing data from few instants.",

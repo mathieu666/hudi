@@ -4,7 +4,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.avro.model.HoodieRollbackMetadata;
 import org.apache.hudi.common.HoodieRollbackStat;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.HoodieCommitMetadata;
+import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.common.model.HoodieRollingStat;
+import org.apache.hudi.common.model.HoodieRollingStatMetadata;
+import org.apache.hudi.common.model.HoodieWriteStat;
+import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
@@ -35,7 +40,7 @@ import java.util.stream.Collectors;
  *  Reused for regular write operations like upsert/insert/bulk-insert.. as well as bootstrap
  * @param <T> Sub type of HoodieRecordPayload
  */
-public class AbstractHoodieWriteClient <T extends HoodieRecordPayload> extends AbstractHoodieClient {
+public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHoodieClient {
   private static final Logger LOG = LogManager.getLogger(AbstractHoodieWriteClient.class);
   private static final String UPDATE_STR = "update";
   private final transient HoodieIndex<T> index;
@@ -112,7 +117,7 @@ public class AbstractHoodieWriteClient <T extends HoodieRecordPayload> extends A
     HoodieActiveTimeline activeTimeline = table.getActiveTimeline();
     HoodieCommitMetadata metadata = new HoodieCommitMetadata();
 
-    List<HoodieWriteStat> stats = writeStatuses.map(WriteStatus::getStat).collect();
+    List<HoodieWriteStat> stats = writeStatuses.stream().map(WriteStatus::getStat).collect(Collectors.toList());
 
     updateMetadataAndRollingStats(actionType, metadata, stats);
 
@@ -136,9 +141,6 @@ public class AbstractHoodieWriteClient <T extends HoodieRecordPayload> extends A
     } catch (IOException e) {
       throw new HoodieCommitException("Failed to complete commit " + config.getBasePath() + " at time " + instantTime,
           e);
-    } catch (ParseException e) {
-      throw new HoodieCommitException("Failed to complete commit " + config.getBasePath() + " at time " + instantTime
-          + "Instant time is not of valid format", e);
     }
     return true;
   }
