@@ -97,47 +97,4 @@ public class UtilHelpers {
     return new Configuration();
   }
 
-  public static void saveInstantTimeToHDFS(String instantTime, String instantTimePath) {
-    FileSystem fs = FSUtils.getFs(instantTimePath, getHadoopConf());
-    FSDataOutputStream hdfsOutStream = null;
-    try {
-      hdfsOutStream = fs.create(new Path(instantTimePath));
-      hdfsOutStream.writeBytes(instantTime);
-    } catch (IOException e) {
-      LOG.error("save instant time to hdfs failed ", e);
-    } finally {
-      try {
-        if (hdfsOutStream != null) {
-          hdfsOutStream.close();
-        }
-        fs.close();
-      } catch (IOException e) {
-        LOG.error("release fs failed ", e);
-      }
-    }
-  }
-
-  public static String getInstantTimeFromHDFS(String instantTimePath) {
-    FileSystem fs = FSUtils.getFs(instantTimePath, getHadoopConf());
-    FSDataInputStream hdfsInStream = null;
-    BufferedReader bf = null;
-    try {
-      hdfsInStream = fs.open(new Path(instantTimePath));
-      bf = new BufferedReader(new InputStreamReader(hdfsInStream));
-      // only one row => instantTime
-      return bf.readLine();
-    } catch (IOException e) {
-      LOG.error("read instant time from hdfs failed ", e);
-    } finally {
-      try {
-        if (bf != null) {
-          bf.close();
-        }
-        fs.close();
-      } catch (IOException e) {
-        LOG.error("release fs failed ", e);
-      }
-    }
-    return null;
-  }
 }

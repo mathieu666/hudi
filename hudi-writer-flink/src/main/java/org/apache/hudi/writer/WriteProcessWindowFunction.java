@@ -13,6 +13,7 @@ import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieException;
@@ -28,6 +29,8 @@ import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  *
@@ -93,8 +96,8 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     // Refresh Timeline
     refreshTimeline();
 
-    // try to start commit
-    String instantTime = UtilHelpers.getInstantTimeFromHDFS(cfg.instantTimePath);
+    // get instantTime
+    String instantTime = getInstantTime();
 
     // start write and get the result
     List<WriteStatus> writeStatus;
@@ -110,6 +113,24 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     // 输出writeStatus
     output.collect(writeStatus);
     records.clear();
+  }
+
+  private String getInstantTime() {
+    HoodieTableMetaClient meta = new HoodieTableMetaClient(new org.apache.hadoop.conf.Configuration(fs.getConf()), cfg.targetBasePath,
+        cfg.payloadClassName);
+    String instantTime = null;
+    switch (meta.getTableType()) {
+      case COPY_ON_WRITE:
+        this.commitTimelineOpt = Option.of(meta.getActiveTimeline().getCommitTimeline().filterCompletedInstants());
+        HoodieTimeline hoodieTimeline = meta.getActiveTimeline().filterInflightsAndRequested()
+        break;
+      case MERGE_ON_READ:
+        this.commitTimelineOpt = Option.of(meta.getActiveTimeline().getDeltaCommitTimeline().filterCompletedInstants());
+        break;
+      default:
+        throw new HoodieException("Unsupported table type :" + meta.getTableType());
+    }
+
   }
 
   @Override

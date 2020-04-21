@@ -23,9 +23,6 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
   public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
     super.prepareSnapshotPreBarrier(checkpointId);
     // startCommit
-    // 1. emit instantTime
-    // 2. start commit
-    // 3. save instantTime to HDFS
     startCommit();
   }
 
@@ -44,8 +41,6 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
     while (retryNum <= maxRetries) {
       try {
         String instantTime = writeClient.startCommit();
-        // save instantTime to HDFS
-        UtilHelpers.saveInstantTimeToHDFS(instantTime, cfg.instantTimePath);
         LOG.info("Starting commit  : " + instantTime);
       } catch (IllegalArgumentException ie) {
         lastException = ie;

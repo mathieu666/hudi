@@ -4,7 +4,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.HoodieCommitMetadata;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.common.model.HoodieWriteStat;
+import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
@@ -19,9 +24,17 @@ import org.apache.hudi.writer.WriteStatus;
 import org.apache.hudi.writer.client.embedded.EmbeddedTimelineService;
 import org.apache.hudi.writer.config.HoodieCompactionConfig;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
-import org.apache.hudi.writer.exception.*;
+import org.apache.hudi.writer.exception.HoodieCommitException;
+import org.apache.hudi.writer.exception.HoodieCompactionException;
+import org.apache.hudi.writer.exception.HoodieInsertException;
+import org.apache.hudi.writer.exception.HoodieRollbackException;
+import org.apache.hudi.writer.exception.HoodieUpsertException;
 import org.apache.hudi.writer.index.HoodieIndex;
-import org.apache.hudi.writer.table.*;
+import org.apache.hudi.writer.table.HoodieCommitArchiveLog;
+import org.apache.hudi.writer.table.HoodieTable;
+import org.apache.hudi.writer.table.UserDefinedBulkInsertPartitioner;
+import org.apache.hudi.writer.table.WorkloadProfile;
+import org.apache.hudi.writer.table.WorkloadStat;
 import org.apache.hudi.writer.table.partitioner.Partitioner;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -29,11 +42,10 @@ import scala.Tuple2;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -133,16 +145,22 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
 
     // partition using the insert partitioner
     final Partitioner partitioner = getPartitioner(hoodieTable, isUpsert, profile);
-    List<HoodieRecord<T>> partitionedRecords = partition(preppedRecords, partitioner);
-    List<WriteStatus> writeStatusRDD = partitionedRecords.stream().mapPartitionsWithIndex((partition, recordItr) -> {
-      if (isUpsert) {
-        return hoodieTable.handleUpsertPartition(instantTime, partition, recordItr, partitioner);
-      } else {
-        return hoodieTable.handleInsertPartition(instantTime, partition, recordItr, partitioner);
-      }
-    }, true).flatMap(List::iterator);
 
-    return updateIndexAndCommitIfNeeded(writeStatusRDD, hoodieTable, instantTime);
+    Map<Integer, List<HoodieRecord>> partitionedRecords = preppedRecords
+        .stream()
+        .collect(Collectors.groupingBy(x -> partitioner.getPartition(Pair.of(x.getKey(), Option.ofNullable(x.getCurrentLocation())))));
+
+    // fire the final write(only upsert implement)
+    List<WriteStatus> writeResults = new ArrayList<>();
+    for (Map.Entry<Integer, List<HoodieRecord>> entry : partitionedRecords.entrySet()) {
+      Iterator<List<WriteStatus>> writeStatuses = hoodieTable.handleUpsertPartition(instantTime, entry.getKey(), entry.getValue().iterator(), partitioner);
+      if (writeStatuses.hasNext()) {
+        List<WriteStatus> writeStatus = writeStatuses.next();
+        // refresh index id needed
+        writeResults.addAll(this.updateIndexAndCommitIfNeeded(writeStatus, hoodieTable, instantTime));
+      }
+    }
+    return writeResults;
   }
 
   private List<HoodieRecord<T>> combineOnCondition(boolean condition, List<HoodieRecord<T>> records,
@@ -160,6 +178,7 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
 
 
   private List<HoodieRecord<T>> partition(List<HoodieRecord<T>> dedupedRecords, Partitioner partitioner) {
+    dedupedRecords.stream().map(record -> Pair.of(Pair.of(record.getKey(), Option.ofNullable(record.getCurrentLocation())),record))
     // todo
     return new ArrayList<>();
   }
@@ -320,7 +339,6 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
       Object key = isIndexingGlobal ? hoodieKey.getRecordKey() : hoodieKey;
       return new Tuple2<>(key, record);
     });
-//    Stream<Tuple2<Object, HoodieRecord<T>>> pairStream = tuple2Stream.collect(Collectors.groupingBy(Tuple2::_1))
 
     return null;
   }
@@ -340,9 +358,19 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
   }
 
   private void startCommit(String instantTime) {
-    //todo
+    LOG.info("Generate a new instant time " + instantTime);
+    HoodieTableMetaClient metaClient = createMetaClient(true);
+    // if there are pending compactions, their instantTime must not be greater than that of this instant time
+    metaClient.getActiveTimeline().filterPendingCompactionTimeline().lastInstant().ifPresent(latestPending ->
+        ValidationUtils.checkArgument(
+            HoodieTimeline.compareTimestamps(latestPending.getTimestamp(), instantTime, HoodieTimeline.LESSER),
+            "Latest pending compaction instant time must be earlier than this instant time. Latest Compaction :"
+                + latestPending + ",  Ingesting at " + instantTime));
+    HoodieTable<T> table = HoodieTable.create(metaClient, config, hadoopConf);
+    HoodieActiveTimeline activeTimeline = table.getActiveTimeline();
+    String commitActionType = table.getMetaClient().getCommitActionType();
+    activeTimeline.createNewInstant(new HoodieInstant(HoodieInstant.State.REQUESTED, commitActionType, instantTime));
   }
-
 
   /**
    * Cleanup all pending commits.

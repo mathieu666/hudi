@@ -95,7 +95,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
    * Finalize the written data onto storage. Perform any final cleanups.
    *
    * @param hadoopConf hadoopConf
-   * @param stats List of HoodieWriteStats
+   * @param stats      List of HoodieWriteStats
    * @throws HoodieIOException if some paths can't be finalized on storage
    */
   public void finalizeWrite(Configuration hadoopConf, String instantTs, List<HoodieWriteStat> stats)
@@ -107,9 +107,9 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
    * Reconciles WriteStats and marker files to detect and safely delete duplicate data files created because of Spark
    * retries.
    *
-   * @param jsc Spark Context
-   * @param instantTs Instant Timestamp
-   * @param stats Hoodie Write Stat
+   * @param jsc                     Spark Context
+   * @param instantTs               Instant Timestamp
+   * @param stats                   Hoodie Write Stat
    * @param consistencyCheckEnabled Consistency Check Enabled
    * @throws HoodieIOException
    */
@@ -149,7 +149,8 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
         }
 
         // Now delete partially written files
-        jsc.parallelize(new ArrayList<>(groupByPartition.values()), config.getFinalizeWriteParallelism())
+        new ArrayList<>(groupByPartition.values())
+            .stream()
             .map(partitionWithFileList -> {
               final FileSystem fileSystem = metaClient.getFs();
               LOG.info("Deleting invalid data files=" + partitionWithFileList);
@@ -166,7 +167,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
               });
 
               return true;
-            }).collect();
+            });
 
         // Now ensure the deleted files disappear
         if (consistencyCheckEnabled) {
@@ -204,18 +205,18 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
   /**
    * Ensures all files passed either appear or disappear.
    *
-   * @param hadoopConf hadoopConf
+   * @param hadoopConf       hadoopConf
    * @param groupByPartition Files grouped by partition
-   * @param visibility Appear/Disappear
+   * @param visibility       Appear/Disappear
    */
   private void waitForAllFiles(Configuration hadoopConf, Map<String, List<Pair<String, String>>> groupByPartition,
                                ConsistencyGuard.FileVisibility visibility) {
     // This will either ensure all files to be deleted are present.
-    boolean checkPassed =
-        jsc.parallelize(new ArrayList<>(groupByPartition.entrySet()), config.getFinalizeWriteParallelism())
-            .map(partitionWithFileList -> waitForCondition(partitionWithFileList.getKey(),
-                partitionWithFileList.getValue().stream(), visibility))
-            .collect().stream().allMatch(x -> x);
+    boolean checkPassed = new ArrayList<>(groupByPartition.entrySet())
+        .stream()
+        .map(partitionWithFileList -> waitForCondition(partitionWithFileList.getKey(),
+            partitionWithFileList.getValue().stream(), visibility))
+        .allMatch(x -> x);
     if (!checkPassed) {
       throw new HoodieIOException("Consistency check failed to ensure all files " + visibility);
     }
@@ -264,12 +265,12 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
   /**
    * Run Compaction on the table. Compaction arranges the data so that it is optimized for data access.
    *
-   * @param hadoopConf Spark Context
+   * @param hadoopConf            Spark Context
    * @param compactionInstantTime Instant Time
-   * @param compactionPlan Compaction Plan
+   * @param compactionPlan        Compaction Plan
    */
   public abstract List<WriteStatus> compact(Configuration hadoopConf, String compactionInstantTime,
-                                               HoodieCompactionPlan compactionPlan);
+                                            HoodieCompactionPlan compactionPlan);
 
   /**
    * Rollback the (inflight/committed) record changes with the given commit time. Four steps: (1) Atomically unpublish
@@ -376,7 +377,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
   /**
    * Schedule compaction for the instant time.
    *
-   * @param hadoopConf hadoopConf
+   * @param hadoopConf  hadoopConf
    * @param instantTime Instant Time for scheduling compaction
    * @return
    */
