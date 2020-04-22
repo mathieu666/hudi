@@ -63,7 +63,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
     while (retryNum <= maxRetries) {
       try {
         String instantTime = writeClient.startCommit();
-        LOG.info("Starting commit  : " + instantTime);
+        LOG.info("Starting commit : " + instantTime);
       } catch (IllegalArgumentException ie) {
         lastException = ie;
         LOG.error("Got error trying to start a new commit. Retrying after sleeping for a sec", ie);
@@ -79,7 +79,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
   }
 
   /**
-   * Refresh Timeline.
+   * Create table if not exists.
    */
   private void initTable() throws IOException {
     if (!fs.exists(new Path(cfg.targetBasePath))) {
