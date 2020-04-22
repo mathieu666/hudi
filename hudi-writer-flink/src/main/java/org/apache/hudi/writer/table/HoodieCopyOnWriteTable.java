@@ -124,33 +124,34 @@ public class HoodieCopyOnWriteTable <T extends HoodieRecordPayload> extends Hood
 
   protected Iterator<List<WriteStatus>> handleUpdateInternal(HoodieMergeHandle upsertHandle, String instantTime,
                                                              String fileId) throws IOException {
-    if (upsertHandle.getOldFilePath() == null) {
-      throw new HoodieUpsertException(
-          "Error in finding the old file path at commit " + instantTime + " for fileId: " + fileId);
-    } else {
-      AvroReadSupport.setAvroReadSchema(getHadoopConf(), upsertHandle.getWriterSchema());
-      BoundedInMemoryExecutor<GenericRecord, GenericRecord, Void> wrapper = null;
-      try (ParquetReader<IndexedRecord> reader =
-               AvroParquetReader.<IndexedRecord>builder(upsertHandle.getOldFilePath()).withConf(getHadoopConf()).build()) {
-        wrapper = new SparkBoundedInMemoryExecutor(config, new ParquetReaderIterator(reader),
-            new UpdateHandler(upsertHandle), x -> x);
-        wrapper.execute();
-      } catch (Exception e) {
-        throw new HoodieException(e);
-      } finally {
-        upsertHandle.close();
-        if (null != wrapper) {
-          wrapper.shutdownNow();
-        }
-      }
-    }
-
-    // TODO(vc): This needs to be revisited
-    if (upsertHandle.getWriteStatus().getPartitionPath() == null) {
-      LOG.info("Upsert Handle has partition path as null " + upsertHandle.getOldFilePath() + ", "
-          + upsertHandle.getWriteStatus());
-    }
-    return Collections.singletonList(Collections.singletonList(upsertHandle.getWriteStatus())).iterator();
+//    if (upsertHandle.getOldFilePath() == null) {
+//      throw new HoodieUpsertException(
+//          "Error in finding the old file path at commit " + instantTime + " for fileId: " + fileId);
+//    } else {
+//      AvroReadSupport.setAvroReadSchema(getHadoopConf(), upsertHandle.getWriterSchema());
+//      BoundedInMemoryExecutor<GenericRecord, GenericRecord, Void> wrapper = null;
+//      try (ParquetReader<IndexedRecord> reader =
+//               AvroParquetReader.<IndexedRecord>builder(upsertHandle.getOldFilePath()).withConf(getHadoopConf()).build()) {
+//        wrapper = new SparkBoundedInMemoryExecutor(config, new ParquetReaderIterator(reader),
+//            new UpdateHandler(upsertHandle), x -> x);
+//        wrapper.execute();
+//      } catch (Exception e) {
+//        throw new HoodieException(e);
+//      } finally {
+//        upsertHandle.close();
+//        if (null != wrapper) {
+//          wrapper.shutdownNow();
+//        }
+//      }
+//    }
+//
+//    // TODO(vc): This needs to be revisited
+//    if (upsertHandle.getWriteStatus().getPartitionPath() == null) {
+//      LOG.info("Upsert Handle has partition path as null " + upsertHandle.getOldFilePath() + ", "
+//          + upsertHandle.getWriteStatus());
+//    }
+//    return Collections.singletonList(Collections.singletonList(upsertHandle.getWriteStatus())).iterator();
+    return null;
   }
 
 

@@ -9,7 +9,6 @@ import org.apache.flink.util.Collector;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.config.SerializableConfiguration;
-import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
@@ -20,10 +19,9 @@ import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.exception.HoodieDeltaStreamerException;
-import org.apache.hudi.writer.index.HoodieIndex;
 import org.apache.hudi.writer.utils.UtilHelpers;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -34,7 +32,7 @@ import java.util.List;
  */
 public class WriteProcessWindowFunction extends KeyedProcessFunction<String, HoodieRecord, List<WriteStatus>> implements CheckpointedFunction {
 
-  private static final Logger LOG = LogManager.getLogger(WriteProcessWindowFunction.class);
+  private static final Logger LOG = LoggerFactory.getLogger(WriteProcessWindowFunction.class);
   /**
    * Job conf.
    */
@@ -52,16 +50,6 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
    * Hadoop FileSystem.
    */
   private transient FileSystem fs;
-
-  /**
-   * Bag of properties with source, hoodie client, key generator etc.
-   */
-  private TypedProperties props;
-
-  /**
-   * HoodieIndex.
-   */
-  private HoodieIndex hoodieIndex;
 
   /**
    * Timeline with completed commits.
@@ -82,6 +70,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
 
   @Override
   public void processElement(HoodieRecord value, Context ctx, Collector<List<WriteStatus>> out) throws Exception {
+    LOG.info("Add one record");
     records.add(value);
     if (output == null) {
       output = out;
@@ -90,11 +79,9 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
 
   @Override
   public void snapshotState(FunctionSnapshotContext context) throws Exception {
-    // Refresh Timeline
-    refreshTimeline();
-
     // get instantTime
     String instantTime = getInstantTime();
+    LOG.info("Get instantTime = {}", instantTime);
 
     // start write and get the result
     List<WriteStatus> writeStatus;
@@ -107,8 +94,9 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     } else {
       throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
     }
-    // 输出writeStatus
     output.collect(writeStatus);
+    // 输出writeStatus
+    LOG.info("Collect {} writeStatus",writeStatus.size());
     records.clear();
   }
 
@@ -135,14 +123,8 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     // Hadoop FileSystem
     fs = FSUtils.getFs(cfg.targetBasePath, serializableHadoopConf.get());
 
-    // delta streamer conf
-    props = UtilHelpers.readConfig(fs, new Path(cfg.propsFilePath), cfg.configs).getConfig();
-
     // HoodieWriteConfig
-    writeConfig = getHoodieWriteConfig();
-
-    // Index
-    hoodieIndex = HoodieIndex.createIndex(writeConfig);
+    writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
 
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
@@ -172,8 +154,4 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     }
   }
 
-  private HoodieWriteConfig getHoodieWriteConfig() {
-    // TODO
-    return HoodieWriteConfig.newBuilder().build();
-  }
 }

@@ -77,7 +77,9 @@ public class UtilHelpers {
                 .withInlineCompaction(cfg.isInlineCompactionEnabled()).build())
             .forTable(cfg.targetTableName)
             .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(HoodieIndex.IndexType.HBASE).build())
-            .withAutoCommit(false).withProps(readConfig(fs, new Path(cfg.propsFilePath), cfg.configs).getConfig());
+            .withAutoCommit(false)
+            .withProps(readConfig(fs, new Path(cfg.propsFilePath), cfg.configs)
+                .getConfig());
 
     HoodieWriteConfig config = builder.build();
 

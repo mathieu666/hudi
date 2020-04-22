@@ -27,7 +27,8 @@ public class WriteJob {
       cmd.usage();
       System.exit(1);
     }
-    env.enableCheckpointing(cfg.checkpointInterval);
+//    env.enableCheckpointing(cfg.checkpointInterval);
+    env.enableCheckpointing(5000L);
     env.getConfig().setGlobalJobParameters(cfg);
 
     // 0. read from source
@@ -39,9 +40,9 @@ public class WriteJob {
     // 4. trigger write operation, start compact and rollback (if any)
     incomingRecords
         .transform("instantTimeGenerator", TypeInformation.of(HoodieRecord.class), new InstantGenerateOperator())
-        .setMaxParallelism(1)
+        .setParallelism(1)
         .keyBy(HoodieRecord::getPartitionPath)
-        .process(new WriteProcessWindowFunction())
+        .process(new WriteProcessWindowFunction()).setParallelism(1)
         .addSink(new CommitAndRollbackSink())
         .setParallelism(1);
 

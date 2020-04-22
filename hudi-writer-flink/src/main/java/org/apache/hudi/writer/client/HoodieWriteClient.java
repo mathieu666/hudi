@@ -146,13 +146,13 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     // partition using the insert partitioner
     final Partitioner partitioner = getPartitioner(hoodieTable, isUpsert, profile);
 
-    Map<Integer, List<HoodieRecord>> partitionedRecords = preppedRecords
+    Map<Integer, List<HoodieRecord<T>>> partitionedRecords = preppedRecords
         .stream()
         .collect(Collectors.groupingBy(x -> partitioner.getPartition(Pair.of(x.getKey(), Option.ofNullable(x.getCurrentLocation())))));
 
     // fire the final write(only upsert implement)
     List<WriteStatus> writeResults = new ArrayList<>();
-    for (Map.Entry<Integer, List<HoodieRecord>> entry : partitionedRecords.entrySet()) {
+    for (Map.Entry<Integer, List<HoodieRecord<T>>> entry : partitionedRecords.entrySet()) {
       Iterator<List<WriteStatus>> writeStatuses = hoodieTable.handleUpsertPartition(instantTime, entry.getKey(), entry.getValue().iterator(), partitioner);
       if (writeStatuses.hasNext()) {
         List<WriteStatus> writeStatus = writeStatuses.next();
@@ -214,32 +214,33 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
 
   private List<WriteStatus> bulkInsertInternal(List<HoodieRecord<T>> dedupedRecords, String instantTime,
                                                   HoodieTable<T> table, Option<UserDefinedBulkInsertPartitioner> bulkInsertPartitioner) {
-    final List<HoodieRecord<T>> repartitionedRecords;
-    final int parallelism = config.getBulkInsertShuffleParallelism();
-    if (bulkInsertPartitioner.isPresent()) {
-      repartitionedRecords = bulkInsertPartitioner.get().repartitionRecords(dedupedRecords, parallelism);
-    } else {
-      // Now, sort the records and line them up nicely for loading.
-      repartitionedRecords = dedupedRecords.sortBy(record -> {
-        // Let's use "partitionPath + key" as the sort key. Spark, will ensure
-        // the records split evenly across RDD partitions, such that small partitions fit
-        // into 1 RDD partition, while big ones spread evenly across multiple RDD partitions
-        return String.format("%s+%s", record.getPartitionPath(), record.getRecordKey());
-      }, true, parallelism);
-    }
-
-    // generate new file ID prefixes for each output partition
-    final List<String> fileIDPrefixes =
-        IntStream.range(0, parallelism).mapToObj(i -> FSUtils.createNewFileIdPfx()).collect(Collectors.toList());
-
-    table.getActiveTimeline().transitionRequestedToInflight(new HoodieInstant(HoodieInstant.State.REQUESTED,
-        table.getMetaClient().getCommitActionType(), instantTime), Option.empty());
-
-    List<WriteStatus> writeStatusRDD = repartitionedRecords
-        .mapPartitionsWithIndex(new BulkInsertMapFunction<T>(instantTime, config, table, fileIDPrefixes), true)
-        .flatMap(List::iterator);
-
-    return updateIndexAndCommitIfNeeded(writeStatusRDD, table, instantTime);
+//    final List<HoodieRecord<T>> repartitionedRecords;
+//    final int parallelism = config.getBulkInsertShuffleParallelism();
+//    if (bulkInsertPartitioner.isPresent()) {
+//      repartitionedRecords = bulkInsertPartitioner.get().repartitionRecords(dedupedRecords, parallelism);
+//    } else {
+//      // Now, sort the records and line them up nicely for loading.
+//      repartitionedRecords = dedupedRecords.sortBy(record -> {
+//        // Let's use "partitionPath + key" as the sort key. Spark, will ensure
+//        // the records split evenly across RDD partitions, such that small partitions fit
+//        // into 1 RDD partition, while big ones spread evenly across multiple RDD partitions
+//        return String.format("%s+%s", record.getPartitionPath(), record.getRecordKey());
+//      }, true, parallelism);
+//    }
+//
+//    // generate new file ID prefixes for each output partition
+//    final List<String> fileIDPrefixes =
+//        IntStream.range(0, parallelism).mapToObj(i -> FSUtils.createNewFileIdPfx()).collect(Collectors.toList());
+//
+//    table.getActiveTimeline().transitionRequestedToInflight(new HoodieInstant(HoodieInstant.State.REQUESTED,
+//        table.getMetaClient().getCommitActionType(), instantTime), Option.empty());
+//
+//    List<WriteStatus> writeStatusRDD = repartitionedRecords
+//        .mapPartitionsWithIndex(new BulkInsertMapFunction<T>(instantTime, config, table, fileIDPrefixes), true)
+//        .flatMap(List::iterator);
+//
+//    return updateIndexAndCommitIfNeeded(writeStatusRDD, table, instantTime);
+    return null;
   }
 
   @Override
@@ -503,7 +504,7 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
   private HoodieCommitMetadata doCompactionCommit(HoodieTable<T> table, List<WriteStatus> writeStatuses,
                                                   String compactionCommitTime, Option<Map<String, String>> extraMetadata) {
     HoodieTableMetaClient metaClient = table.getMetaClient();
-    List<HoodieWriteStat> updateStatusMap = writeStatuses.map(WriteStatus::getStat).collect();
+    List<HoodieWriteStat> updateStatusMap = writeStatuses.stream().map(WriteStatus::getStat).collect(Collectors.toList());
 
     HoodieCommitMetadata metadata = new HoodieCommitMetadata(true);
     for (HoodieWriteStat stat : updateStatusMap) {

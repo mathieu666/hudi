@@ -28,6 +28,7 @@ import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.writer.WriteStatus;
+import org.apache.hudi.writer.client.SparkTaskContextSupplier;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.exception.HoodieSavepointException;
 import org.apache.hudi.writer.index.HoodieIndex;
@@ -57,6 +58,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
 
   private SerializableConfiguration hadoopConfiguration;
   private transient FileSystemViewManager viewManager;
+  protected final SparkTaskContextSupplier sparkTaskContextSupplier = new SparkTaskContextSupplier();
 
   protected HoodieTable(HoodieWriteConfig config, Configuration hadoopConf, HoodieTableMetaClient metaClient) {
     this.config = config;

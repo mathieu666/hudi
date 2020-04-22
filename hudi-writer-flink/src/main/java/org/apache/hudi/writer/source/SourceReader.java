@@ -1,5 +1,7 @@
 package org.apache.hudi.writer.source;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -14,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Data mocker.
  */
-public class SourceReader<T extends HoodieRecordPayload> implements SourceFunction<HoodieRecord<T>> {
+public class SourceReader<T extends HoodieRecordPayload> extends RichSourceFunction<HoodieRecord<T>> {
   private static final Logger LOG = LoggerFactory.getLogger(SourceReader.class);
   private volatile boolean isRunning = true;
   private HoodieTestDataGenerator dataGen;
@@ -29,14 +31,18 @@ public class SourceReader<T extends HoodieRecordPayload> implements SourceFuncti
       hoodieRecord = records.get(random.nextInt(recordsNum));
       ctx.collect(hoodieRecord);
       LOG.info("Mock message : {}", JSON.toString(hoodieRecord));
-      TimeUnit.MILLISECONDS.sleep(100);
+      TimeUnit.MILLISECONDS.sleep(1000);
     }
   }
 
   @Override
   public void cancel() {
     isRunning = false;
-    dataGen = new HoodieTestDataGenerator();
   }
 
+  @Override
+  public void open(Configuration parameters) throws Exception {
+    super.open(parameters);
+    dataGen = new HoodieTestDataGenerator();
+  }
 }

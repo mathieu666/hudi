@@ -42,7 +42,7 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
   List<WriteStatus> writeResults = new ArrayList<>();
   @Override
   public void notifyCheckpointComplete(long l) throws Exception {
-    String instantTime = UtilHelpers.getInstantTimeFromHDFS(cfg.instantTimePath);
+    String instantTime = "";
     // read from source
     String checkpointStr = null;
     // commit and rollback
@@ -106,17 +106,12 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
 
     // HoodieWriteConfig
-    writeConfig = getHoodieWriteConfig();
+    writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
 
     // hadoopConf
     serializableHadoopConf = new SerializableConfiguration(new org.apache.hadoop.conf.Configuration());
 
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
-  }
-
-  private HoodieWriteConfig getHoodieWriteConfig() {
-    // TODO
-    return HoodieWriteConfig.newBuilder().build();
   }
 }

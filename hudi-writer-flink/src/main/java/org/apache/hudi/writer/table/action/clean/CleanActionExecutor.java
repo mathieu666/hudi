@@ -63,57 +63,32 @@ public class CleanActionExecutor extends BaseActionExecutor<HoodieCleanMetadata>
    * @return Cleaner Plan
    */
   HoodieCleanerPlan requestClean(Configuration hadoopConf) {
-    try {
-      CleanPlanner<?> planner = new CleanPlanner<>(table, config);
-      Option<HoodieInstant> earliestInstant = planner.getEarliestCommitToRetain();
-      List<String> partitionsToClean = planner.getPartitionPathsToClean(earliestInstant);
-
-      if (partitionsToClean.isEmpty()) {
-        LOG.info("Nothing to clean here. It is already clean");
-        return HoodieCleanerPlan.newBuilder().setPolicy(HoodieCleaningPolicy.KEEP_LATEST_COMMITS.name()).build();
-      }
-      LOG.info("Total Partitions to clean : " + partitionsToClean.size() + ", with policy " + config.getCleanerPolicy());
-      int cleanerParallelism = Math.min(partitionsToClean.size(), config.getCleanerParallelism());
-      LOG.info("Using cleanerParallelism: " + cleanerParallelism);
-
-      Map<String, List<String>> cleanOps = jsc
-          .parallelize(partitionsToClean, cleanerParallelism)
-          .map(partitionPathToClean -> Pair.of(partitionPathToClean, planner.getDeletePaths(partitionPathToClean)))
-          .collect().stream()
-          .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
-
-      return new HoodieCleanerPlan(earliestInstant
-          .map(x -> new HoodieActionInstant(x.getTimestamp(), x.getAction(), x.getState().name())).orElse(null),
-          config.getCleanerPolicy().name(), cleanOps, 1);
-    } catch (IOException e) {
-      throw new HoodieIOException("Failed to schedule clean operation", e);
-    }
-  }
-
-  private static PairFlatMapFunction<Iterator<Tuple2<String, String>>, String, PartitionCleanStat> deleteFilesFunc(
-      HoodieTable table) {
-    return (PairFlatMapFunction<Iterator<Tuple2<String, String>>, String, PartitionCleanStat>) iter -> {
-      Map<String, PartitionCleanStat> partitionCleanStatMap = new HashMap<>();
-
-      FileSystem fs = table.getMetaClient().getFs();
-      Path basePath = new Path(table.getMetaClient().getBasePath());
-      while (iter.hasNext()) {
-        Tuple2<String, String> partitionDelFileTuple = iter.next();
-        String partitionPath = partitionDelFileTuple._1();
-        String delFileName = partitionDelFileTuple._2();
-        Path deletePath = FSUtils.getPartitionPath(FSUtils.getPartitionPath(basePath, partitionPath), delFileName);
-        String deletePathStr = deletePath.toString();
-        Boolean deletedFileResult = deleteFileAndGetResult(fs, deletePathStr);
-        if (!partitionCleanStatMap.containsKey(partitionPath)) {
-          partitionCleanStatMap.put(partitionPath, new PartitionCleanStat(partitionPath));
-        }
-        PartitionCleanStat partitionCleanStat = partitionCleanStatMap.get(partitionPath);
-        partitionCleanStat.addDeleteFilePatterns(deletePath.getName());
-        partitionCleanStat.addDeletedFileResult(deletePath.getName(), deletedFileResult);
-      }
-      return partitionCleanStatMap.entrySet().stream().map(e -> new Tuple2<>(e.getKey(), e.getValue()))
-          .collect(Collectors.toList()).iterator();
-    };
+//    try {
+//      CleanPlanner<?> planner = new CleanPlanner<>(table, config);
+//      Option<HoodieInstant> earliestInstant = planner.getEarliestCommitToRetain();
+//      List<String> partitionsToClean = planner.getPartitionPathsToClean(earliestInstant);
+//
+//      if (partitionsToClean.isEmpty()) {
+//        LOG.info("Nothing to clean here. It is already clean");
+//        return HoodieCleanerPlan.newBuilder().setPolicy(HoodieCleaningPolicy.KEEP_LATEST_COMMITS.name()).build();
+//      }
+//      LOG.info("Total Partitions to clean : " + partitionsToClean.size() + ", with policy " + config.getCleanerPolicy());
+//      int cleanerParallelism = Math.min(partitionsToClean.size(), config.getCleanerParallelism());
+//      LOG.info("Using cleanerParallelism: " + cleanerParallelism);
+//
+//      Map<String, List<String>> cleanOps = jsc
+//          .parallelize(partitionsToClean, cleanerParallelism)
+//          .map(partitionPathToClean -> Pair.of(partitionPathToClean, planner.getDeletePaths(partitionPathToClean)))
+//          .collect().stream()
+//          .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+//
+//      return new HoodieCleanerPlan(earliestInstant
+//          .map(x -> new HoodieActionInstant(x.getTimestamp(), x.getAction(), x.getState().name())).orElse(null),
+//          config.getCleanerPolicy().name(), cleanOps, 1);
+//    } catch (IOException e) {
+//      throw new HoodieIOException("Failed to schedule clean operation", e);
+//    }
+    return null;
   }
 
   private static Boolean deleteFileAndGetResult(FileSystem fs, String deletePathStr) throws IOException {
@@ -138,37 +113,38 @@ public class CleanActionExecutor extends BaseActionExecutor<HoodieCleanMetadata>
    * @throws IllegalArgumentException if unknown cleaning policy is provided
    */
   List<HoodieCleanStat> clean(HoodieCleanerPlan cleanerPlan) {
-    int cleanerParallelism = Math.min(
-        (int) (cleanerPlan.getFilesToBeDeletedPerPartition().values().stream().mapToInt(List::size).count()),
-        config.getCleanerParallelism());
-    LOG.info("Using cleanerParallelism: " + cleanerParallelism);
-    List<Tuple2<String, PartitionCleanStat>> partitionCleanStats = jsc
-        .parallelize(cleanerPlan.getFilesToBeDeletedPerPartition().entrySet().stream()
-            .flatMap(x -> x.getValue().stream().map(y -> new Tuple2<>(x.getKey(), y)))
-            .collect(Collectors.toList()), cleanerParallelism)
-        .mapPartitionsToPair(deleteFilesFunc(table))
-        .reduceByKey(PartitionCleanStat::merge).collect();
-
-    Map<String, PartitionCleanStat> partitionCleanStatsMap = partitionCleanStats.stream()
-        .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
-
-    // Return PartitionCleanStat for each partition passed.
-    return cleanerPlan.getFilesToBeDeletedPerPartition().keySet().stream().map(partitionPath -> {
-      PartitionCleanStat partitionCleanStat = partitionCleanStatsMap.containsKey(partitionPath)
-          ? partitionCleanStatsMap.get(partitionPath)
-          : new PartitionCleanStat(partitionPath);
-      HoodieActionInstant actionInstant = cleanerPlan.getEarliestInstantToRetain();
-      return HoodieCleanStat.newBuilder().withPolicy(config.getCleanerPolicy()).withPartitionPath(partitionPath)
-          .withEarliestCommitRetained(Option.ofNullable(
-              actionInstant != null
-                  ? new HoodieInstant(HoodieInstant.State.valueOf(actionInstant.getState()),
-                  actionInstant.getAction(), actionInstant.getTimestamp())
-                  : null))
-          .withDeletePathPattern(partitionCleanStat.deletePathPatterns())
-          .withSuccessfulDeletes(partitionCleanStat.successDeleteFiles())
-          .withFailedDeletes(partitionCleanStat.failedDeleteFiles())
-          .build();
-    }).collect(Collectors.toList());
+    return null;
+//    int cleanerParallelism = Math.min(
+//        (int) (cleanerPlan.getFilesToBeDeletedPerPartition().values().stream().mapToInt(List::size).count()),
+//        config.getCleanerParallelism());
+//    LOG.info("Using cleanerParallelism: " + cleanerParallelism);
+//    List<Tuple2<String, PartitionCleanStat>> partitionCleanStats = jsc
+//        .parallelize(cleanerPlan.getFilesToBeDeletedPerPartition().entrySet().stream()
+//            .flatMap(x -> x.getValue().stream().map(y -> new Tuple2<>(x.getKey(), y)))
+//            .collect(Collectors.toList()), cleanerParallelism)
+//        .mapPartitionsToPair(deleteFilesFunc(table))
+//        .reduceByKey(PartitionCleanStat::merge).collect();
+//
+//    Map<String, PartitionCleanStat> partitionCleanStatsMap = partitionCleanStats.stream()
+//        .collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+//
+//    // Return PartitionCleanStat for each partition passed.
+//    return cleanerPlan.getFilesToBeDeletedPerPartition().keySet().stream().map(partitionPath -> {
+//      PartitionCleanStat partitionCleanStat = partitionCleanStatsMap.containsKey(partitionPath)
+//          ? partitionCleanStatsMap.get(partitionPath)
+//          : new PartitionCleanStat(partitionPath);
+//      HoodieActionInstant actionInstant = cleanerPlan.getEarliestInstantToRetain();
+//      return HoodieCleanStat.newBuilder().withPolicy(config.getCleanerPolicy()).withPartitionPath(partitionPath)
+//          .withEarliestCommitRetained(Option.ofNullable(
+//              actionInstant != null
+//                  ? new HoodieInstant(HoodieInstant.State.valueOf(actionInstant.getState()),
+//                  actionInstant.getAction(), actionInstant.getTimestamp())
+//                  : null))
+//          .withDeletePathPattern(partitionCleanStat.deletePathPatterns())
+//          .withSuccessfulDeletes(partitionCleanStat.successDeleteFiles())
+//          .withFailedDeletes(partitionCleanStat.failedDeleteFiles())
+//          .build();
+//    }).collect(Collectors.toList());
   }
 
   public CleanActionExecutor(Configuration hadoopConf, HoodieWriteConfig config, HoodieTable<?> table, String instantTime) {
