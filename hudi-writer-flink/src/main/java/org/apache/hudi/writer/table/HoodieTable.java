@@ -32,6 +32,7 @@ import org.apache.hudi.writer.client.SparkTaskContextSupplier;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.exception.HoodieSavepointException;
 import org.apache.hudi.writer.index.HoodieIndex;
+import org.apache.hudi.writer.table.commit.HoodieWriteMetadata;
 import org.apache.hudi.writer.table.partitioner.Partitioner;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;

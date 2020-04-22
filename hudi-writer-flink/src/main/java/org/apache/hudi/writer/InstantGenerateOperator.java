@@ -30,6 +30,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
 
   @Override
   public void processElement(StreamRecord element) throws Exception {
+    LOG.info(" ############ Send one record");
     output.collect(element);
   }
 
@@ -56,7 +57,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
   }
 
-  private void startCommit() {
+  private String startCommit() {
     final int maxRetries = 2;
     int retryNum = 1;
     RuntimeException lastException = null;
@@ -64,6 +65,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
       try {
         String instantTime = writeClient.startCommit();
         LOG.info("Starting commit : " + instantTime);
+        return instantTime;
       } catch (IllegalArgumentException ie) {
         lastException = ie;
         LOG.error("Got error trying to start a new commit. Retrying after sleeping for a sec", ie);

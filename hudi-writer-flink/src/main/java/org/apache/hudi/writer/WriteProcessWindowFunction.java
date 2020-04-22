@@ -70,8 +70,8 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
 
   @Override
   public void processElement(HoodieRecord value, Context ctx, Collector<List<WriteStatus>> out) throws Exception {
-    LOG.info("Add one record");
     records.add(value);
+    LOG.info("############ Receive one record, current records size = [{}]", records.size());
     if (output == null) {
       output = out;
     }
@@ -96,7 +96,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     }
     output.collect(writeStatus);
     // 输出writeStatus
-    LOG.info("Collect {} writeStatus",writeStatus.size());
+    LOG.info("Collect {} writeStatus", writeStatus.size());
     records.clear();
   }
 

@@ -59,7 +59,6 @@ public class WorkloadProfile<T extends HoodieRecordPayload> implements Serializa
   }
 
   private void buildProfile() {
-
     Map<Pair<String, Option<HoodieRecordLocation>>, Long> partitionLocationCounts = taggedRecords
         .stream()
         .map(record -> Pair.of(Pair.of(record.getPartitionPath(), Option.ofNullable(record.getCurrentLocation())), record))

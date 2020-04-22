@@ -3,13 +3,7 @@ package org.apache.hudi.writer.client;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
-import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.HoodieCommitMetadata;
-import org.apache.hudi.common.model.HoodieKey;
-import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.common.model.HoodieRecordPayload;
-import org.apache.hudi.common.model.HoodieWriteStat;
-import org.apache.hudi.common.model.WriteOperationType;
+import org.apache.hudi.common.model.*;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
@@ -36,9 +30,8 @@ import org.apache.hudi.writer.table.UserDefinedBulkInsertPartitioner;
 import org.apache.hudi.writer.table.WorkloadProfile;
 import org.apache.hudi.writer.table.WorkloadStat;
 import org.apache.hudi.writer.table.partitioner.Partitioner;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import scala.Tuple2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -47,15 +40,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * HoodieWriteClient.
  */
 public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHoodieWriteClient<T> {
 
-  private static final Logger LOG = LogManager.getLogger(HoodieWriteClient.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HoodieWriteClient.class);
   private static final String LOOKUP_STR = "lookup";
   private final boolean rollbackPending;
 
@@ -119,8 +110,8 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     setOperationType(WriteOperationType.UPSERT);
     try {
       // De-dupe/merge if needed
-      List<HoodieRecord<T>> dedupedRecords =
-          combineOnCondition(config.shouldCombineBeforeUpsert(), records, config.getUpsertShuffleParallelism());
+      List<HoodieRecord<T>> dedupedRecords = records;
+//          combineOnCondition(config.shouldCombineBeforeUpsert(), records, config.getUpsertShuffleParallelism());
 
       // perform index loop up to get existing location of records
       List<HoodieRecord<T>> taggedRecords = getIndex().tagLocation(dedupedRecords, hadoopConf, table);
@@ -332,13 +323,6 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
    * @return RDD of HoodieRecord already be deduplicated
    */
   List<HoodieRecord<T>> deduplicateRecords(List<HoodieRecord<T>> records, int parallelism) {
-    boolean isIndexingGlobal = getIndex().isGlobal();
-    Stream<Tuple2<Object, HoodieRecord<T>>> tuple2Stream = records.stream().map(record -> {
-      HoodieKey hoodieKey = record.getKey();
-      // If index used is global, then records are expected to differ in their partitionPath
-      Object key = isIndexingGlobal ? hoodieKey.getRecordKey() : hoodieKey;
-      return new Tuple2<>(key, record);
-    });
 
     return null;
   }
