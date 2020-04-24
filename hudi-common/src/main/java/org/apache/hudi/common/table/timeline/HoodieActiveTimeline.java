@@ -90,7 +90,7 @@ public class HoodieActiveTimeline extends HoodieDefaultTimeline {
   }
 
   protected HoodieActiveTimeline(HoodieTableMetaClient metaClient, Set<String> includedExtensions,
-      boolean applyLayoutFilters) {
+                                 boolean applyLayoutFilters) {
     // Filter all the filter in the metapath and include only the extensions passed and
     // convert them into HoodieInstant
     try {
@@ -252,7 +252,7 @@ public class HoodieActiveTimeline extends HoodieDefaultTimeline {
    * Transition Compaction State from inflight to Committed.
    *
    * @param inflightInstant Inflight instant
-   * @param data Extra Metadata
+   * @param data            Extra Metadata
    * @return commit instant
    */
   public HoodieInstant transitionCompactionInflightToComplete(HoodieInstant inflightInstant, Option<byte[]> data) {
@@ -277,7 +277,7 @@ public class HoodieActiveTimeline extends HoodieDefaultTimeline {
    * Transition Clean State from inflight to Committed.
    *
    * @param inflightInstant Inflight instant
-   * @param data Extra Metadata
+   * @param data            Extra Metadata
    * @return commit instant
    */
   public HoodieInstant transitionCleanInflightToComplete(HoodieInstant inflightInstant, Option<byte[]> data) {
@@ -293,7 +293,7 @@ public class HoodieActiveTimeline extends HoodieDefaultTimeline {
    * Transition Clean State from requested to inflight.
    *
    * @param requestedInstant requested instant
-   * @param data Optional data to be stored
+   * @param data             Optional data to be stored
    * @return commit instant
    */
   public HoodieInstant transitionCleanRequestedToInflight(HoodieInstant requestedInstant, Option<byte[]> data) {
@@ -421,14 +421,15 @@ public class HoodieActiveTimeline extends HoodieDefaultTimeline {
   /**
    * Creates a new file in timeline with overwrite set to false. This ensures
    * files are created only once and never rewritten
+   *
    * @param fullPath File Path
-   * @param content Content to be stored
+   * @param content  Content to be stored
    */
   private void createImmutableFileInPath(Path fullPath, Option<byte[]> content) {
     FSDataOutputStream fsout = null;
     try {
       fsout = metaClient.getFs().create(fullPath, false);
-      if (content.isPresent()) {
+      if (content.isPresent() && null != fsout) {
         fsout.write(content.get());
       }
     } catch (IOException e) {

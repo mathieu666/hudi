@@ -159,7 +159,14 @@ public class HoodieWrapperFileSystem extends FileSystem {
 
   @Override
   public FSDataOutputStream create(Path f, boolean overwrite) throws IOException {
-    return wrapOutputStream(f, fileSystem.create(convertToDefaultPath(f), overwrite));
+    FSDataOutputStream fsDataOutputStream = null;
+    try {
+      fsDataOutputStream = fileSystem.create(convertToDefaultPath(f), overwrite);
+    } catch (IOException e) {
+      LOG.error("Create path failed");
+      return null;
+    }
+    return wrapOutputStream(f, fsDataOutputStream);
   }
 
   @Override

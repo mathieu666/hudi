@@ -165,7 +165,7 @@ public class HBaseIndex<T extends HoodieRecordPayload> extends HoodieIndex<T> {
   }
 
   private Result[] doGet(HTable hTable, List<Get> keys) throws IOException {
-    sleepForTime(SLEEP_TIME_MILLISECONDS);
+//    sleepForTime(SLEEP_TIME_MILLISECONDS);
     return hTable.get(keys);
   }
 

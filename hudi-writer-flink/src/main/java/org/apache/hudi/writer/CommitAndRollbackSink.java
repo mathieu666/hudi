@@ -53,14 +53,13 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
     // read from source
     String checkpointStr = null;
     // commit and rollback
-    long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).count();
-    long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).count();
+    long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).reduce(Long::sum).orElse(0L);
+    long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).reduce(Long::sum).orElse(0L);
     boolean hasErrors = totalErrorRecords > 0;
 
     Option<String> scheduledCompactionInstant = Option.empty();
 
-//    if (!hasErrors || cfg.commitOnErrors) {
-    if (true) {
+    if (!hasErrors || cfg.commitOnErrors) {
       HashMap<String, String> checkpointCommitMetadata = new HashMap<>();
       checkpointCommitMetadata.put(CHECKPOINT_KEY, checkpointStr);
       if (cfg.checkpoint != null) {
