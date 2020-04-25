@@ -26,17 +26,16 @@ import java.util.function.Supplier;
  * Spark task context supplier.
  */
 public class SparkTaskContextSupplier implements Serializable {
-  private Random random = new Random();
 
   public Supplier<Integer> getPartitionIdSupplier() {
-    return () -> random.nextInt(10);
+    return () -> 11;
   }
 
   public Supplier<Integer> getStageIdSupplier() {
-    return () -> random.nextInt(10) + 10;
+    return () -> 22;
   }
 
   public Supplier<Long> getAttemptIdSupplier() {
-    return () -> random.nextInt(10) + 20L;
+    return () -> 33L;
   }
 }
