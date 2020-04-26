@@ -44,14 +44,14 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
                                                                              int shuffleParallelism, CommitActionExecutor<T> executor, boolean performTagging) {
     try {
       // De-dupe/merge if needed
-      List<HoodieRecord<T>> dedupedRecords =
-          combineOnCondition(shouldCombine, inputRecordsRDD, shuffleParallelism, table);
+//      List<HoodieRecord<T>> dedupedRecords =
+//          combineOnCondition(shouldCombine, inputRecordsRDD, shuffleParallelism, table);
 
       Instant lookupBegin = Instant.now();
-      List<HoodieRecord<T>> taggedRecords = dedupedRecords;
+      List<HoodieRecord<T>> taggedRecords = inputRecordsRDD;
       if (performTagging) {
         // perform index loop up to get existing location of records
-        taggedRecords = tag(dedupedRecords, hadoopConf, table);
+        taggedRecords = tag(inputRecordsRDD, hadoopConf, table);
       }
       Duration indexLookupDuration = Duration.between(lookupBegin, Instant.now());
 

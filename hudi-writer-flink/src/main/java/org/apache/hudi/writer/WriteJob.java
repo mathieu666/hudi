@@ -43,6 +43,7 @@ public class WriteJob {
         .setParallelism(1)
         .keyBy(HoodieRecord::getPartitionPath)
         .process(new WriteProcessWindowFunction())
+        .setParallelism(4)
         .addSink(new CommitAndRollbackSink())
         .setParallelism(1);
 

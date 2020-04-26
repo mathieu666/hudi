@@ -19,7 +19,6 @@
 package org.apache.hudi.writer.client;
 
 import java.io.Serializable;
-import java.util.Random;
 import java.util.function.Supplier;
 
 /**
@@ -28,14 +27,14 @@ import java.util.function.Supplier;
 public class SparkTaskContextSupplier implements Serializable {
 
   public Supplier<Integer> getPartitionIdSupplier() {
-    return () -> 11;
+    return () -> (Thread.currentThread().getPriority());
   }
 
   public Supplier<Integer> getStageIdSupplier() {
-    return () -> 22;
+    return () -> Thread.currentThread().hashCode();
   }
 
   public Supplier<Long> getAttemptIdSupplier() {
-    return () -> 33L;
+    return () -> Thread.currentThread().getId();
   }
 }

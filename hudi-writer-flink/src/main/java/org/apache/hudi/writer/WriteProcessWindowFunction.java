@@ -80,9 +80,13 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
   @Override
   public void snapshotState(FunctionSnapshotContext context) throws Exception {
     // get instantTime
+//    String instantTime = "20200426262626";
     String instantTime = getInstantTime();
     LOG.info("WriteProcessWindowFunction Get instantTime = {}", instantTime);
 
+    if (records.isEmpty()) {
+      return;
+    }
     // start write and get the result
     List<WriteStatus> writeStatus;
     if (cfg.operation == Operation.INSERT) {

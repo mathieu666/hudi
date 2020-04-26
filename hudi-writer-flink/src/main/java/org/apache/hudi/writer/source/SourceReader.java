@@ -1,5 +1,6 @@
 package org.apache.hudi.writer.source;
 
+import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -8,6 +9,7 @@ import org.mortbay.util.ajax.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -22,14 +24,12 @@ public class SourceReader<T extends HoodieRecordPayload> extends RichSourceFunct
 
   @Override
   public void run(SourceContext<HoodieRecord<T>> ctx) throws Exception {
-    int recordsNum = 1000;
-    List<HoodieRecord> records = dataGen.generateInserts("20200421123423", recordsNum);
-    Random random = new Random();
-    HoodieRecord hoodieRecord;
+    List<HoodieRecord> records;
     while (isRunning) {
-      hoodieRecord = records.get(random.nextInt(recordsNum));
-      ctx.collect(hoodieRecord);
-      LOG.info("Mock message : {}", JSON.toString(hoodieRecord));
+      String instantTime = DateUtil.formatDate(new Date(), "yyyyMMddHHmmSS");
+      records = dataGen.generateInserts(instantTime, 2);
+      records.forEach(ctx::collect);
+      LOG.info("Mock message : {}", JSON.toString(records));
       TimeUnit.MILLISECONDS.sleep(100);
     }
   }

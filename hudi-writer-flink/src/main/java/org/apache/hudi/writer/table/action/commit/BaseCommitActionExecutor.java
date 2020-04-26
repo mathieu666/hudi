@@ -18,6 +18,7 @@
 
 package org.apache.hudi.writer.table.action.commit;
 
+import org.apache.avro.data.Json;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.common.model.*;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
@@ -150,7 +151,7 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
     result.setWriteStatuses(statuses);
 
     // Trigger the insert and collect statuses
-    commitOnAutoCommit(result);
+//    commitOnAutoCommit(result);
   }
 
   protected void commitOnAutoCommit(HoodieWriteMetadata result) {
