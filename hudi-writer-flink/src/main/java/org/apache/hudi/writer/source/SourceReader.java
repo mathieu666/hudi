@@ -30,7 +30,7 @@ public class SourceReader<T extends HoodieRecordPayload> extends RichSourceFunct
       for (int i = 0; i < records.size(); i++) {
         ctx.collect(records.get(i));
         LOG.info("Mock message : {}", JSON.toString(records.get(i)));
-        TimeUnit.MILLISECONDS.sleep(100);
+        TimeUnit.MILLISECONDS.sleep(1000);
         if (i == records.size() -1) {
           i = 0;
         }
