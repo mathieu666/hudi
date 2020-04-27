@@ -71,7 +71,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
   @Override
   public void processElement(HoodieRecord value, Context ctx, Collector<List<WriteStatus>> out) throws Exception {
     records.add(value);
-    LOG.info("Receive one record, current records size = [{}]", records.size());
+    LOG.info("Receive 1 record, current records size = [{}]", records.size());
     if (output == null) {
       output = out;
     }
@@ -79,14 +79,13 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
 
   @Override
   public void snapshotState(FunctionSnapshotContext context) throws Exception {
-    // get instantTime
-//    String instantTime = "20200426262626";
-    String instantTime = getInstantTime();
-    LOG.info("WriteProcessWindowFunction Get instantTime = {}", instantTime);
-
     if (records.isEmpty()) {
       return;
     }
+    // get instantTime
+    String instantTime = getInstantTime();
+    LOG.info("WriteProcessWindowFunction Get instantTime = {}", instantTime);
+
     // start write and get the result
     List<WriteStatus> writeStatus;
     if (cfg.operation == Operation.INSERT) {
@@ -102,7 +101,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
       output.collect(writeStatus);
     }
     // 输出writeStatus
-    LOG.info("Collect {} writeStatus", writeStatus.size());
+    LOG.info("Emit [{}] writeStatus to Sink", writeStatus.size());
     records.clear();
   }
 

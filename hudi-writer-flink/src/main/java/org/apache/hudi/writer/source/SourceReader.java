@@ -24,13 +24,17 @@ public class SourceReader<T extends HoodieRecordPayload> extends RichSourceFunct
 
   @Override
   public void run(SourceContext<HoodieRecord<T>> ctx) throws Exception {
-    List<HoodieRecord> records;
+    String instantTime = DateUtil.formatDate(new Date(), "yyyyMMddHHmmSS");
+    List<HoodieRecord> records = dataGen.generateInserts(instantTime, 1000);
     while (isRunning) {
-      String instantTime = DateUtil.formatDate(new Date(), "yyyyMMddHHmmSS");
-      records = dataGen.generateInserts(instantTime, 2);
-      records.forEach(ctx::collect);
-      LOG.info("Mock message : {}", JSON.toString(records));
-      TimeUnit.MILLISECONDS.sleep(100);
+      for (int i = 0; i < records.size(); i++) {
+        ctx.collect(records.get(i));
+        LOG.info("Mock message : {}", JSON.toString(records.get(i)));
+        TimeUnit.MILLISECONDS.sleep(100);
+        if (i == records.size() -1) {
+          i = 0;
+        }
+      }
     }
   }
 

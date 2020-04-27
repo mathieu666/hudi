@@ -40,7 +40,8 @@ import java.util.stream.Collectors;
 
 /**
  * Abstract Write Client providing functionality for performing commit, index updates and rollback
- *  Reused for regular write operations like upsert/insert/bulk-insert.. as well as bootstrap
+ * Reused for regular write operations like upsert/insert/bulk-insert.. as well as bootstrap
+ *
  * @param <T> Sub type of HoodieRecordPayload
  */
 public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHoodieClient {
@@ -82,7 +83,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
   }
 
   protected List<WriteStatus> updateIndexAndCommitIfNeeded(List<WriteStatus> writeStatusRDD, HoodieTable<T> table,
-      String instantTime) {
+                                                           String instantTime) {
     // Update the index back
     List<WriteStatus> statuses = index.updateLocation(writeStatusRDD, hadoopConf, table);
     // Trigger the insert and collect statuses
@@ -142,6 +143,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
 
   /**
    * Post Commit Hook. Derived classes use this method to perform post-commit processing
+   *
    * @param metadata      Commit Metadata corresponding to committed instant
    * @param instantTime   Instant Time
    * @param extraMetadata Additional Metadata passed by user
@@ -151,9 +153,10 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
 
   /**
    * Finalize Write operation.
-   * @param table  HoodieTable
+   *
+   * @param table       HoodieTable
    * @param instantTime Instant Time
-   * @param stats Hoodie Write Stat
+   * @param stats       Hoodie Write Stat
    */
   protected void finalizeWrite(HoodieTable<T> table, String instantTime, List<HoodieWriteStat> stats) {
     try {
@@ -164,7 +167,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
   }
 
   private void updateMetadataAndRollingStats(String actionType, HoodieCommitMetadata metadata,
-      List<HoodieWriteStat> writeStats) {
+                                             List<HoodieWriteStat> writeStats) {
     // TODO : make sure we cannot rollback / archive last commit file
     try {
       // Create a Hoodie table which encapsulated the commits and files visible
@@ -251,5 +254,11 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
     // Calling this here releases any resources used by your index, so make sure to finish any related operations
     // before this point
     this.index.close();
+  }
+
+  public void updateLocation(List<WriteStatus> writeResults, Configuration hadoopConf) {
+    HoodieTableMetaClient metaClient = createMetaClient(true);
+    HoodieTable table = HoodieTable.create(metaClient, config, hadoopConf);
+    index.updateLocation(writeResults, hadoopConf, table);
   }
 }

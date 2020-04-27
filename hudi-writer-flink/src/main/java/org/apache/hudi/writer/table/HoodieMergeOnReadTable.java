@@ -39,6 +39,7 @@ import org.apache.hudi.writer.table.action.deltacommit.UpsertDeltaCommitActionEx
 import org.apache.hudi.writer.table.action.deltacommit.UpsertPreppedDeltaCommitActionExecutor;
 import org.apache.hudi.writer.table.action.restore.MergeOnReadRestoreActionExecutor;
 import org.apache.hudi.writer.table.action.rollback.MergeOnReadRollbackActionExecutor;
+import org.apache.hudi.writer.table.compact.HoodieMergeOnReadTableCompactor;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -138,30 +139,28 @@ public class HoodieMergeOnReadTable<T extends HoodieRecordPayload> extends Hoodi
       return new HoodieCompactionPlan();
     }
 
-//    LOG.info("Compacting merge on read table " + config.getBasePath());
-//    HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
-//    try {
-//      return compactor.generateCompactionPlan(jsc, this, config, instantTime,
-//          ((SyncableFileSystemView) getSliceView()).getPendingCompactionOperations()
-//              .map(instantTimeCompactionopPair -> instantTimeCompactionopPair.getValue().getFileGroupId())
-//              .collect(Collectors.toSet()));
-//
-//    } catch (IOException e) {
-//      throw new HoodieCompactionException("Could not schedule compaction " + config.getBasePath(), e);
-//    }
-    return null;
+    LOG.info("Compacting merge on read table " + config.getBasePath());
+    HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
+    try {
+      return compactor.generateCompactionPlan(jsc, this, config, instantTime,
+          ((SyncableFileSystemView) getSliceView()).getPendingCompactionOperations()
+              .map(instantTimeCompactionopPair -> instantTimeCompactionopPair.getValue().getFileGroupId())
+              .collect(Collectors.toSet()));
+
+    } catch (IOException e) {
+      throw new HoodieCompactionException("Could not schedule compaction " + config.getBasePath(), e);
+    }
   }
 
   @Override
   public List<WriteStatus> compact(Configuration jsc, String compactionInstantTime,
                                    HoodieCompactionPlan compactionPlan) {
-//    HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
-//    try {
-//      return compactor.compact(jsc, compactionPlan, this, config, compactionInstantTime);
-//    } catch (IOException e) {
-//      throw new HoodieCompactionException("Could not compact " + config.getBasePath(), e);
-//    }
-    return Collections.singletonList(new WriteStatus(false,0.0));
+    HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
+    try {
+      return compactor.compact(jsc, compactionPlan, this, config, compactionInstantTime);
+    } catch (IOException e) {
+      throw new HoodieCompactionException("Could not compact " + config.getBasePath(), e);
+    }
   }
 
   @Override

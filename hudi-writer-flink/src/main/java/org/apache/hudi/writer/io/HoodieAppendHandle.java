@@ -127,7 +127,7 @@ public class HoodieAppendHandle<T extends HoodieRecordPayload> extends HoodieWri
       writeStatus.getStat().setPartitionPath(partitionPath);
       writeStatus.getStat().setFileId(fileId);
 //      averageRecordSize = SizeEstimator.estimate(record);
-      averageRecordSize = 400;
+      averageRecordSize = 50;
       try {
         //save hoodie partition meta in the partition path
         HoodiePartitionMetadata partitionMetadata = new HoodiePartitionMetadata(fs, baseInstantTime,

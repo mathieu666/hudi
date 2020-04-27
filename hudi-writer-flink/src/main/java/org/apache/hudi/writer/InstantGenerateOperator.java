@@ -28,7 +28,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
 
   @Override
   public void processElement(StreamRecord element) throws Exception {
-    LOG.info(" ############ Send one record");
+    LOG.info("Send 1 record");
     output.collect(element);
   }
 
@@ -85,6 +85,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieRecord
     if (!fs.exists(new Path(cfg.targetBasePath))) {
       HoodieTableMetaClient.initTableType(new Configuration(serializableHadoopConf.get()), cfg.targetBasePath,
           cfg.tableType, cfg.targetTableName, "archived", cfg.payloadClassName);
+      LOG.info("table initialized");
     }
   }
 }

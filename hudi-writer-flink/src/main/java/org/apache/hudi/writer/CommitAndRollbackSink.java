@@ -13,6 +13,7 @@ import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
+import org.apache.hudi.writer.execution.Compactor;
 import org.apache.hudi.writer.utils.UtilHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,14 +45,18 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
 
   public static final String CHECKPOINT_KEY = "deltastreamer.checkpoint.key";
   public static final String CHECKPOINT_RESET_KEY = "deltastreamer.checkpoint.reset_key";
-  List<WriteStatus> writeResults = new ArrayList<>();
+  private List<WriteStatus> writeResults = new ArrayList<>();
+  private transient Compactor compactor;
 
   @Override
   public void notifyCheckpointComplete(long l) throws Exception {
+    if (writeResults.isEmpty()) {
+      return;
+    }
     String instantTime = getInstantTime();
     LOG.info("CommitAndRollbackSink Get instantTime = {}", instantTime);
-    // read from source
-    String checkpointStr = null;
+
+    String checkpointStr = null; // read from source
     // commit and rollback
     long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).reduce(Long::sum).orElse(0L);
     long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).reduce(Long::sum).orElse(0L);
@@ -74,7 +79,6 @@ public class CommitAndRollbackSink extends RichSinkFunction<List<WriteStatus>> i
       boolean success = writeClient.commit(instantTime, writeResults, Option.of(checkpointCommitMetadata));
       if (success) {
         LOG.info("Commit " + instantTime + " successful!");
-
         // Schedule compaction if needed
         if (cfg.isAsyncCompactionEnabled()) {
           scheduledCompactionInstant = writeClient.scheduleCompaction(Option.empty());
