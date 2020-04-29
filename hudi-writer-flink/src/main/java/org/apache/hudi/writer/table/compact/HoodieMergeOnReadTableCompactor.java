@@ -88,7 +88,7 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
       try {
         compact = compact(table, metaClient, config, x, compactionInstantTime);
       } catch (IOException e) {
-        e.printStackTrace();
+        LOG.error("Compact failed ", e);
       }
       return compact;
     }).reduce((x, y) -> {

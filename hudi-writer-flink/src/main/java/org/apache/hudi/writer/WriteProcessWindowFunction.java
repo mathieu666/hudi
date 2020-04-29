@@ -7,14 +7,10 @@ import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.config.SerializableConfiguration;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
-import org.apache.hudi.common.table.timeline.HoodieTimeline;
-import org.apache.hudi.common.util.Option;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
@@ -47,16 +43,6 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
   private HoodieWriteConfig writeConfig;
 
   /**
-   * Hadoop FileSystem.
-   */
-  private transient FileSystem fs;
-
-  /**
-   * Timeline with completed commits.
-   */
-  private transient Option<HoodieTimeline> commitTimelineOpt;
-
-  /**
    * Write Client.
    */
   private transient HoodieWriteClient writeClient;
@@ -83,8 +69,8 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
       return;
     }
     // get instantTime
-    String instantTime = getInstantTime();
-    LOG.info("WriteProcessWindowFunction Get instantTime = {}", instantTime);
+    String instantTime = getInflightInstantTime();
+    LOG.info("WriteProcessWindowFunction get instantTime = {}", instantTime);
 
     // start write and get the result
     List<WriteStatus> writeStatus;
@@ -119,9 +105,6 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     // hadoopConf
     serializableHadoopConf = new SerializableConfiguration(new org.apache.hadoop.conf.Configuration());
 
-    // Hadoop FileSystem
-    fs = FSUtils.getFs(cfg.targetBasePath, serializableHadoopConf.get());
-
     // HoodieWriteConfig
     writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
 
@@ -129,7 +112,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
   }
 
-  private String getInstantTime() {
+  private String getInflightInstantTime() {
     HoodieTableMetaClient meta = new HoodieTableMetaClient(serializableHadoopConf.get(), cfg.targetBasePath,
         cfg.payloadClassName);
     return meta.getActiveTimeline().filter(HoodieInstant::isRequested).lastInstant().get().getTimestamp();

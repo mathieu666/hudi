@@ -121,7 +121,7 @@ public class HoodieMergeOnReadTable<T extends HoodieRecordPayload> extends Hoodi
   }
 
   @Override
-  public HoodieCompactionPlan scheduleCompaction(Configuration jsc, String instantTime) {
+  public HoodieCompactionPlan scheduleCompaction(Configuration hadoopConf, String instantTime) {
     LOG.info("Checking if compaction needs to be run on " + config.getBasePath());
     Option<HoodieInstant> lastCompaction =
         getActiveTimeline().getCommitTimeline().filterCompletedInstants().lastInstant();
@@ -142,7 +142,7 @@ public class HoodieMergeOnReadTable<T extends HoodieRecordPayload> extends Hoodi
     LOG.info("Compacting merge on read table " + config.getBasePath());
     HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
     try {
-      return compactor.generateCompactionPlan(jsc, this, config, instantTime,
+      return compactor.generateCompactionPlan(hadoopConf, this, config, instantTime,
           ((SyncableFileSystemView) getSliceView()).getPendingCompactionOperations()
               .map(instantTimeCompactionopPair -> instantTimeCompactionopPair.getValue().getFileGroupId())
               .collect(Collectors.toSet()));
