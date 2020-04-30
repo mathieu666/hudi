@@ -25,6 +25,12 @@
             <artifactId>hudi-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Hudi -->
+        <dependency>
+            <groupId>org.apache.hudi</groupId>
+            <artifactId>hudi-writer-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Avro -->
         <dependency>

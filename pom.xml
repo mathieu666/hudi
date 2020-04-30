@@ -52,6 +52,7 @@
     <module>docker/hoodie/hadoop</module>
     <module>hudi-integ-test</module>
       <module>hudi-writer-flink</module>
+      <module>hudi-writer-common</module>
   </modules>
 
   <licenses>

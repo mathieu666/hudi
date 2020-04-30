@@ -4,20 +4,32 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.hudi.HoodieEngineContext;
+import org.apache.hudi.HoodieWriteClientV2;
+import org.apache.hudi.WriteStatus;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
+import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.writer.constant.Operation;
+import org.apache.hudi.writer.context.HoodieFlinkEngineContext;
+import org.apache.hudi.writer.exception.HoodieDeltaStreamerException;
 import org.apache.hudi.writer.source.SourceReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class WriteJob {
+  private static final Logger LOG = LoggerFactory.getLogger(WriteJob.class);
 
   public static void main(String[] args) throws Exception {
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -27,27 +39,66 @@ public class WriteJob {
       cmd.usage();
       System.exit(1);
     }
-//    env.enableCheckpointing(cfg.checkpointInterval);
-    env.enableCheckpointing(10000L);
+    env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
-    // 0. read from source
-    DataStream<HoodieRecord> incomingRecords = env.addSource(new SourceReader());
+    HoodieWriteConfig writeConfig = getHoodieWriteConfig();
+    HoodieEngineContext context = new HoodieFlinkEngineContext();
+    HoodieWriteClientV2
+        writeClient = new HoodieWriteFlinkClient(context, writeConfig);
 
-    // 1. generate instantTime
-    // 2. partition by partitionPath
-    // 3. collect records, tag location, prepare write operations
-    // 4. trigger write operation, start compact and rollback (if any)
-    incomingRecords
-        .transform("instantTimeGenerator", TypeInformation.of(HoodieRecord.class), new InstantGenerateOperator())
-        .setParallelism(1)
-        .keyBy(HoodieRecord::getPartitionPath)
-        .process(new WriteProcessWindowFunction())
-        .setParallelism(4)
-        .addSink(new CommitAndRollbackSink())
-        .setParallelism(1);
+    // read from source
+    DataStream<HoodieRecord> source = env.addSource(new SourceReader());
+    DataStream<HoodieRecord> records = source.keyBy(HoodieRecord::getPartitionPath);
+
+    // filter dupes if needed
+    if (cfg.filterDupes) {
+      records = DataSourceUtils.dropDuplicates(env, records, writeClient.getEngineContext());
+    }
+
+    // try to commit
+    String instantTime = startCommit(writeClient);
+
+    // write
+    HoodieWriteOutput<DataStream<WriteStatus>> writeStatusDS;
+    if (cfg.operation == Operation.INSERT) {
+      writeStatusDS = writeClient.insert(new HoodieWriteInput<>(records), instantTime);
+    } else if (cfg.operation == Operation.UPSERT) {
+      writeStatusDS = writeClient.upsert(new HoodieWriteInput<>(records), instantTime);
+    } else if (cfg.operation == Operation.BULK_INSERT) {
+      writeStatusDS = writeClient.bulkInsert(new HoodieWriteInput<>(records), instantTime);
+    } else {
+      throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
+    }
+
+    context.finalCommit(writeStatusDS, context);
 
     env.execute("Hudi upsert via Flink");
+  }
+
+  private static String startCommit(HoodieWriteClientV2 writeClient) {
+    final int maxRetries = 2;
+    int retryNum = 1;
+    RuntimeException lastException = null;
+    while (retryNum <= maxRetries) {
+      try {
+        return writeClient.startCommit();
+      } catch (IllegalArgumentException ie) {
+        lastException = ie;
+        LOG.error("Got error trying to start a new commit. Retrying after sleeping for a sec", ie);
+        retryNum++;
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          // No-Op
+        }
+      }
+    }
+    throw lastException;
+  }
+
+  private static HoodieWriteConfig getHoodieWriteConfig() {
+    return null;
   }
 
   public static class Config extends Configuration {
@@ -143,13 +194,13 @@ public class WriteJob {
     public String checkpoint = null;
 
     /**
-     *  FLink checkpoint interval.
+     * FLink checkpoint interval.
      */
     @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
     public Long checkpointInterval = 1000 * 60L;
 
     /**
-     *  InstantTime save path.
+     * InstantTime save path.
      */
     @Parameter(names = {"--instant-time-path"}, description = "InstantTime save path.")
     public String instantTimePath = propsFilePath;
