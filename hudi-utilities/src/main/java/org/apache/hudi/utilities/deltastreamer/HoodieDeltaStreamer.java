@@ -291,6 +291,9 @@ public class HoodieDeltaStreamer implements Serializable {
     @Parameter(names = {"--help", "-h"}, help = true)
     public Boolean help = false;
 
+    /**
+     * 连续模式、没有强制禁用压缩、表类型为MERGE_ON_READ.
+     */
     public boolean isAsyncCompactionEnabled() {
       return continuousMode && !forceDisableCompaction
           && HoodieTableType.MERGE_ON_READ.equals(HoodieTableType.valueOf(tableType));

@@ -384,7 +384,7 @@ public class DeltaSync implements Serializable {
       if (success) {
         LOG.info("Commit " + instantTime + " successful!");
 
-        // Schedule compaction if needed
+        // 连续模式、没有强制禁用压缩、表类型为MERGE_ON_READ时 调度压缩
         if (cfg.isAsyncCompactionEnabled()) {
           scheduledCompactionInstant = writeClient.scheduleCompaction(Option.empty());
         }

@@ -171,6 +171,7 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
     jsc.sc().register(totalLogFiles);
     jsc.sc().register(totalFileSlices);
 
+    // 校验表类型，只能压缩MERGE_ON_READ表
     ValidationUtils.checkArgument(hoodieTable.getMetaClient().getTableType() == HoodieTableType.MERGE_ON_READ,
         "Can only compact table of type " + HoodieTableType.MERGE_ON_READ + " and not "
             + hoodieTable.getMetaClient().getTableType().name());
@@ -179,6 +180,7 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
     // TODO - rollback any compactions in flight
     HoodieTableMetaClient metaClient = hoodieTable.getMetaClient();
     LOG.info("Compacting " + metaClient.getBasePath() + " with commit " + compactionCommitTime);
+    // 获取所有分区
     List<String> partitionPaths = FSUtils.getAllPartitionPaths(metaClient.getFs(), metaClient.getBasePath(),
         config.shouldAssumeDatePartitioning());
 

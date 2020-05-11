@@ -56,14 +56,16 @@ public class ScheduleCompactionActionExecutor extends BaseActionExecutor<Option<
 
   private HoodieCompactionPlan scheduleCompaction() {
     LOG.info("Checking if compaction needs to be run on " + config.getBasePath());
+    // 找到上一次压缩的时间
     Option<HoodieInstant> lastCompaction = table.getActiveTimeline().getCommitTimeline().filterCompletedInstants().lastInstant();
     String deltaCommitsSinceTs = "0";
     if (lastCompaction.isPresent()) {
       deltaCommitsSinceTs = lastCompaction.get().getTimestamp();
     }
-
+    // 查询自上次压缩之后，执行了多少个deltacommit
     int deltaCommitsSinceLastCompaction = table.getActiveTimeline().getDeltaCommitTimeline()
         .findInstantsAfter(deltaCommitsSinceTs, Integer.MAX_VALUE).countInstants();
+    // 如果还未压缩的deltacommit数小于配置的最大排队deltacommit数，则不生成压缩计划
     if (config.getInlineCompactDeltaCommitMax() > deltaCommitsSinceLastCompaction) {
       LOG.info("Not running compaction as only " + deltaCommitsSinceLastCompaction
           + " delta commits was found since last compaction " + deltaCommitsSinceTs + ". Waiting for "
@@ -72,6 +74,7 @@ public class ScheduleCompactionActionExecutor extends BaseActionExecutor<Option<
     }
 
     LOG.info("Compacting merge on read table " + config.getBasePath());
+    // 初始化压缩器，生成压缩计划并返回
     HoodieMergeOnReadTableCompactor compactor = new HoodieMergeOnReadTableCompactor();
     try {
       return compactor.generateCompactionPlan(jsc, table, config, instantTime,
@@ -86,7 +89,7 @@ public class ScheduleCompactionActionExecutor extends BaseActionExecutor<Option<
 
   @Override
   public Option<HoodieCompactionPlan> execute() {
-    // if there are inflight writes, their instantTime must not be less than that of compaction instant time
+    // 获取inflight状态的commit/deltacommit.如果有，那么他们中第一个instant的时间戳应该比压缩的大
     table.getActiveTimeline().getCommitsTimeline().filterPendingExcludingCompaction().firstInstant()
         .ifPresent(earliestInflight -> ValidationUtils.checkArgument(
             HoodieTimeline.compareTimestamps(earliestInflight.getTimestamp(), HoodieTimeline.GREATER_THAN, instantTime),
@@ -94,16 +97,20 @@ public class ScheduleCompactionActionExecutor extends BaseActionExecutor<Option<
                 + ", Compaction scheduled at " + instantTime));
 
     // Committed and pending compaction instants should have strictly lower timestamps
+    // 获取冲突的Instant => 类型为commit/deltacommit/compact，时间戳比当前调度的compact时间戳大（正常情况下应该没有）。
     List<HoodieInstant> conflictingInstants = table.getActiveTimeline()
         .getCommitsAndCompactionTimeline().getInstants()
         .filter(instant -> HoodieTimeline.compareTimestamps(
             instant.getTimestamp(), HoodieTimeline.GREATER_THAN_OR_EQUALS, instantTime))
         .collect(Collectors.toList());
+    // 验证冲突的instant应该为空
     ValidationUtils.checkArgument(conflictingInstants.isEmpty(),
         "Following instants have timestamps >= compactionInstant (" + instantTime + ") Instants :"
             + conflictingInstants);
 
+    // 生成压缩计划
     HoodieCompactionPlan plan = scheduleCompaction();
+    // 如果压缩计划的操作集合不为空，则生成compactionInstant 保存到时间轴
     if (plan != null && (plan.getOperations() != null) && (!plan.getOperations().isEmpty())) {
       extraMetadata.ifPresent(plan::setExtraMetadata);
       HoodieInstant compactionInstant =
