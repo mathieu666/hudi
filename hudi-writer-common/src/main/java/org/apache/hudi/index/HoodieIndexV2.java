@@ -9,4 +9,9 @@ public interface HoodieIndexV2<IN, OUT> {
   IN tagLocation(IN inputs, HoodieEngineContext context, HoodieTable table);
 
   OUT updateLocation(IN inputs);
+
+  /**
+   * Each index type should implement it's own logic to release any resources acquired during the process.
+   */
+  void close();
 }

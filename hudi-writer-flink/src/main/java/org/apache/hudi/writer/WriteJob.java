@@ -6,8 +6,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.HoodieWriteClientV2;
@@ -52,9 +50,9 @@ public class WriteJob {
     DataStream<HoodieRecord> records = source.keyBy(HoodieRecord::getPartitionPath);
 
     // filter dupes if needed
-    if (cfg.filterDupes) {
-      records = DataSourceUtils.dropDuplicates(env, records, writeClient.getEngineContext());
-    }
+//    if (cfg.filterDupes) {
+//      records = DataSourceUtils.dropDuplicates(env, records, writeClient.getEngineContext());
+//    }
 
     // try to commit
     String instantTime = startCommit(writeClient);
