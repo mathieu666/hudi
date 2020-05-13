@@ -58,8 +58,9 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   private HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator = null;
   private float qpsFraction;
   private int maxQpsPerRegionServer;
+
   /**
-   * multiPutBatchSize will be computed and re-set in updateLocation if
+   * multiPutBatchSize will be computed and re-set in updateLocation if.
    */
   private Integer multiPutBatchSize;
   private Integer numRegionServersForTable;

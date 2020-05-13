@@ -3,6 +3,7 @@ package org.apache.hudi.writer;
 import com.codahale.metrics.Timer;
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.HoodieWriteClientV2;
 import org.apache.hudi.HoodieWriteMetadata;
@@ -28,6 +29,7 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.hudi.index.hbase.HBaseIndexV2;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.writer.exception.HoodieInsertException;
 import org.apache.hudi.writer.exception.HoodieUpsertException;
 import org.apache.hudi.writer.util.ClientUtils;
@@ -46,11 +48,12 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
         HoodieWriteOutput<List<WriteStatus>>> {
   private static final Logger LOG = LoggerFactory.getLogger(HoodieWriteFlinkClient.class);
 
-  private final transient HoodieIndexV2<HoodieWriteInput<List<HoodieRecord<T>>>, HoodieWriteOutput<List<WriteStatus>>> index;
+  private final transient HoodieIndexV2 index;
   protected final HoodieWriteConfig config;
-  private final transient HoodieEngineContext context;
+  private final transient Configuration hadoopConf;
   private static final String LOOKUP_STR = "lookup";
   protected final String basePath;
+  private final boolean rollbackPending;
 
   private transient WriteOperationType operationType;
 
@@ -62,17 +65,18 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
     this.operationType = operationType;
   }
 
-  public HoodieWriteFlinkClient(HoodieEngineContext context, HoodieWriteConfig config) {
-    this.context = context;
+  public HoodieWriteFlinkClient(Configuration hadoopConf, HoodieWriteConfig config, boolean rollbackPending) {
+    this.hadoopConf = hadoopConf;
     this.config = config;
-    this.index = new HBaseIndexV2(context, config);
+    this.index = new HBaseIndexV2(hadoopConf, config);
     this.basePath = config.getBasePath();
+    this.rollbackPending = rollbackPending;
   }
 
 
   @Override
   public HoodieWriteOutput<List<WriteStatus>> upsert(HoodieWriteInput<List<HoodieRecord<T>>> hoodieRecords, String instantTime) {
-    HoodieTableV2 table = getTableAndInitCtx(WriteOperationType.UPSERT);
+    HoodieTable table = getTableAndInitCtx(WriteOperationType.UPSERT);
     validateSchema(table, true);
     setOperationType(WriteOperationType.UPSERT);
     HoodieWriteMetadata result = table.upsert(instantTime, hoodieRecords);
@@ -325,11 +329,11 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
   @Override
   public String startCommit() {
     // NOTE : Need to ensure that rollback is done before a new commit is started
-    if (rollbackInFlight) {
-      // Only rollback inflight commit/delta-commits. Do not touch compaction commits
-      rollbackInflightCommits();
-    }
-    String commitTime = HoodieActiveTimeline.createNewCommitTime();
+//    if (rollbackInFlight) {
+//      // Only rollback inflight commit/delta-commits. Do not touch compaction commits
+//      rollbackInflightCommits();
+//    }
+    String commitTime = HoodieActiveTimeline.createNewInstantTime();
     startCommit(commitTime);
     return commitTime;
   }
@@ -344,19 +348,19 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
           "Latest pending compaction instant time must be earlier " + "than this instant time. Latest Compaction :"
               + latestPending + ",  Ingesting at " + instantTime);
     });
-    HoodieTableV2<T> table = HoodieTableV2.getHoodieTable(metaClient, config, jsc);
+    HoodieTable table = HoodieTable.create(metaClient, config, jsc);
     HoodieActiveTimeline activeTimeline = table.getActiveTimeline();
     String commitActionType = table.getMetaClient().getCommitActionType();
     activeTimeline.createInflight(new HoodieInstant(true, commitActionType, instantTime));
   }
 
-  protected HoodieTableV2 getTableAndInitCtx(WriteOperationType operationType) {
+  protected HoodieTable getTableAndInitCtx(WriteOperationType operationType) {
     HoodieTableMetaClient metaClient = createMetaClient(true);
     if (operationType == WriteOperationType.DELETE) {
       setWriteSchemaFromLastInstant(metaClient);
     }
     // Create a Hoodie table which encapsulated the commits and files visible
-    HoodieTableV2 table = HoodieTableV2.create(metaClient, context);
+    HoodieTable table = HoodieTable.create(metaClient, context);
     return table;
   }
 
@@ -392,7 +396,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
    * GenericRecords with writerSchema. Hence, we need to ensure that this conversion can take place without errors.
    *
    * @param hoodieTableV2 The Hoodie Table
-   * @param isUpsert    If this is a check during upserts
+   * @param isUpsert      If this is a check during upserts
    * @throws HoodieUpsertException If schema check fails during upserts
    * @throws HoodieInsertException If schema check fails during inserts
    */

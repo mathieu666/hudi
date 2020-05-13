@@ -23,6 +23,7 @@ import org.apache.hudi.HoodieWriteMetadata;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.exception.HoodieUpsertException;
+import org.apache.hudi.table.HoodieTable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +32,7 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
 
   public static <T extends HoodieRecordPayload<T>> HoodieWriteMetadata write(String instantTime,
                                                                              HoodieWriteInput inputRecordsRDD, HoodieEngineContext context,
-                                                                             HoodieTableV2 table, boolean shouldCombine,
+                                                                             HoodieTable table, boolean shouldCombine,
                                                                              int shuffleParallelism, CommitActionExecutor<T> executor, boolean performTagging) {
     try {
       // De-dupe/merge if needed
@@ -42,7 +43,7 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
       HoodieWriteInput taggedRecords = dedupedRecords;
       if (performTagging) {
         // perform index loop up to get existing location of records
-        taggedRecords = context.tag(dedupedRecords, context, table);
+        taggedRecords = context.tag(dedupedRecords, table);
       }
       Duration indexLookupDuration = Duration.between(lookupBegin, Instant.now());
 

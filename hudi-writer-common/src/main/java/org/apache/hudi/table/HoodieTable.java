@@ -43,6 +43,7 @@ import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.table.timeline.TimelineMetadataUtils;
+import org.apache.hudi.common.table.timeline.versioning.TimelineLayoutVersion;
 import org.apache.hudi.common.table.view.FileSystemViewManager;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.common.table.view.SyncableFileSystemView;
@@ -52,10 +53,12 @@ import org.apache.hudi.common.table.view.TableFileSystemView.SliceView;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieSavepointException;
 import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.hudi.index.hbase.HBaseIndexV2;
+import org.apache.hudi.writer.table.HoodieMergeOnReadTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -92,6 +95,30 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
     this.index = new HBaseIndexV2(hadoopConf, config);
   }
 
+  public static HoodieTable create(HoodieWriteConfig config, Configuration hadoopConf) {
+    HoodieTableMetaClient metaClient = new HoodieTableMetaClient(
+        hadoopConf,
+        config.getBasePath(),
+        true,
+        config.getConsistencyGuardConfig(),
+        Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion()))
+    );
+    return HoodieTable.create(metaClient, config, hadoopConf);
+  }
+
+  public static HoodieTable create(HoodieTableMetaClient metaClient,
+                                                                      HoodieWriteConfig config,
+                                                                      Configuration hadoopConf) {
+    switch (metaClient.getTableType()) {
+      case COPY_ON_WRITE:
+        return new HoodieCopyOnWriteTable<>(config, hadoopConf, metaClient);
+      case MERGE_ON_READ:
+        return new HoodieMergeOnReadTable<>(config, hadoopConf, metaClient);
+      default:
+        throw new HoodieException("Unsupported table type :" + metaClient.getTableType());
+    }
+  }
+
   private synchronized FileSystemViewManager getViewManager() {
     if (null == viewManager) {
       viewManager = FileSystemViewManager.createViewManager(hadoopConfiguration, config.getViewStorageConfig());
@@ -102,7 +129,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
   /**
    * Upsert a batch of new records into Hoodie table at the supplied instantTime.
    *
-   * @param hadoopConf         Configuration
+   * @param hadoopConf  Configuration
    * @param instantTime Instant Time for the action
    * @param records     List of hoodieRecords to upsert
    * @return HoodieWriteMetadata
@@ -113,7 +140,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
   /**
    * Insert a batch of new records into Hoodie table at the supplied instantTime.
    *
-   * @param hadoopConf         Java Spark Context jsc
+   * @param hadoopConf  Java Spark Context jsc
    * @param instantTime Instant Time for the action
    * @param records     List of hoodieRecords to upsert
    * @return HoodieWriteMetadata
@@ -124,7 +151,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
   /**
    * Bulk Insert a batch of new records into Hoodie table at the supplied instantTime.
    *
-   * @param hadoopConf                   Java Spark Context jsc
+   * @param hadoopConf            Java Spark Context jsc
    * @param instantTime           Instant Time for the action
    * @param records               List of hoodieRecords to upsert
    * @param bulkInsertPartitioner User Defined Partitioner
@@ -137,7 +164,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
    * Deletes a list of {@link HoodieKey}s from the Hoodie table, at the supplied instantTime {@link HoodieKey}s will be
    * de-duped and non existent keys will be removed before deleting.
    *
-   * @param hadoopConf         Java Spark Context jsc
+   * @param hadoopConf  Java Spark Context jsc
    * @param instantTime Instant Time for the action
    * @param keys        {@link List} of {@link HoodieKey}s to be deleted
    * @return HoodieWriteMetadata
@@ -319,7 +346,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, INPUT extends H
    * @param compactionPlan        Compaction Plan
    */
   public abstract OUTPUT compact(Configuration jsc, String compactionInstantTime,
-                                                               HoodieCompactionPlan compactionPlan);
+                                 HoodieCompactionPlan compactionPlan);
 
   /**
    * Executes a new clean action.

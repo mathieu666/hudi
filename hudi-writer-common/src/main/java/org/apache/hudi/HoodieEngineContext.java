@@ -3,6 +3,7 @@ package org.apache.hudi;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.config.SerializableConfiguration;
+import org.apache.hudi.table.HoodieTable;
 
 public interface HoodieEngineContext<INPUT extends HoodieWriteInput, OUTPUT extends HoodieWriteOutput> {
 
@@ -10,13 +11,13 @@ public interface HoodieEngineContext<INPUT extends HoodieWriteInput, OUTPUT exte
 
   SerializableConfiguration getHadoopConf();
 
-  INPUT combineOnCondition(boolean shouldCombine, INPUT inputRecords, int shuffleParallelism, HoodieTableV2 table);
+  INPUT combineOnCondition(boolean shouldCombine, INPUT inputRecords, int shuffleParallelism, HoodieTable table);
 
-  INPUT tag(INPUT dedupedRecords, HoodieTableV2 table);
+  INPUT tag(INPUT dedupedRecords, HoodieTable table);
 
   OUTPUT lazyWrite(INPUT partitionedRecords, String instantTime);
 
-  void updateLocation(OUTPUT writeStatus, HoodieTableV2 table);
+  void updateLocation(OUTPUT writeStatus, HoodieTable table);
 
   void finalCommit(OUTPUT outputs);
 }

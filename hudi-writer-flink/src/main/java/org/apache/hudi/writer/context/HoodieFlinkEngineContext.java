@@ -6,6 +6,7 @@ import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.table.HoodieTable;
 
 import java.util.List;
 
@@ -21,12 +22,12 @@ public class HoodieFlinkEngineContext extends AbstractHoodieEngineContext<Hoodie
   }
 
   @Override
-  public HoodieWriteInput<List<HoodieRecord>> combineOnCondition(boolean shouldCombine, HoodieWriteInput<List<HoodieRecord>> inputRecords, int shuffleParallelism, HoodieTableV2 table) {
+  public HoodieWriteInput<List<HoodieRecord>> combineOnCondition(boolean shouldCombine, HoodieWriteInput<List<HoodieRecord>> inputRecords, int shuffleParallelism, HoodieTable table) {
     return null;
   }
 
   @Override
-  public HoodieWriteInput<List<HoodieRecord>> tag(HoodieWriteInput<List<HoodieRecord>> dedupedRecords, HoodieTableV2 table) {
+  public HoodieWriteInput<List<HoodieRecord>> tag(HoodieWriteInput<List<HoodieRecord>> dedupedRecords, HoodieTable table) {
     return null;
   }
 
@@ -36,7 +37,7 @@ public class HoodieFlinkEngineContext extends AbstractHoodieEngineContext<Hoodie
   }
 
   @Override
-  public void updateLocation(HoodieWriteOutput<List<WriteStatus>> writeStatus, HoodieTableV2 table) {
+  public void updateLocation(HoodieWriteOutput<List<WriteStatus>> writeStatus, HoodieTable table) {
     // TODO
   }
 

@@ -29,6 +29,7 @@ import org.apache.hudi.common.util.queue.BoundedInMemoryQueueConsumer;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieUpsertException;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.WorkloadProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,7 @@ public abstract class CommitActionExecutor<T extends HoodieRecordPayload<T>>
   private static final Logger LOG = LoggerFactory.getLogger(CommitActionExecutor.class);
 
   public CommitActionExecutor(Configuration hadoopConf,
-                              HoodieWriteConfig config, HoodieTableV2 table,
+                              HoodieWriteConfig config, HoodieTable table,
                               String instantTime, WriteOperationType operationType) {
     super(hadoopConf, config, table, instantTime, operationType);
   }

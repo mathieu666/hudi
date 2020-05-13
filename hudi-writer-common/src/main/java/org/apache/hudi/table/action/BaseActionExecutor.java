@@ -18,23 +18,24 @@
 
 package org.apache.hudi.table.action;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 
 import java.io.Serializable;
 
 public abstract class BaseActionExecutor<R> implements Serializable {
 
-  protected final transient Configuration hadoopConf;
+  protected final HoodieEngineContext context;
 
   protected final HoodieWriteConfig config;
 
-  protected final HoodieTableV2 table;
+  protected final HoodieTable table;
 
   protected final String instantTime;
 
-  public BaseActionExecutor(Configuration hadoopConf, HoodieWriteConfig config, HoodieTableV2 table, String instantTime) {
-    this.hadoopConf = hadoopConf;
+  public BaseActionExecutor(HoodieEngineContext context, HoodieWriteConfig config, HoodieTable table, String instantTime) {
+    this.context = context;
     this.config = config;
     this.table = table;
     this.instantTime = instantTime;

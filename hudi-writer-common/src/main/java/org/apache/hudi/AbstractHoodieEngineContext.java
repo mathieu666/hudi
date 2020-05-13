@@ -3,7 +3,6 @@ package org.apache.hudi;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.config.SerializableConfiguration;
-import org.apache.hudi.config.HoodieWriteConfig;
 
 public abstract class AbstractHoodieEngineContext<INPUT extends HoodieWriteInput, OUTPUT extends HoodieWriteOutput> implements HoodieEngineContext<INPUT, OUTPUT> {
   private SerializableConfiguration hadoopConf;

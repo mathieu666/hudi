@@ -24,6 +24,7 @@ import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 
 public class UpsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends CommitActionExecutor<T> {
@@ -31,7 +32,7 @@ public class UpsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
   private HoodieWriteInput inputRecordsRDD;
 
   public UpsertCommitActionExecutor(Configuration hadoopConf,
-                                    HoodieWriteConfig config, HoodieTableV2 table,
+                                    HoodieWriteConfig config, HoodieTable table,
                                     String instantTime, HoodieWriteInput inputRecordsRDD) {
     super(hadoopConf, config, table, instantTime, WriteOperationType.UPSERT);
     this.inputRecordsRDD = inputRecordsRDD;
