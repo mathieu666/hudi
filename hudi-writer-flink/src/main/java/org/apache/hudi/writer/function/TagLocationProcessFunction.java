@@ -7,19 +7,18 @@ import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.table.HoodieTable;
 
 import java.util.LinkedList;
 import java.util.List;
 
 public class TagLocationProcessFunction extends ProcessFunction<HoodieRecord, HoodieRecord> implements CheckpointedFunction {
   private HoodieEngineContext context;
-  private HoodieTable table;
+  private HoodieTableV2 table;
 
   private List<HoodieRecord> recordsToLocate = new LinkedList<>();
   Collector<HoodieRecord> output;
 
-  public TagLocationProcessFunction(HoodieEngineContext context, HoodieTable table) {
+  public TagLocationProcessFunction(HoodieEngineContext context, HoodieTableV2 table) {
     this.context = context;
     this.table = table;
   }

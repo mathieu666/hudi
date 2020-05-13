@@ -4,9 +4,17 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.BufferedMutator;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RegionLocator;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
@@ -16,6 +24,7 @@ import org.apache.hudi.common.model.HoodieRecordLocation;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
+import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieDependentSystemUnavailableException;
@@ -23,8 +32,7 @@ import org.apache.hudi.exception.HoodieIndexException;
 import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -37,6 +45,7 @@ import java.util.stream.Collectors;
 
 public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieRecord>>, HoodieWriteOutput<List<WriteStatus>>> {
   protected final HoodieWriteConfig config;
+  protected final Configuration hadoopConf;
 
   private static final byte[] SYSTEM_COLUMN_FAMILY = Bytes.toBytes("_s");
   private static final byte[] COMMIT_TS_COLUMN = Bytes.toBytes("commit_ts");
@@ -44,7 +53,7 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   private static final byte[] PARTITION_PATH_COLUMN = Bytes.toBytes("partition_path");
   private static final int SLEEP_TIME_MILLISECONDS = 100;
 
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseIndexV2.class);
+  private static final Logger LOG = LogManager.getLogger(HBaseIndexV2.class);
   private static Connection hbaseConnection = null;
   private HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator = null;
   private float qpsFraction;
@@ -57,7 +66,8 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   private final String tableName;
   private HbasePutBatchSizeCalculator putBatchSizeCalculator;
 
-  public HBaseIndexV2(HoodieWriteConfig config) {
+  public HBaseIndexV2(Configuration hadoopConf, HoodieWriteConfig config) {
+    this.hadoopConf = hadoopConf;
     this.config = config;
     this.tableName = config.getHbaseTableName();
     addShutDownHook();
@@ -83,11 +93,6 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
     return new DefaultHBaseQPSResourceAllocator(config);
   }
 
-  @Override
-  public HoodieWriteInput<List<HoodieRecord>> fetchRecordLocation(HoodieWriteInput<List<HoodieRecord>> inputs) {
-    return null;
-  }
-
   private Connection getHBaseConnection() {
     Configuration hbaseConfig = HBaseConfiguration.create();
     String quorum = config.getHbaseZkQuorum();
@@ -104,6 +109,28 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
       throw new HoodieDependentSystemUnavailableException(HoodieDependentSystemUnavailableException.HBASE,
           quorum + ":" + port);
     }
+  }
+
+  /**
+   * Since we are sharing the HBaseConnection across tasks in a JVM, make sure the HBaseConnection is closed when JVM
+   * exits.
+   */
+  private void addShutDownHook() {
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      try {
+        hbaseConnection.close();
+      } catch (Exception e) {
+        // fail silently for any sort of exception
+      }
+    }));
+  }
+
+  /**
+   * Ensure that any resources used for indexing are released here.
+   */
+  @Override
+  public void close() {
+    this.hBaseIndexQPSResourceAllocator.releaseQPSResources();
   }
 
   private Get generateStatement(String key) throws IOException {
@@ -126,6 +153,19 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
     return hTable.get(keys);
   }
 
+  /**
+   * Helper method to facilitate performing mutations (including puts and deletes) in Hbase.
+   */
+  private void doMutations(BufferedMutator mutator, List<Mutation> mutations) throws IOException {
+    if (mutations.isEmpty()) {
+      return;
+    }
+    mutator.mutate(mutations);
+    mutator.flush();
+    mutations.clear();
+    sleepForTime(SLEEP_TIME_MILLISECONDS);
+  }
+
   private static void sleepForTime(int sleepTimeMs) {
     try {
       Thread.sleep(sleepTimeMs);
@@ -135,8 +175,121 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
     }
   }
 
+  private void setPutBatchSize(HoodieWriteOutput<List<WriteStatus>> writeStatusRDD,
+                               HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator, final Configuration hadoopConf) {
+    if (config.getHbaseIndexPutBatchSizeAutoCompute()) {
+      int maxExecutors = 4;
+
+      /*
+       * Each writeStatus represents status information from a write done in one of the IOHandles. If a writeStatus has
+       * any insert, it implies that the corresponding task contacts HBase for doing puts, since we only do puts for
+       * inserts from HBaseIndex.
+       */
+      final Tuple2<Long, Integer> numPutsParallelismTuple = getHBasePutAccessParallelism(writeStatusRDD);
+      final long numPuts = numPutsParallelismTuple._1;
+      final int hbasePutsParallelism = numPutsParallelismTuple._2;
+      this.numRegionServersForTable = getNumRegionServersAliveForTable();
+      final float desiredQPSFraction =
+          hBaseIndexQPSResourceAllocator.calculateQPSFractionForPutsTime(numPuts, this.numRegionServersForTable);
+      LOG.info("Desired QPSFraction :" + desiredQPSFraction);
+      LOG.info("Number HBase puts :" + numPuts);
+      LOG.info("Hbase Puts Parallelism :" + hbasePutsParallelism);
+      final float availableQpsFraction =
+          hBaseIndexQPSResourceAllocator.acquireQPSResources(desiredQPSFraction, numPuts);
+      LOG.info("Allocated QPS Fraction :" + availableQpsFraction);
+      multiPutBatchSize = putBatchSizeCalculator.getBatchSize(numRegionServersForTable, maxQpsPerRegionServer,
+          hbasePutsParallelism, maxExecutors, SLEEP_TIME_MILLISECONDS, availableQpsFraction);
+      LOG.info("multiPutBatchSize :" + multiPutBatchSize);
+    }
+  }
+
+  public Tuple2<Long, Integer> getHBasePutAccessParallelism(final HoodieWriteOutput<List<WriteStatus>> writeStatusRDD) {
+    final List<Tuple2<Long, Integer>> insertOnlyWriteStatusRDD = writeStatusRDD.getOutput().stream()
+        .filter(w -> w.getStat().getNumInserts() > 0).map(w -> new Tuple2<>(w.getStat().getNumInserts(), 1)).collect(Collectors.toList());
+    return insertOnlyWriteStatusRDD.stream().reduce(new Tuple2<>(0L, 0), (w, c) -> new Tuple2<>(w._1 + c._1, w._2 + c._2));
+  }
+
+  public static class HbasePutBatchSizeCalculator implements Serializable {
+
+    private static final int MILLI_SECONDS_IN_A_SECOND = 1000;
+    private static final Logger LOG = LogManager.getLogger(HbasePutBatchSizeCalculator.class);
+
+    /**
+     * Calculate putBatch size so that sum of requests across multiple jobs in a second does not exceed
+     * maxQpsPerRegionServer for each Region Server. Multiplying qpsFraction to reduce the aggregate load on common RS
+     * across topics. Assumption here is that all tables have regions across all RS, which is not necessarily true for
+     * smaller tables. So, they end up getting a smaller share of QPS than they deserve, but it might be ok.
+     * <p>
+     * Example: int putBatchSize = batchSizeCalculator.getBatchSize(10, 16667, 1200, 200, 100, 0.1f)
+     * </p>
+     * <p>
+     * Expected batchSize is 8 because in that case, total request sent to a Region Server in one second is:
+     * <p>
+     * 8 (batchSize) * 200 (parallelism) * 10 (maxReqsInOneSecond) * 10 (numRegionServers) * 0.1 (qpsFraction)) =>
+     * 16000. We assume requests get distributed to Region Servers uniformly, so each RS gets 1600 requests which
+     * happens to be 10% of 16667 (maxQPSPerRegionServer), as expected.
+     * </p>
+     * <p>
+     * Assumptions made here
+     * <li>In a batch, writes get evenly distributed to each RS for that table. Since we do writes only in the case of
+     * inserts and not updates, for this assumption to fail, inserts would have to be skewed towards few RS, likelihood
+     * of which is less if Hbase table is pre-split and rowKeys are UUIDs (random strings). If this assumption fails,
+     * then it is possible for some RS to receive more than maxQpsPerRegionServer QPS, but for simplicity, we are going
+     * ahead with this model, since this is meant to be a lightweight distributed throttling mechanism without
+     * maintaining a global context. So if this assumption breaks, we are hoping the HBase Master relocates hot-spot
+     * regions to new Region Servers.
+     *
+     * </li>
+     * <li>For Region Server stability, throttling at a second level granularity is fine. Although, within a second, the
+     * sum of queries might be within maxQpsPerRegionServer, there could be peaks at some sub second intervals. So, the
+     * assumption is that these peaks are tolerated by the Region Server (which at max can be maxQpsPerRegionServer).
+     * </li>
+     * </p>
+     */
+    public int getBatchSize(int numRegionServersForTable, int maxQpsPerRegionServer, int numTasksDuringPut,
+                            int maxExecutors, int sleepTimeMs, float qpsFraction) {
+      int maxReqPerSec = (int) (qpsFraction * numRegionServersForTable * maxQpsPerRegionServer);
+      int maxParallelPuts = Math.max(1, Math.min(numTasksDuringPut, maxExecutors));
+      int maxReqsSentPerTaskPerSec = MILLI_SECONDS_IN_A_SECOND / sleepTimeMs;
+      int multiPutBatchSize = Math.max(1, maxReqPerSec / (maxParallelPuts * maxReqsSentPerTaskPerSec));
+      LOG.info("HbaseIndexThrottling: qpsFraction :" + qpsFraction);
+      LOG.info("HbaseIndexThrottling: numRSAlive :" + numRegionServersForTable);
+      LOG.info("HbaseIndexThrottling: maxReqPerSec :" + maxReqPerSec);
+      LOG.info("HbaseIndexThrottling: numTasks :" + numTasksDuringPut);
+      LOG.info("HbaseIndexThrottling: maxExecutors :" + maxExecutors);
+      LOG.info("HbaseIndexThrottling: maxParallelPuts :" + maxParallelPuts);
+      LOG.info("HbaseIndexThrottling: maxReqsSentPerTaskPerSec :" + maxReqsSentPerTaskPerSec);
+      LOG.info("HbaseIndexThrottling: numRegionServersForTable :" + numRegionServersForTable);
+      LOG.info("HbaseIndexThrottling: multiPutBatchSize :" + multiPutBatchSize);
+      return multiPutBatchSize;
+    }
+
+  }
+
+  private Integer getNumRegionServersAliveForTable() {
+    // This is being called in the driver, so there is only one connection
+    // from the driver, so ok to use a local connection variable.
+    if (numRegionServersForTable == null) {
+      try (Connection conn = getHBaseConnection()) {
+        RegionLocator regionLocator = conn.getRegionLocator(TableName.valueOf(tableName));
+        numRegionServersForTable = Math
+            .toIntExact(regionLocator.getAllRegionLocations().stream().map(HRegionLocation::getServerName).distinct().count());
+        return numRegionServersForTable;
+      } catch (IOException e) {
+        LOG.error(e);
+        throw new RuntimeException(e);
+      }
+    }
+    return numRegionServersForTable;
+  }
+
   @Override
-  public HoodieWriteInput<List<HoodieRecord>> tagLocation(HoodieWriteInput<List<HoodieRecord>> inputs, HoodieEngineContext context, HoodieTable table) {
+  public HoodieWriteInput<List<HoodieRecord>> fetchRecordLocation(HoodieWriteInput<List<HoodieRecord>> inputs) {
+    throw new UnsupportedOperationException("HBase index does not implement check exist");
+  }
+
+  @Override
+  public HoodieWriteInput<List<HoodieRecord>> tagLocation(HoodieWriteInput<List<HoodieRecord>> inputs, HoodieTable table) {
     // Grab the global HBase connection
     synchronized (HBaseIndexV2.class) {
       if (hbaseConnection == null || hbaseConnection.isClosed()) {
@@ -194,111 +347,62 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   }
 
   @Override
-  public HoodieWriteOutput<List<WriteStatus>> updateLocation(HoodieWriteOutput<List<WriteStatus>> inputs) {
-    return null;
-  }
+  public HoodieWriteOutput<List<WriteStatus>> updateLocation(HoodieWriteOutput<List<WriteStatus>> writeStatusOutput) {
+    List<WriteStatus> writeStatusList = new ArrayList<>();
 
-  public static class HbasePutBatchSizeCalculator implements Serializable {
-
-    private static final int MILLI_SECONDS_IN_A_SECOND = 1000;
-    private static final org.apache.log4j.Logger LOG = LogManager.getLogger(HbasePutBatchSizeCalculator.class);
-
-    /**
-     * Calculate putBatch size so that sum of requests across multiple jobs in a second does not exceed
-     * maxQpsPerRegionServer for each Region Server. Multiplying qpsFraction to reduce the aggregate load on common RS
-     * across topics. Assumption here is that all tables have regions across all RS, which is not necessarily true for
-     * smaller tables. So, they end up getting a smaller share of QPS than they deserve, but it might be ok.
-     * <p>
-     * Example: int putBatchSize = batchSizeCalculator.getBatchSize(10, 16667, 1200, 200, 100, 0.1f)
-     * </p>
-     * <p>
-     * Expected batchSize is 8 because in that case, total request sent to a Region Server in one second is:
-     * <p>
-     * 8 (batchSize) * 200 (parallelism) * 10 (maxReqsInOneSecond) * 10 (numRegionServers) * 0.1 (qpsFraction)) =>
-     * 16000. We assume requests get distributed to Region Servers uniformly, so each RS gets 1600 requests which
-     * happens to be 10% of 16667 (maxQPSPerRegionServer), as expected.
-     * </p>
-     * <p>
-     * Assumptions made here
-     * <li>In a batch, writes get evenly distributed to each RS for that table. Since we do writes only in the case of
-     * inserts and not updates, for this assumption to fail, inserts would have to be skewed towards few RS, likelihood
-     * of which is less if Hbase table is pre-split and rowKeys are UUIDs (random strings). If this assumption fails,
-     * then it is possible for some RS to receive more than maxQpsPerRegionServer QPS, but for simplicity, we are going
-     * ahead with this model, since this is meant to be a lightweight distributed throttling mechanism without
-     * maintaining a global context. So if this assumption breaks, we are hoping the HBase Master relocates hot-spot
-     * regions to new Region Servers.
-     *
-     * </li>
-     * <li>For Region Server stability, throttling at a second level granularity is fine. Although, within a second, the
-     * sum of queries might be within maxQpsPerRegionServer, there could be peaks at some sub second intervals. So, the
-     * assumption is that these peaks are tolerated by the Region Server (which at max can be maxQpsPerRegionServer).
-     * </li>
-     * </p>
-     */
-    public int getBatchSize(int numRegionServersForTable, int maxQpsPerRegionServer, int numTasksDuringPut,
-                            int maxExecutors, int sleepTimeMs, float qpsFraction) {
-      int maxReqPerSec = (int) (qpsFraction * numRegionServersForTable * maxQpsPerRegionServer);
-      int maxParallelPuts = Math.max(1, Math.min(numTasksDuringPut, maxExecutors));
-      int maxReqsSentPerTaskPerSec = MILLI_SECONDS_IN_A_SECOND / sleepTimeMs;
-      int multiPutBatchSize = Math.max(1, maxReqPerSec / (maxParallelPuts * maxReqsSentPerTaskPerSec));
-      LOG.info("HbaseIndexThrottling: qpsFraction :" + qpsFraction);
-      LOG.info("HbaseIndexThrottling: numRSAlive :" + numRegionServersForTable);
-      LOG.info("HbaseIndexThrottling: maxReqPerSec :" + maxReqPerSec);
-      LOG.info("HbaseIndexThrottling: numTasks :" + numTasksDuringPut);
-      LOG.info("HbaseIndexThrottling: maxExecutors :" + maxExecutors);
-      LOG.info("HbaseIndexThrottling: maxParallelPuts :" + maxParallelPuts);
-      LOG.info("HbaseIndexThrottling: maxReqsSentPerTaskPerSec :" + maxReqsSentPerTaskPerSec);
-      LOG.info("HbaseIndexThrottling: numRegionServersForTable :" + numRegionServersForTable);
-      LOG.info("HbaseIndexThrottling: multiPutBatchSize :" + multiPutBatchSize);
-      return multiPutBatchSize;
-    }
-  }
-
-  /**
-   * Since we are sharing the HBaseConnection across tasks in a JVM, make sure the HBaseConnection is closed when JVM
-   * exits.
-   */
-  private void addShutDownHook() {
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      try {
-        hbaseConnection.close();
-      } catch (Exception e) {
-        // fail silently for any sort of exception
+    // Grab the global HBase connection
+    synchronized (HBaseIndexV2.class) {
+      if (hbaseConnection == null || hbaseConnection.isClosed()) {
+        hbaseConnection = getHBaseConnection();
       }
-    }));
-  }
 
-  /**
-   * Ensure that any resources used for indexing are released here.
-   */
-  @Override
-  public void close() {
-    this.hBaseIndexQPSResourceAllocator.releaseQPSResources();
-  }
-
-  public Tuple2<Long, Integer> getHBasePutAccessParallelism(final HoodieWriteOutput<List<WriteStatus>> writeStatusRDD) {
-    final List<Tuple2<Long, Integer>> insertOnlyWriteStatusRDD = writeStatusRDD.getOutput().stream()
-        .filter(w -> w.getStat().getNumInserts() > 0).map(w -> new Tuple2<>(w.getStat().getNumInserts(), 1)).collect(Collectors.toList());
-    return insertOnlyWriteStatusRDD.stream().reduce(new Tuple2<>(0L, 0), (w, c) -> new Tuple2<>(w._1 + c._1, w._2 + c._2));
-  }
-
-  private Integer getNumRegionServersAliveForTable() {
-    // This is being called in the driver, so there is only one connection
-    // from the driver, so ok to use a local connection variable.
-    if (numRegionServersForTable == null) {
-      try (Connection conn = getHBaseConnection()) {
-        RegionLocator regionLocator = conn.getRegionLocator(TableName.valueOf(tableName));
-        numRegionServersForTable = Math
-            .toIntExact(regionLocator.getAllRegionLocations().stream().map(HRegionLocation::getServerName).distinct().count());
-        return numRegionServersForTable;
+      Iterator<WriteStatus> statusIterator = writeStatusOutput.getOutput().iterator();
+      try (BufferedMutator mutator = hbaseConnection.getBufferedMutator(TableName.valueOf(tableName))) {
+        while (statusIterator.hasNext()) {
+          WriteStatus writeStatus = statusIterator.next();
+          List<Mutation> mutations = new ArrayList<>();
+          try {
+            for (HoodieRecord rec : writeStatus.getWrittenRecords()) {
+              if (!writeStatus.isErrored(rec.getKey())) {
+                Option<HoodieRecordLocation> loc = rec.getNewLocation();
+                if (loc.isPresent()) {
+                  if (rec.getCurrentLocation() != null) {
+                    // This is an update, no need to update index
+                    continue;
+                  }
+                  Put put = new Put(Bytes.toBytes(rec.getRecordKey()));
+                  put.addColumn(SYSTEM_COLUMN_FAMILY, COMMIT_TS_COLUMN, Bytes.toBytes(loc.get().getInstantTime()));
+                  put.addColumn(SYSTEM_COLUMN_FAMILY, FILE_NAME_COLUMN, Bytes.toBytes(loc.get().getFileId()));
+                  put.addColumn(SYSTEM_COLUMN_FAMILY, PARTITION_PATH_COLUMN, Bytes.toBytes(rec.getPartitionPath()));
+                  mutations.add(put);
+                } else {
+                  // Delete existing index for a deleted record
+                  Delete delete = new Delete(Bytes.toBytes(rec.getRecordKey()));
+                  mutations.add(delete);
+                }
+              }
+              if (mutations.size() < multiPutBatchSize) {
+                continue;
+              }
+              doMutations(mutator, mutations);
+            }
+            // process remaining puts and deletes, if any
+            doMutations(mutator, mutations);
+          } catch (Exception e) {
+            Exception we = new Exception("Error updating index for " + writeStatus, e);
+            LOG.error(we);
+            writeStatus.setGlobalError(we);
+          }
+          writeStatusList.add(writeStatus);
+        }
       } catch (IOException e) {
-        LOG.error(e);
-        throw new RuntimeException(e);
+        throw new HoodieIndexException("Failed to Update Index locations because of exception with HBase Client", e);
       }
     }
-    return numRegionServersForTable;
+    return new HoodieWriteOutput<>(writeStatusList);
   }
 
+  @Override
   public boolean rollbackCommit(String instantTime) {
     // Rollback in HbaseIndex is managed via method {@link #checkIfValidCommit()}
     return true;
@@ -307,6 +411,7 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   /**
    * Only looks up by recordKey.
    */
+  @Override
   public boolean isGlobal() {
     return true;
   }
@@ -314,6 +419,7 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   /**
    * Mapping is available in HBase already.
    */
+  @Override
   public boolean canIndexLogFiles() {
     return true;
   }
@@ -321,6 +427,7 @@ public class HBaseIndexV2 implements HoodieIndexV2<HoodieWriteInput<List<HoodieR
   /**
    * Index needs to be explicitly updated after storage write.
    */
+  @Override
   public boolean isImplicitWithStorage() {
     return false;
   }

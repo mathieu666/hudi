@@ -16,30 +16,29 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.table.action.commit;
+package org.apache.hudi.io;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hudi.HoodieWriteMetadata;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.model.HoodieRecordPayload;
-import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 
-public class UpsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends CommitActionExecutor<T> {
+public abstract class HoodieIOHandle<T extends HoodieRecordPayload, INPUT extends HoodieWriteInput, KEY extends HoodieWriteKey, OUTPUT extends HoodieWriteOutput> {
 
-  private HoodieWriteInput inputRecordsRDD;
+  protected final String instantTime;
+  protected final HoodieWriteConfig config;
+  protected final FileSystem fs;
+  protected final HoodieTable<T, INPUT, KEY, OUTPUT> hoodieTable;
 
-  public UpsertCommitActionExecutor(Configuration hadoopConf,
-                                    HoodieWriteConfig config, HoodieTableV2 table,
-                                    String instantTime, HoodieWriteInput inputRecordsRDD) {
-    super(hadoopConf, config, table, instantTime, WriteOperationType.UPSERT);
-    this.inputRecordsRDD = inputRecordsRDD;
+  HoodieIOHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, INPUT, KEY, OUTPUT> hoodieTable) {
+    this.instantTime = instantTime;
+    this.config = config;
+    this.hoodieTable = hoodieTable;
+    this.fs = getFileSystem();
   }
 
-  @Override
-  public HoodieWriteMetadata execute() {
-    return WriteHelper.write(instantTime, inputRecordsRDD, context, table,
-        config.shouldCombineBeforeUpsert(), config.getUpsertShuffleParallelism(), this, true);
-  }
+  protected abstract FileSystem getFileSystem();
 }

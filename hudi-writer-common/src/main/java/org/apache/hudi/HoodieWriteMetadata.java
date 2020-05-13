@@ -32,7 +32,7 @@ import java.time.Duration;
  */
 public class HoodieWriteMetadata {
 
-  private HoodieWriteOutput writeStatuses;
+  private HoodieWriteOutput<List<WriteStatus>> writeStatuses;
   private Option<Duration> indexLookupDuration = Option.empty();
 
   // Will be set when auto-commit happens

@@ -18,7 +18,7 @@
 
 package org.apache.hudi.table.action.commit;
 
-import org.apache.hudi.HoodieEngineContext;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.HoodieWriteMetadata;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.HoodieWriteInput;
@@ -36,7 +36,6 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieCommitException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieUpsertException;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.WorkloadProfile;
 import org.apache.hudi.table.WorkloadStat;
 import org.slf4j.Logger;
@@ -59,15 +58,15 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
 
   private final WriteOperationType operationType;
 
-  public BaseCommitActionExecutor(HoodieEngineContext jsc, HoodieWriteConfig config,
-                                  HoodieTable table, String instantTime, WriteOperationType operationType) {
-    this(jsc, config, table, instantTime, operationType, null);
+  public BaseCommitActionExecutor(Configuration hadoopConf, HoodieWriteConfig config,
+                                  HoodieTableV2 table, String instantTime, WriteOperationType operationType) {
+    this(hadoopConf, config, table, instantTime, operationType, null);
   }
 
-  public BaseCommitActionExecutor(HoodieEngineContext jsc, HoodieWriteConfig config,
-                                  HoodieTable table, String instantTime, WriteOperationType operationType,
+  public BaseCommitActionExecutor(Configuration hadoopConf, HoodieWriteConfig config,
+                                  HoodieTableV2 table, String instantTime, WriteOperationType operationType,
                                   HoodieWriteInput inputRecordsRDD) {
-    super(jsc, config, table, instantTime);
+    super(hadoopConf, config, table, instantTime);
     this.operationType = operationType;
   }
 
@@ -166,7 +165,7 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
     String actionType = table.getMetaClient().getCommitActionType();
     LOG.info("Committing " + instantTime + ", action Type " + actionType);
     // Create a Hoodie table which encapsulated the commits and files visible
-    HoodieTable table = HoodieTable.create(config, jsc);
+    HoodieTableV2 table = HoodieTableV2.create(config, jsc);
 
     HoodieActiveTimeline activeTimeline = table.getActiveTimeline();
     HoodieCommitMetadata metadata = new HoodieCommitMetadata();

@@ -16,29 +16,27 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.table.action;
+package org.apache.hudi.writer.util;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.timeline.versioning.TimelineLayoutVersion;
+import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 
-import java.io.Serializable;
+public class ClientUtils {
 
-public abstract class BaseActionExecutor<R> implements Serializable {
-
-  protected final transient Configuration hadoopConf;
-
-  protected final HoodieWriteConfig config;
-
-  protected final HoodieTableV2 table;
-
-  protected final String instantTime;
-
-  public BaseActionExecutor(Configuration hadoopConf, HoodieWriteConfig config, HoodieTableV2 table, String instantTime) {
-    this.hadoopConf = hadoopConf;
-    this.config = config;
-    this.table = table;
-    this.instantTime = instantTime;
+  /**
+   * Create Consistency Aware MetaClient.
+   *
+   * @param hadoopConf HadoopConf
+   * @param config HoodieWriteConfig
+   * @param loadActiveTimelineOnLoad early loading of timeline
+   */
+  public static HoodieTableMetaClient createMetaClient(Configuration hadoopConf, HoodieWriteConfig config,
+                                                       boolean loadActiveTimelineOnLoad) {
+    return new HoodieTableMetaClient(hadoopConf, config.getBasePath(), loadActiveTimelineOnLoad,
+        config.getConsistencyGuardConfig(),
+        Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion())));
   }
-
-  public abstract R execute();
 }

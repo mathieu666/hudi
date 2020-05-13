@@ -16,29 +16,20 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.table.action;
+package org.apache.hudi.io.storage;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.avro.generic.IndexedRecord;
+import org.apache.hudi.common.model.HoodieRecord;
 
-import java.io.Serializable;
+import java.io.IOException;
 
-public abstract class BaseActionExecutor<R> implements Serializable {
+public interface HoodieStorageWriter<R extends IndexedRecord> {
 
-  protected final transient Configuration hadoopConf;
+  void writeAvroWithMetadata(R newRecord, HoodieRecord record) throws IOException;
 
-  protected final HoodieWriteConfig config;
+  boolean canWrite();
 
-  protected final HoodieTableV2 table;
+  void close() throws IOException;
 
-  protected final String instantTime;
-
-  public BaseActionExecutor(Configuration hadoopConf, HoodieWriteConfig config, HoodieTableV2 table, String instantTime) {
-    this.hadoopConf = hadoopConf;
-    this.config = config;
-    this.table = table;
-    this.instantTime = instantTime;
-  }
-
-  public abstract R execute();
+  void writeAvro(String key, R oldRecord) throws IOException;
 }

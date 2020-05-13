@@ -1,17 +1,16 @@
 package org.apache.hudi;
 
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
 
 public class ActionContext {
 
   private final transient HoodieEngineContext context;
   private final HoodieWriteConfig config;
-  private final HoodieTable table;
+  private final HoodieTableV2 table;
   private final String instantTime;
 
   public ActionContext(HoodieEngineContext context, HoodieWriteConfig config,
-      HoodieTable table, String instantTime) {
+                       HoodieTableV2 table, String instantTime) {
     this.context = context;
     this.config = config;
     this.table = table;
@@ -26,7 +25,7 @@ public class ActionContext {
     return config;
   }
 
-  public HoodieTable getTable() {
+  public HoodieTableV2 getTable() {
     return table;
   }
 

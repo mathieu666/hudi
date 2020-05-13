@@ -6,7 +6,6 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.table.HoodieTable;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -15,9 +14,9 @@ import java.util.List;
 public class CombineOnConditionProcessFunction extends ProcessFunction<HoodieRecord, HoodieRecord> implements CheckpointedFunction {
 
   private boolean shouldCombine;
-  private HoodieTable table;
+  private HoodieTableV2 table;
 
-  public CombineOnConditionProcessFunction(boolean shouldCombine, HoodieTable table) {
+  public CombineOnConditionProcessFunction(boolean shouldCombine, HoodieTableV2 table) {
     this.shouldCombine = shouldCombine;
     this.table = table;
   }

@@ -12,6 +12,7 @@ import org.apache.hudi.HoodieWriteClientV2;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
+import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
@@ -20,6 +21,7 @@ import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.context.HoodieFlinkEngineContext;
 import org.apache.hudi.writer.exception.HoodieDeltaStreamerException;
 import org.apache.hudi.writer.source.SourceReader;
+import org.apache.hudi.writer.util.UtilHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +42,12 @@ public class WriteJob {
     env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
-    HoodieWriteConfig writeConfig = getHoodieWriteConfig();
-    HoodieEngineContext context = new HoodieFlinkEngineContext();
-    HoodieWriteClientV2
-        writeClient = new HoodieWriteFlinkClient(context, writeConfig);
+    HoodieWriteConfig writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
+    HoodieEngineContext context = new HoodieFlinkEngineContext(new SerializableConfiguration(UtilHelpers.getHadoopConf()));
+    HoodieWriteClientV2 writeClient = new HoodieWriteFlinkClient(context, writeConfig);
 
     // read from source
-    DataStream<HoodieRecord> source = env.addSource(new SourceReader());
-    DataStream<HoodieRecord> records = source.keyBy(HoodieRecord::getPartitionPath);
+    DataStream<HoodieRecord> records = env.addSource(new SourceReader());
 
     // filter dupes if needed
 //    if (cfg.filterDupes) {
@@ -69,7 +69,7 @@ public class WriteJob {
       throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
     }
 
-    context.finalCommit(writeStatusDS, context);
+    context.finalCommit(writeStatusDS);
 
     env.execute("Hudi upsert via Flink");
   }
@@ -93,10 +93,6 @@ public class WriteJob {
       }
     }
     throw lastException;
-  }
-
-  private static HoodieWriteConfig getHoodieWriteConfig() {
-    return null;
   }
 
   public static class Config extends Configuration {

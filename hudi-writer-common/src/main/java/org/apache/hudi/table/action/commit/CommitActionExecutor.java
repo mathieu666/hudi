@@ -19,7 +19,7 @@
 package org.apache.hudi.table.action.commit;
 
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hudi.HoodieEngineContext;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -29,7 +29,6 @@ import org.apache.hudi.common.util.queue.BoundedInMemoryQueueConsumer;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieUpsertException;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.WorkloadProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +44,10 @@ public abstract class CommitActionExecutor<T extends HoodieRecordPayload<T>>
 
   private static final Logger LOG = LoggerFactory.getLogger(CommitActionExecutor.class);
 
-  public CommitActionExecutor(HoodieEngineContext jsc,
-                              HoodieWriteConfig config, HoodieTable table,
+  public CommitActionExecutor(Configuration hadoopConf,
+                              HoodieWriteConfig config, HoodieTableV2 table,
                               String instantTime, WriteOperationType operationType) {
-    super(jsc, config, table, instantTime, operationType);
+    super(hadoopConf, config, table, instantTime, operationType);
   }
 
   @Override
@@ -104,12 +103,12 @@ public abstract class CommitActionExecutor<T extends HoodieRecordPayload<T>>
   }
 
   protected HoodieMergeHandle getUpdateHandle(String partitionPath, String fileId, Iterator<HoodieRecord<T>> recordItr) {
-    return new HoodieMergeHandle<>(config, instantTime, (HoodieTable<T>)table, recordItr, partitionPath, fileId, sparkTaskContextSupplier);
+    return new HoodieMergeHandle<>(config, instantTime, (HoodieTableV2<T>)table, recordItr, partitionPath, fileId, sparkTaskContextSupplier);
   }
 
   protected HoodieMergeHandle getUpdateHandle(String partitionPath, String fileId,
                                               Map<String, HoodieRecord<T>> keyToNewRecords, HoodieBaseFile dataFileToBeMerged) {
-    return new HoodieMergeHandle<>(config, instantTime, (HoodieTable<T>)table, keyToNewRecords,
+    return new HoodieMergeHandle<>(config, instantTime, (HoodieTableV2<T>)table, keyToNewRecords,
         partitionPath, fileId, dataFileToBeMerged, sparkTaskContextSupplier);
   }
 
@@ -121,7 +120,7 @@ public abstract class CommitActionExecutor<T extends HoodieRecordPayload<T>>
       LOG.info("Empty partition");
       return Collections.singletonList((List<WriteStatus>) Collections.EMPTY_LIST).iterator();
     }
-    return new CopyOnWriteLazyInsertIterable<>(recordItr, config, instantTime, (HoodieTable<T>)table, idPfx,
+    return new CopyOnWriteLazyInsertIterable<>(recordItr, config, instantTime, (HoodieTableV2<T>)table, idPfx,
         sparkTaskContextSupplier);
   }
 

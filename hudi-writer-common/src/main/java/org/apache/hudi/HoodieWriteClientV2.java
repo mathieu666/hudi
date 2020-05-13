@@ -22,4 +22,6 @@ public interface HoodieWriteClientV2<INPUT extends HoodieWriteInput, Key extends
 
   HoodieEngineContext<INPUT, OUTPUT> getEngineContext();
 
+  String startCommit();
+
 }

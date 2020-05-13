@@ -7,20 +7,19 @@ import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.WriteStatus;
-import org.apache.hudi.table.HoodieTable;
 
 import java.util.LinkedList;
 import java.util.List;
 
 public class UpdateLocationProcessFunction extends ProcessFunction<WriteStatus, WriteStatus> implements CheckpointedFunction {
   private HoodieEngineContext context;
-  private HoodieTable table;
+  private HoodieTableV2 table;
 
   Collector<WriteStatus> output;
 
   private List<WriteStatus> writeStatuses = new LinkedList<>();
 
-  public UpdateLocationProcessFunction(HoodieEngineContext context, HoodieTable table) {
+  public UpdateLocationProcessFunction(HoodieEngineContext context, HoodieTableV2 table) {
     this.context = context;
     this.table = table;
   }

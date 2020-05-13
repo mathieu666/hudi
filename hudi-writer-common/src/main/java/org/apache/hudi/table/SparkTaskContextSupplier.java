@@ -16,29 +16,25 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.table.action;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hudi.config.HoodieWriteConfig;
+package org.apache.hudi.table;
 
 import java.io.Serializable;
+import java.util.function.Supplier;
 
-public abstract class BaseActionExecutor<R> implements Serializable {
+/**
+ * Spark task context supplier.
+ */
+public class SparkTaskContextSupplier implements Serializable {
 
-  protected final transient Configuration hadoopConf;
-
-  protected final HoodieWriteConfig config;
-
-  protected final HoodieTableV2 table;
-
-  protected final String instantTime;
-
-  public BaseActionExecutor(Configuration hadoopConf, HoodieWriteConfig config, HoodieTableV2 table, String instantTime) {
-    this.hadoopConf = hadoopConf;
-    this.config = config;
-    this.table = table;
-    this.instantTime = instantTime;
+  public Supplier<Integer> getPartitionIdSupplier() {
+    return () -> (Thread.currentThread().getPriority());
   }
 
-  public abstract R execute();
+  public Supplier<Integer> getStageIdSupplier() {
+    return () -> Thread.currentThread().hashCode();
+  }
+
+  public Supplier<Long> getAttemptIdSupplier() {
+    return () -> Thread.currentThread().getId();
+  }
 }

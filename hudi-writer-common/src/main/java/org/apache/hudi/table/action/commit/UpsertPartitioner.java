@@ -27,7 +27,6 @@ import org.apache.hudi.common.util.NumericUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.Partitioner;
 import org.apache.hudi.table.WorkloadProfile;
 import org.apache.hudi.table.WorkloadStat;
@@ -71,11 +70,11 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> implements Part
    */
   private HashMap<Integer, BucketInfo> bucketInfoMap;
 
-  protected final HoodieTable<T> table;
+  protected final HoodieTableV2<T> table;
 
   protected final HoodieWriteConfig config;
 
-  public UpsertPartitioner(WorkloadProfile profile, Configuration hadoopConf, HoodieTable<T> table,
+  public UpsertPartitioner(WorkloadProfile profile, Configuration hadoopConf, HoodieTableV2<T> table,
                            HoodieWriteConfig config) {
     updateLocationToBucket = new HashMap<>();
     partitionPathToInsertBuckets = new HashMap<>();

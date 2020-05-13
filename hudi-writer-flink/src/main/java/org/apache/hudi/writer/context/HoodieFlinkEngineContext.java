@@ -1,55 +1,47 @@
 package org.apache.hudi.writer.context;
 
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.hudi.AbstractHoodieEngineContext;
-import org.apache.hudi.HoodieEngineContext;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
+import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.writer.function.*;
 
-public class HoodieFlinkEngineContext extends AbstractHoodieEngineContext<HoodieWriteInput<DataStream<HoodieRecord>>, HoodieWriteOutput<DataStream<WriteStatus>>> {
+import java.util.List;
+
+public class HoodieFlinkEngineContext extends AbstractHoodieEngineContext<HoodieWriteInput<List<HoodieRecord>>, HoodieWriteOutput<List<WriteStatus>>> {
+
+  public HoodieFlinkEngineContext(SerializableConfiguration hadoopConf) {
+    super(hadoopConf);
+  }
+
   @Override
-  public HoodieWriteInput<DataStream<HoodieRecord>> filterUnknownLocations(HoodieWriteInput<DataStream<HoodieRecord>> taggedRecords) {
+  public HoodieWriteInput<List<HoodieRecord>> filterUnknownLocations(HoodieWriteInput<List<HoodieRecord>> taggedRecords) {
     return null;
   }
 
   @Override
-  public HoodieWriteInput<DataStream<HoodieRecord>> combineOnCondition(boolean shouldCombine, HoodieWriteInput<DataStream<HoodieRecord>> inputRecords, int shuffleParallelism, HoodieTable table) {
-    DataStream<HoodieRecord> combinedRecords = inputRecords
-        .getInputs()
-        .process(new CombineOnConditionProcessFunction(shouldCombine, table))
-        .setParallelism(shuffleParallelism);
-    return new HoodieWriteInput<>(combinedRecords);
+  public HoodieWriteInput<List<HoodieRecord>> combineOnCondition(boolean shouldCombine, HoodieWriteInput<List<HoodieRecord>> inputRecords, int shuffleParallelism, HoodieTableV2 table) {
+    return null;
   }
 
   @Override
-  public HoodieWriteInput<DataStream<HoodieRecord>> tag(HoodieWriteInput<DataStream<HoodieRecord>> dedupedRecords, HoodieEngineContext context, HoodieTable table) {
-    DataStream<HoodieRecord> taggedRecords = dedupedRecords.getInputs().process(new TagLocationProcessFunction(context, table));
-    return new HoodieWriteInput<>(taggedRecords);
+  public HoodieWriteInput<List<HoodieRecord>> tag(HoodieWriteInput<List<HoodieRecord>> dedupedRecords, HoodieTableV2 table) {
+    return null;
   }
 
   @Override
-  public HoodieWriteOutput<DataStream<WriteStatus>> lazyWrite(HoodieWriteInput<DataStream<HoodieRecord>> taggedRecords, String instantTime) {
-    DataStream<WriteStatus> writeStatusDataStream = taggedRecords.getInputs().process(new LazyWriteProcessFunction(instantTime));
-    return new HoodieWriteOutput<>(writeStatusDataStream);
+  public HoodieWriteOutput<List<WriteStatus>> lazyWrite(HoodieWriteInput<List<HoodieRecord>> taggedRecords, String instantTime) {
+    return null;
   }
 
   @Override
-  public void updateLocation(HoodieWriteOutput<DataStream<WriteStatus>> writeStatus, HoodieTable table, HoodieEngineContext context) {
-    writeStatus.getOutput().process(new UpdateLocationProcessFunction(context,table));
+  public void updateLocation(HoodieWriteOutput<List<WriteStatus>> writeStatus, HoodieTableV2 table) {
+    // TODO
   }
 
   @Override
-  public void finalCommit(HoodieWriteOutput<DataStream<WriteStatus>> writeStatusDS, HoodieEngineContext context) {
-    writeStatusDS
-        .getOutput()
-        .addSink(new FinalCommitSink(context))
-        .setParallelism(1);
+  public void finalCommit(HoodieWriteOutput<List<WriteStatus>> writeStatus) {
+    // TODO
   }
-
 }
