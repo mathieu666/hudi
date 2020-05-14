@@ -35,7 +35,7 @@ import org.apache.hudi.table.HoodieTable;
 
 import org.apache.avro.Schema;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -246,7 +246,7 @@ public class TestHoodieGlobalBloomIndex extends HoodieClientTestHarness {
     HoodieRecord record5 =
         new HoodieRecord(new HoodieKey(rowChange5.getRowKey(), rowChange5.getPartitionPath()), rowChange5);
 
-    JavaRDD<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2, record3, record5));
+    List<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2, record3, record5));
 
     String filename0 =
         HoodieClientTestUtils.writeParquetFile(basePath, "2016/04/01", Collections.singletonList(record1), schema, null, false);
@@ -265,7 +265,7 @@ public class TestHoodieGlobalBloomIndex extends HoodieClientTestHarness {
     new File(basePath + "/.hoodie").mkdirs();
 
     // partitions will NOT be respected by this loadInvolvedFiles(...) call
-    JavaRDD<HoodieRecord> taggedRecordRDD = index.tagLocation(recordRDD, jsc, table);
+    List<HoodieRecord> taggedRecordRDD = index.tagLocation(recordRDD, jsc, table);
 
     for (HoodieRecord record : taggedRecordRDD.collect()) {
       switch (record.getRecordKey()) {
@@ -350,8 +350,8 @@ public class TestHoodieGlobalBloomIndex extends HoodieClientTestHarness {
     new File(basePath + "/.hoodie").mkdirs();
 
     // test against incoming record with a different partition
-    JavaRDD<HoodieRecord> recordRDD = jsc.parallelize(Collections.singletonList(incomingRecord));
-    JavaRDD<HoodieRecord> taggedRecordRDD = index.tagLocation(recordRDD, jsc, table);
+    List<HoodieRecord> recordRDD = jsc.parallelize(Collections.singletonList(incomingRecord));
+    List<HoodieRecord> taggedRecordRDD = index.tagLocation(recordRDD, jsc, table);
 
     assertEquals(2, taggedRecordRDD.count());
     for (HoodieRecord record : taggedRecordRDD.collect()) {
@@ -370,9 +370,9 @@ public class TestHoodieGlobalBloomIndex extends HoodieClientTestHarness {
     }
 
     // test against incoming record with the same partition
-    JavaRDD<HoodieRecord> recordRDDSamePartition = jsc
+    List<HoodieRecord> recordRDDSamePartition = jsc
         .parallelize(Collections.singletonList(incomingRecordSamePartition));
-    JavaRDD<HoodieRecord> taggedRecordRDDSamePartition = index.tagLocation(recordRDDSamePartition, jsc, table);
+    List<HoodieRecord> taggedRecordRDDSamePartition = index.tagLocation(recordRDDSamePartition, jsc, table);
 
     assertEquals(1, taggedRecordRDDSamePartition.count());
     HoodieRecord record = taggedRecordRDDSamePartition.first();

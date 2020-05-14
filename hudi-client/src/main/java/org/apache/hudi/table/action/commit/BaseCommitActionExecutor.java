@@ -42,7 +42,7 @@ import org.apache.hudi.table.action.BaseActionExecutor;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.Partitioner;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
 
@@ -71,12 +71,12 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
 
   public BaseCommitActionExecutor(JavaSparkContext jsc, HoodieWriteConfig config,
       HoodieTable table, String instantTime, WriteOperationType operationType,
-      JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+      List<HoodieRecord<T>> inputRecordsRDD) {
     super(jsc, config, table, instantTime);
     this.operationType = operationType;
   }
 
-  public HoodieWriteMetadata execute(JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+  public HoodieWriteMetadata execute(List<HoodieRecord<T>> inputRecordsRDD) {
     HoodieWriteMetadata result = new HoodieWriteMetadata();
     // Cache the tagged records, so we don't end up computing both
     // TODO: Consistent contract in HoodieWriteClient regarding preppedRecord storage level handling
@@ -95,8 +95,8 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
 
     // partition using the insert partitioner
     final Partitioner partitioner = getPartitioner(profile);
-    JavaRDD<HoodieRecord<T>> partitionedRecords = partition(inputRecordsRDD, partitioner);
-    JavaRDD<WriteStatus> writeStatusRDD = partitionedRecords.mapPartitionsWithIndex((partition, recordItr) -> {
+    List<HoodieRecord<T>> partitionedRecords = partition(inputRecordsRDD, partitioner);
+    List<WriteStatus> writeStatusRDD = partitionedRecords.mapPartitionsWithIndex((partition, recordItr) -> {
       if (WriteOperationType.isChangingRecords(operationType)) {
         return handleUpsertPartition(instantTime, partition, recordItr, partitioner);
       } else {
@@ -149,19 +149,19 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
     }
   }
 
-  private JavaRDD<HoodieRecord<T>> partition(JavaRDD<HoodieRecord<T>> dedupedRecords, Partitioner partitioner) {
+  private List<HoodieRecord<T>> partition(List<HoodieRecord<T>> dedupedRecords, Partitioner partitioner) {
     return dedupedRecords.mapToPair(
         record -> new Tuple2<>(new Tuple2<>(record.getKey(), Option.ofNullable(record.getCurrentLocation())), record))
         .partitionBy(partitioner).map(Tuple2::_2);
   }
 
-  protected void updateIndexAndCommitIfNeeded(JavaRDD<WriteStatus> writeStatusRDD, HoodieWriteMetadata result) {
+  protected void updateIndexAndCommitIfNeeded(List<WriteStatus> writeStatusRDD, HoodieWriteMetadata result) {
     // cache writeStatusRDD before updating index, so that all actions before this are not triggered again for future
     // RDD actions that are performed after updating the index.
     writeStatusRDD = writeStatusRDD.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
     Instant indexStartTime = Instant.now();
     // Update the index back
-    JavaRDD<WriteStatus> statuses = ((HoodieTable<T>)table).getIndex().updateLocation(writeStatusRDD, jsc,
+    List<WriteStatus> statuses = ((HoodieTable<T>)table).getIndex().updateLocation(writeStatusRDD, jsc,
         (HoodieTable<T>)table);
     result.setIndexUpdateDuration(Duration.between(indexStartTime, Instant.now()));
     result.setWriteStatuses(statuses);

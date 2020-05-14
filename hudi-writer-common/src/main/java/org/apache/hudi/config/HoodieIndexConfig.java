@@ -20,7 +20,7 @@ package org.apache.hudi.config;
 
 import org.apache.hudi.common.bloom.BloomFilterTypeCode;
 import org.apache.hudi.common.config.DefaultHoodieConfig;
-import org.apache.hudi.index.HoodieIndex;
+import org.apache.hudi.index.HoodieIndexV2;
 
 import javax.annotation.concurrent.Immutable;
 import java.io.File;
@@ -35,7 +35,7 @@ import java.util.Properties;
 public class HoodieIndexConfig extends DefaultHoodieConfig {
 
   public static final String INDEX_TYPE_PROP = "hoodie.index.type";
-  public static final String DEFAULT_INDEX_TYPE = HoodieIndex.IndexType.BLOOM.name();
+  public static final String DEFAULT_INDEX_TYPE = HoodieIndexV2.IndexType.BLOOM.name();
 
   public static final String INDEX_CLASS_PROP = "hoodie.index.class";
   public static final String DEFAULT_INDEX_CLASS = "";
@@ -115,7 +115,7 @@ public class HoodieIndexConfig extends DefaultHoodieConfig {
       return this;
     }
 
-    public Builder withIndexType(HoodieIndex.IndexType indexType) {
+    public Builder withIndexType(HoodieIndexV2.IndexType indexType) {
       props.setProperty(INDEX_TYPE_PROP, indexType.name());
       return this;
     }
@@ -228,7 +228,7 @@ public class HoodieIndexConfig extends DefaultHoodieConfig {
       setDefaultOnCondition(props, !props.contains(HOODIE_BLOOM_INDEX_FILTER_DYNAMIC_MAX_ENTRIES),
           HOODIE_BLOOM_INDEX_FILTER_DYNAMIC_MAX_ENTRIES, DEFAULT_HOODIE_BLOOM_INDEX_FILTER_DYNAMIC_MAX_ENTRIES);
       // Throws IllegalArgumentException if the value set is not a known Hoodie Index Type
-      HoodieIndex.IndexType.valueOf(props.getProperty(INDEX_TYPE_PROP));
+      HoodieIndexV2.IndexType.valueOf(props.getProperty(INDEX_TYPE_PROP));
       return config;
     }
   }

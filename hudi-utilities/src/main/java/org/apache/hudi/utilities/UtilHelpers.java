@@ -46,7 +46,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.launcher.SparkLauncher;
 import org.apache.spark.sql.SparkSession;
@@ -251,7 +251,7 @@ public class UtilHelpers {
     return new HoodieWriteClient(jsc, config);
   }
 
-  public static int handleErrors(JavaSparkContext jsc, String instantTime, JavaRDD<WriteStatus> writeResponse) {
+  public static int handleErrors(JavaSparkContext jsc, String instantTime, List<WriteStatus> writeResponse) {
     Accumulator<Integer> errors = jsc.accumulator(0);
     writeResponse.foreach(writeStatus -> {
       if (writeStatus.hasErrors()) {

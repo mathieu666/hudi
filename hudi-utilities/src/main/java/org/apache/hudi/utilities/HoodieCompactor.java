@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.Serializable;
@@ -120,7 +120,7 @@ public class HoodieCompactor {
     String schemaStr = UtilHelpers.parseSchema(fs, cfg.schemaFile);
     HoodieWriteClient client =
         UtilHelpers.createHoodieClient(jsc, cfg.basePath, schemaStr, cfg.parallelism, Option.empty(), props);
-    JavaRDD<WriteStatus> writeResponse = client.compact(cfg.compactionInstantTime);
+    List<WriteStatus> writeResponse = client.compact(cfg.compactionInstantTime);
     return UtilHelpers.handleErrors(jsc, cfg.compactionInstantTime, writeResponse);
   }
 

@@ -19,6 +19,9 @@
 package org.apache.hudi.execution;
 
 import org.apache.hudi.WriteStatus;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
@@ -33,10 +36,10 @@ import java.util.List;
 /**
  * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new log files.
  */
-public class MergeOnReadLazyInsertIterable<T extends HoodieRecordPayload> extends CopyOnWriteLazyInsertIterable<T> {
+public class MergeOnReadLazyInsertIterable<T extends HoodieRecordPayload, INPUT extends HoodieWriteInput, KEY extends HoodieWriteKey, OUTPUT extends HoodieWriteOutput> extends CopyOnWriteLazyInsertIterable<T> {
 
   public MergeOnReadLazyInsertIterable(Iterator<HoodieRecord<T>> sortedRecordItr, HoodieWriteConfig config,
-                                       String instantTime, HoodieTable<T> hoodieTable, String idPfx, SparkTaskContextSupplier sparkTaskContextSupplier) {
+                                       String instantTime, HoodieTable<T, INPUT,KEY, OUTPUT> hoodieTable, String idPfx, SparkTaskContextSupplier sparkTaskContextSupplier) {
     super(sortedRecordItr, config, instantTime, hoodieTable, idPfx, sparkTaskContextSupplier);
   }
 

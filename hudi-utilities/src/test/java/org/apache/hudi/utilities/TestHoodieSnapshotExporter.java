@@ -40,7 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.Dataset;
@@ -97,7 +97,7 @@ public class TestHoodieSnapshotExporter {
       HoodieWriteClient hdfsWriteClient = new HoodieWriteClient(jsc, cfg);
       hdfsWriteClient.startCommitWithTime(COMMIT_TIME);
       List<HoodieRecord> records = dataGen.generateInserts(COMMIT_TIME, NUM_RECORDS);
-      JavaRDD<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
+      List<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
       hdfsWriteClient.bulkInsert(recordsRDD, COMMIT_TIME);
       hdfsWriteClient.close();
 

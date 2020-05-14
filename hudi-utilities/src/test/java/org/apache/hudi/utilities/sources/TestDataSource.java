@@ -25,7 +25,7 @@ import org.apache.hudi.utilities.schema.SchemaProvider;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
@@ -46,7 +46,7 @@ public class TestDataSource extends AbstractBaseTestSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
+  protected InputBatch<List<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
 
     int nextCommitNum = lastCheckpointStr.map(s -> Integer.parseInt(s) + 1).orElse(0);
     String instantTime = String.format("%05d", nextCommitNum);
@@ -59,7 +59,7 @@ public class TestDataSource extends AbstractBaseTestSource {
 
     List<GenericRecord> records =
         fetchNextBatch(props, (int) sourceLimit, instantTime, DEFAULT_PARTITION_NUM).collect(Collectors.toList());
-    JavaRDD<GenericRecord> avroRDD = sparkContext.<GenericRecord>parallelize(records, 4);
+    List<GenericRecord> avroRDD = sparkContext.<GenericRecord>parallelize(records, 4);
     return new InputBatch<>(Option.of(avroRDD), instantTime);
   }
 }

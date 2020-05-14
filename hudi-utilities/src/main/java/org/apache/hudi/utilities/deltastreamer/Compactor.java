@@ -26,7 +26,7 @@ import org.apache.hudi.exception.HoodieException;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
@@ -50,7 +50,7 @@ public class Compactor implements Serializable {
 
   public void compact(HoodieInstant instant) throws IOException {
     LOG.info("Compactor executing compaction " + instant);
-    JavaRDD<WriteStatus> res = compactionClient.compact(instant.getTimestamp());
+    List<WriteStatus> res = compactionClient.compact(instant.getTimestamp());
     long numWriteErrors = res.collect().stream().filter(WriteStatus::hasErrors).count();
     if (numWriteErrors != 0) {
       // We treat even a single error in compaction as fatal

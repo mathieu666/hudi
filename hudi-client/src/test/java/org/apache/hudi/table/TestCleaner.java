@@ -59,7 +59,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -105,7 +105,7 @@ public class TestCleaner extends TestHoodieClientBase {
    */
   private void insertFirstBigBatchForClientCleanerTest(HoodieWriteConfig cfg, HoodieWriteClient client,
       Function2<List<HoodieRecord>, String, Integer> recordGenFunction,
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> insertFn) throws Exception {
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> insertFn) throws Exception {
 
     /*
      * do a big insert (this is basically same as insert part of upsert, just adding it here so we can catch breakages
@@ -114,7 +114,7 @@ public class TestCleaner extends TestHoodieClientBase {
     String newCommitTime = client.startCommit();
 
     List<HoodieRecord> records = recordGenFunction.apply(newCommitTime, BIG_BATCH_INSERT_SIZE);
-    JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 5);
+    List<HoodieRecord> writeRecords = jsc.parallelize(records, 5);
 
     List<WriteStatus> statuses = insertFn.apply(client, writeRecords, newCommitTime).collect();
     // Verify there are no errors
@@ -183,8 +183,8 @@ public class TestCleaner extends TestHoodieClientBase {
    * @throws Exception in case of errors
    */
   private void testInsertAndCleanByVersions(
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> insertFn,
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> upsertFn, boolean isPreppedAPI)
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> insertFn,
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> upsertFn, boolean isPreppedAPI)
       throws Exception {
     int maxVersions = 2; // keep upto 2 versions for each file
     HoodieWriteConfig cfg = getConfigBuilder()
@@ -343,8 +343,8 @@ public class TestCleaner extends TestHoodieClientBase {
    * @throws Exception in case of errors
    */
   private void testInsertAndCleanByCommits(
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> insertFn,
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> upsertFn, boolean isPreppedAPI)
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> insertFn,
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> upsertFn, boolean isPreppedAPI)
       throws Exception {
     int maxCommits = 3; // keep upto 3 commits from the past
     HoodieWriteConfig cfg = getConfigBuilder()

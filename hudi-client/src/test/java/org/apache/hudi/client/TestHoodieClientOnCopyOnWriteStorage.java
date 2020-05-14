@@ -55,7 +55,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hudi.table.action.commit.WriteHelper;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -142,7 +142,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
    * @param writeFn One of HoodieWriteClient Write API
    * @throws Exception in case of failure
    */
-  private void testAutoCommit(Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> writeFn,
+  private void testAutoCommit(Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> writeFn,
                               boolean isPrepped) throws Exception {
     // Set autoCommit false
     HoodieWriteConfig cfg = getConfigBuilder().withAutoCommit(false).build();
@@ -151,7 +151,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
       String prevCommitTime = "000";
       String newCommitTime = "001";
       int numRecords = 200;
-      JavaRDD<WriteStatus> result = insertFirstBatch(cfg, client, newCommitTime, prevCommitTime, numRecords, writeFn,
+      List<WriteStatus> result = insertFirstBatch(cfg, client, newCommitTime, prevCommitTime, numRecords, writeFn,
           isPrepped, false, numRecords);
 
       assertFalse("If Autocommit is false, then commit should not be made automatically",
@@ -193,7 +193,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
    * @throws Exception in case of failure
    */
   private void testDeduplication(
-      Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> writeFn) throws Exception {
+      Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> writeFn) throws Exception {
     String newCommitTime = "001";
 
     String recordKey = UUID.randomUUID().toString();
@@ -209,7 +209,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     HoodieRecord recordThree =
         new HoodieRecord(keyTwo, dataGen.generateRandomValue(keyTwo, newCommitTime));
 
-    JavaRDD<HoodieRecord<TestRawTripPayload>> records =
+    List<HoodieRecord<TestRawTripPayload>> records =
         jsc.parallelize(Arrays.asList(recordOne, recordTwo, recordThree), 1);
 
     // Global dedup should be done based on recordKey only
@@ -227,7 +227,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     assertNodupesWithinPartition(dedupedRecs);
 
     // Perform write-action and check
-    JavaRDD<HoodieRecord> recordList = jsc.parallelize(Arrays.asList(recordOne, recordTwo, recordThree), 1);
+    List<HoodieRecord> recordList = jsc.parallelize(Arrays.asList(recordOne, recordTwo, recordThree), 1);
     try (HoodieWriteClient client = getHoodieWriteClient(getConfigBuilder().combineInput(true, true).build(), false);) {
       client.startCommitWithTime(newCommitTime);
       List<WriteStatus> statuses = writeFn.apply(client, recordList, newCommitTime).collect();
@@ -280,7 +280,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
    * @throws Exception in case of error
    */
   private void testUpsertsInternal(HoodieWriteConfig config,
-                                   Function3<JavaRDD<WriteStatus>, HoodieWriteClient, JavaRDD<HoodieRecord>, String> writeFn, boolean isPrepped)
+                                   Function3<List<WriteStatus>, HoodieWriteClient, List<HoodieRecord>, String> writeFn, boolean isPrepped)
       throws Exception {
     // Force using older timeline layout
     HoodieWriteConfig hoodieWriteConfig = getConfigBuilder().withProps(config.getProps()).withTimelineLayoutVersion(
@@ -413,9 +413,9 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
 
     // Write 1 (only inserts)
     client.startCommitWithTime(newCommitTime);
-    JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(inserts1, 1);
+    List<HoodieRecord> writeRecords = jsc.parallelize(inserts1, 1);
 
-    JavaRDD<WriteStatus> result = client.insert(writeRecords, newCommitTime);
+    List<WriteStatus> result = client.insert(writeRecords, newCommitTime);
     List<WriteStatus> statuses = result.collect();
     assertNoWriteErrors(statuses);
 
@@ -435,9 +435,9 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     client.startCommitWithTime(newCommitTime);
 
     List<HoodieRecord> updates1 = dataGen.generateUpdatesWithDiffPartition(newCommitTime, inserts1);
-    JavaRDD<HoodieRecord> updateRecords = jsc.parallelize(updates1, 1);
+    List<HoodieRecord> updateRecords = jsc.parallelize(updates1, 1);
 
-    JavaRDD<WriteStatus> result1 = client.upsert(updateRecords, newCommitTime);
+    List<WriteStatus> result1 = client.upsert(updateRecords, newCommitTime);
     List<WriteStatus> statuses1 = result1.collect();
     assertNoWriteErrors(statuses1);
 
@@ -471,7 +471,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     List<HoodieRecord> inserts1 = dataGen.generateInserts(commitTime1, insertSplitLimit); // this writes ~500kb
     Set<String> keys1 = HoodieClientTestUtils.getRecordKeys(inserts1);
 
-    JavaRDD<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
+    List<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
     List<WriteStatus> statuses = client.upsert(insertRecordsRDD1, commitTime1).collect();
 
     assertNoWriteErrors(statuses);
@@ -492,7 +492,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     insertsAndUpdates2.addAll(inserts2);
     insertsAndUpdates2.addAll(dataGen.generateUpdates(commitTime2, inserts1));
 
-    JavaRDD<HoodieRecord> insertAndUpdatesRDD2 = jsc.parallelize(insertsAndUpdates2, 1);
+    List<HoodieRecord> insertAndUpdatesRDD2 = jsc.parallelize(insertsAndUpdates2, 1);
     statuses = client.upsert(insertAndUpdatesRDD2, commitTime2).collect();
     assertNoWriteErrors(statuses);
 
@@ -518,7 +518,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     List<HoodieRecord> updates3 = dataGen.generateUpdates(commitTime3, inserts2);
     insertsAndUpdates3.addAll(updates3);
 
-    JavaRDD<HoodieRecord> insertAndUpdatesRDD3 = jsc.parallelize(insertsAndUpdates3, 1);
+    List<HoodieRecord> insertAndUpdatesRDD3 = jsc.parallelize(insertsAndUpdates3, 1);
     statuses = client.upsert(insertAndUpdatesRDD3, commitTime3).collect();
     assertNoWriteErrors(statuses);
 
@@ -582,7 +582,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     client.startCommitWithTime(commitTime1);
     List<HoodieRecord> inserts1 = dataGen.generateInserts(commitTime1, insertSplitLimit); // this writes ~500kb
     Set<String> keys1 = HoodieClientTestUtils.getRecordKeys(inserts1);
-    JavaRDD<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
+    List<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
     List<WriteStatus> statuses = client.insert(insertRecordsRDD1, commitTime1).collect();
 
     assertNoWriteErrors(statuses);
@@ -600,7 +600,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     client.startCommitWithTime(commitTime2);
     List<HoodieRecord> inserts2 = dataGen.generateInserts(commitTime2, 40);
     Set<String> keys2 = HoodieClientTestUtils.getRecordKeys(inserts2);
-    JavaRDD<HoodieRecord> insertRecordsRDD2 = jsc.parallelize(inserts2, 1);
+    List<HoodieRecord> insertRecordsRDD2 = jsc.parallelize(inserts2, 1);
     statuses = client.insert(insertRecordsRDD2, commitTime2).collect();
     assertNoWriteErrors(statuses);
 
@@ -625,7 +625,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     String commitTime3 = "003";
     client.startCommitWithTime(commitTime3);
     List<HoodieRecord> insert3 = dataGen.generateInserts(commitTime3, 200);
-    JavaRDD<HoodieRecord> insertRecordsRDD3 = jsc.parallelize(insert3, 1);
+    List<HoodieRecord> insertRecordsRDD3 = jsc.parallelize(insert3, 1);
     statuses = client.insert(insertRecordsRDD3, commitTime3).collect();
     assertNoWriteErrors(statuses);
     assertEquals("2 files needs to be committed.", 2, statuses.size());
@@ -665,7 +665,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     List<HoodieRecord> inserts1 = dataGen.generateInserts(commitTime1, insertSplitLimit); // this writes ~500kb
     Set<String> keys1 = HoodieClientTestUtils.getRecordKeys(inserts1);
     List<String> keysSoFar = new ArrayList<>(keys1);
-    JavaRDD<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
+    List<HoodieRecord> insertRecordsRDD1 = jsc.parallelize(inserts1, 1);
     List<WriteStatus> statuses = client.upsert(insertRecordsRDD1, commitTime1).collect();
 
     assertNoWriteErrors(statuses);
@@ -698,7 +698,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     List<HoodieRecord> dummyInserts3 = dataGen.generateInserts(commitTime6, 20);
     List<HoodieKey> hoodieKeysToDelete3 = HoodieClientTestUtils
         .getKeysToDelete(HoodieClientTestUtils.getHoodieKeys(dummyInserts3), 20);
-    JavaRDD<HoodieKey> deleteKeys3 = jsc.parallelize(hoodieKeysToDelete3, 1);
+    List<HoodieKey> deleteKeys3 = jsc.parallelize(hoodieKeysToDelete3, 1);
     statuses = client.delete(deleteKeys3, commitTime6).collect();
     assertNoWriteErrors(statuses);
     assertEquals("Just 0 write status for delete.", 0, statuses.size());
@@ -726,7 +726,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     insertsAndUpdates.addAll(inserts);
     insertsAndUpdates.addAll(dataGen.generateUpdates(instantTime, inserts));
 
-    JavaRDD<HoodieRecord> insertAndUpdatesRDD = jsc.parallelize(insertsAndUpdates, 1);
+    List<HoodieRecord> insertAndUpdatesRDD = jsc.parallelize(insertsAndUpdates, 1);
     List<WriteStatus> statuses = client.upsert(insertAndUpdatesRDD, instantTime).collect();
     assertNoWriteErrors(statuses);
 
@@ -746,7 +746,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
 
     List<HoodieKey> hoodieKeysToDelete = HoodieClientTestUtils
         .getKeysToDelete(HoodieClientTestUtils.getHoodieKeys(previousRecords), sizeToDelete);
-    JavaRDD<HoodieKey> deleteKeys = jsc.parallelize(hoodieKeysToDelete, 1);
+    List<HoodieKey> deleteKeys = jsc.parallelize(hoodieKeysToDelete, 1);
     List<WriteStatus> statuses = client.delete(deleteKeys, instantTime).collect();
 
     assertNoWriteErrors(statuses);
@@ -794,7 +794,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     List<HoodieRecord> dummyInserts = dataGen.generateInserts(commitTime1, 20);
     List<HoodieKey> hoodieKeysToDelete = HoodieClientTestUtils
         .getKeysToDelete(HoodieClientTestUtils.getHoodieKeys(dummyInserts), 20);
-    JavaRDD<HoodieKey> deleteKeys = jsc.parallelize(hoodieKeysToDelete, 1);
+    List<HoodieKey> deleteKeys = jsc.parallelize(hoodieKeysToDelete, 1);
     try {
       client.delete(deleteKeys, commitTime1).collect();
       fail("Should have thrown Exception");
@@ -818,9 +818,9 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
       client.startCommitWithTime(instantTime);
 
       List<HoodieRecord> records = dataGen.generateInserts(instantTime, 200);
-      JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+      List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
 
-      JavaRDD<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
+      List<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
 
       assertTrue("Commit should succeed", client.commit(instantTime, result));
       assertTrue("After explicit commit, commit file should be created",
@@ -864,9 +864,9 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     client.startCommitWithTime(instantTime);
 
     List<HoodieRecord> records = dataGen.generateInserts(instantTime, 200);
-    JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+    List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
 
-    JavaRDD<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
+    List<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
 
     assertTrue("Commit should succeed", client.commit(instantTime, result));
     assertTrue("After explicit commit, commit file should be created",
@@ -933,7 +933,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     String instantTime = "000";
     HoodieWriteConfig cfg = getConfigBuilder().withAutoCommit(false).build();
     HoodieWriteClient client = getHoodieWriteClient(cfg);
-    Pair<Path, JavaRDD<WriteStatus>> result = testConsistencyCheck(metaClient, instantTime);
+    Pair<Path, List<WriteStatus>> result = testConsistencyCheck(metaClient, instantTime);
 
     // Delete orphan marker and commit should succeed
     metaClient.getFs().delete(result.getKey(), false);
@@ -960,7 +960,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     assertFalse(metaClient.getFs().exists(new Path(metaClient.getMarkerFolderPath(instantTime))));
   }
 
-  private Pair<Path, JavaRDD<WriteStatus>> testConsistencyCheck(HoodieTableMetaClient metaClient, String instantTime)
+  private Pair<Path, List<WriteStatus>> testConsistencyCheck(HoodieTableMetaClient metaClient, String instantTime)
       throws Exception {
     HoodieWriteConfig cfg = getConfigBuilder().withAutoCommit(false)
         .withConsistencyGuardConfig(ConsistencyGuardConfig.newBuilder().withConsistencyCheckEnabled(true)
@@ -969,8 +969,8 @@ public class TestHoodieClientOnCopyOnWriteStorage extends TestHoodieClientBase {
     HoodieWriteClient client = getHoodieWriteClient(cfg);
 
     client.startCommitWithTime(instantTime);
-    JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(dataGen.generateInserts(instantTime, 200), 1);
-    JavaRDD<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
+    List<HoodieRecord> writeRecords = jsc.parallelize(dataGen.generateInserts(instantTime, 200), 1);
+    List<WriteStatus> result = client.bulkInsert(writeRecords, instantTime);
     result.collect();
 
     // Create a dummy marker file to simulate the case that a marker file was created without data file.

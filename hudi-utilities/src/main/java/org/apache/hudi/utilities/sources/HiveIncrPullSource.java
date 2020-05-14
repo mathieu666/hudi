@@ -36,7 +36,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
@@ -114,7 +114,7 @@ public class HiveIncrPullSource extends AvroSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
+  protected InputBatch<List<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
     try {
       // find the source commit to pull
       Option<String> commitToPull = findCommitToPull(lastCheckpointStr);

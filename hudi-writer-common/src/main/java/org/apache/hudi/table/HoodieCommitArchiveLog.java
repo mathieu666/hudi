@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.writer.table;
+package org.apache.hudi.table;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,10 +43,10 @@ import org.apache.hudi.common.util.CleanerUtils;
 import org.apache.hudi.common.util.CompactionUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
+import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.exception.HoodieCommitException;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.writer.config.HoodieWriteConfig;
-import org.apache.hudi.writer.exception.HoodieCommitException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -127,7 +127,7 @@ public class HoodieCommitArchiveLog {
     int maxCommitsToKeep = config.getMaxCommitsToKeep();
     int minCommitsToKeep = config.getMinCommitsToKeep();
 
-    HoodieTable table = HoodieTable.create(metaClient, config, jsc);
+    HoodieTable table = HoodieTable.create(metaClient, config);
 
     // GroupBy each action and limit each action timeline to maxCommitsToKeep
     // TODO: Handle ROLLBACK_ACTION in future

@@ -19,12 +19,12 @@
 package org.apache.hudi.execution;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hudi.HoodieWriteClientV2;
+import org.apache.hudi.WriteStatus;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieException;
-import org.apache.hudi.writer.client.HoodieWriteClient;
-import org.apache.hudi.writer.client.WriteStatus;
-import org.apache.hudi.writer.common.HoodieWriteOutput;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -40,10 +40,10 @@ public class Compactor implements Serializable {
   private static final long serialVersionUID = 1L;
   private static final Logger LOG = LogManager.getLogger(Compactor.class);
 
-  private transient HoodieWriteClient compactionClient;
+  private transient HoodieWriteClientV2 compactionClient;
   private transient Configuration hadoopConf;
 
-  public Compactor(HoodieWriteClient compactionClient, Configuration hadoopConf) {
+  public Compactor(HoodieWriteClientV2 compactionClient, Configuration hadoopConf) {
     this.hadoopConf = hadoopConf;
     this.compactionClient = compactionClient;
   }

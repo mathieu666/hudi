@@ -29,6 +29,7 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.hudi.index.hbase.HBaseIndexV2;
+import org.apache.hudi.table.HoodieCommitArchiveLog;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.writer.exception.HoodieInsertException;
 import org.apache.hudi.writer.exception.HoodieUpsertException;
@@ -54,6 +55,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
   private static final String LOOKUP_STR = "lookup";
   protected final String basePath;
   private final boolean rollbackPending;
+  private HoodieEngineContext context;
 
   private transient WriteOperationType operationType;
 
@@ -65,14 +67,14 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
     this.operationType = operationType;
   }
 
-  public HoodieWriteFlinkClient(Configuration hadoopConf, HoodieWriteConfig config, boolean rollbackPending) {
-    this.hadoopConf = hadoopConf;
+  public HoodieWriteFlinkClient(HoodieEngineContext context, HoodieWriteConfig config, boolean rollbackPending) {
+    this.hadoopConf = context.getHadoopConf().get();
+    this.context = context;
     this.config = config;
     this.index = new HBaseIndexV2(hadoopConf, config);
     this.basePath = config.getBasePath();
     this.rollbackPending = rollbackPending;
   }
-
 
   @Override
   public HoodieWriteOutput<List<WriteStatus>> upsert(HoodieWriteInput<List<HoodieRecord<T>>> hoodieRecords, String instantTime) {
@@ -83,7 +85,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
     return postWrite(result, instantTime, table);
   }
 
-  private HoodieWriteOutput<List<WriteStatus>> postWrite(HoodieWriteMetadata result, String instantTime, HoodieTableV2 table) {
+  private HoodieWriteOutput<List<WriteStatus>> postWrite(HoodieWriteMetadata result, String instantTime, HoodieTable table) {
 //    if (result.getIndexLookupDuration().isPresent()) {
 //      metrics.updateIndexMetrics(getOperationType().name(), result.getIndexUpdateDuration().get().toMillis());
 //    }
@@ -114,7 +116,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
       }
       // We cannot have unbounded commit files. Archive commits if we have to archive
       HoodieCommitArchiveLog archiveLog = new HoodieCommitArchiveLog(config, createMetaClient(true));
-      archiveLog.archiveIfRequired(context);
+      archiveLog.archiveIfRequired(hadoopConf);
       if (config.isAutoClean()) {
         // Call clean to cleanup if there is anything to cleanup after the commit,
         LOG.info("Auto cleaning is enabled. Running cleaner now");
@@ -152,7 +154,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
   private List<WriteStatus> compact(String compactionInstantTime, boolean autoCommit) throws IOException {
     // Create a Hoodie table which encapsulated the commits and files visible
     HoodieTableMetaClient metaClient = createMetaClient(true);
-    HoodieTableV2<T> table = HoodieTableV2.create(metaClient, config, context);
+    HoodieTable table = HoodieTable.create(metaClient, config);
     HoodieTimeline pendingCompactionTimeline = metaClient.getActiveTimeline().filterPendingCompactionTimeline();
     HoodieInstant inflightInstant = HoodieTimeline.getCompactionInflightInstant(compactionInstantTime);
     if (pendingCompactionTimeline.containsInstant(inflightInstant)) {
@@ -177,12 +179,12 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
         CompactionUtils.getCompactionPlan(metaClient, compactionInstant.getTimestamp());
     // Mark instant as compaction inflight
     activeTimeline.transitionCompactionRequestedToInflight(compactionInstant);
-    compactionTimer = metrics.getCompactionCtx();
+//    compactionTimer = metrics.getCompactionCtx();
     // Create a Hoodie table which encapsulated the commits and files visible
-    HoodieTableV2<T> table = HoodieTableV2.create(metaClient, config, jsc);
-    List<WriteStatus> statuses = table.compact(context, compactionInstant.getTimestamp(), compactionPlan);
+    HoodieTable table = HoodieTable.create(metaClient, config);
+    List<WriteStatus> statuses = table.compact(compactionInstant.getTimestamp(), compactionPlan);
     // Force compaction action
-    statuses.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
+//    statuses.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
     // pass extra-metada so that it gets stored in commit file automatically
     commitCompaction(statuses, table, compactionInstant.getTimestamp(), autoCommit,
         Option.ofNullable(compactionPlan.getExtraMetadata()));
@@ -195,7 +197,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
    * @param inflightInstant Inflight Compaction Instant
    * @param table           Hoodie Table
    */
-  public void rollbackInflightCompaction(HoodieInstant inflightInstant, HoodieTableV2 table) {
+  public void rollbackInflightCompaction(HoodieInstant inflightInstant, HoodieTable table) {
     table.rollback(context, HoodieActiveTimeline.createNewInstantTime(), inflightInstant, false);
     table.getActiveTimeline().revertCompactionInflightToRequested(inflightInstant);
   }
@@ -236,7 +238,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
     ValidationUtils.checkArgument(conflictingInstants.isEmpty(),
         "Following instants have timestamps >= compactionInstant (" + instantTime + ") Instants :"
             + conflictingInstants);
-    HoodieTableV2<T> table = HoodieTableV2.create(metaClient, config, context);
+    HoodieTable table = HoodieTable.create(metaClient, config, context);
     HoodieCompactionPlan workload = table.scheduleCompaction(context, instantTime);
     if (workload != null && (workload.getOperations() != null) && (!workload.getOperations().isEmpty())) {
       extraMetadata.ifPresent(workload::setExtraMetadata);
@@ -400,7 +402,7 @@ public class HoodieWriteFlinkClient<T extends HoodieRecordPayload> implements
    * @throws HoodieUpsertException If schema check fails during upserts
    * @throws HoodieInsertException If schema check fails during inserts
    */
-  private void validateSchema(HoodieTableV2 hoodieTableV2, final boolean isUpsert)
+  private void validateSchema(HoodieTable hoodieTableV2, final boolean isUpsert)
       throws HoodieUpsertException, HoodieInsertException {
 
     if (!getConfig().getAvroSchemaValidate()) {

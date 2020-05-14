@@ -27,18 +27,18 @@ import org.apache.hudi.exception.HoodieInsertException;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.UserDefinedBulkInsertPartitioner;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class BulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends CommitActionExecutor<T> {
 
-  private final JavaRDD<HoodieRecord<T>> preppedInputRecordRdd;
+  private final List<HoodieRecord<T>> preppedInputRecordRdd;
   private final Option<UserDefinedBulkInsertPartitioner> bulkInsertPartitioner;
 
   public BulkInsertPreppedCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieRecord<T>> preppedInputRecordRdd,
+      String instantTime, List<HoodieRecord<T>> preppedInputRecordRdd,
       Option<UserDefinedBulkInsertPartitioner> bulkInsertPartitioner) {
     super(jsc, config, table, instantTime, WriteOperationType.BULK_INSERT);
     this.preppedInputRecordRdd = preppedInputRecordRdd;

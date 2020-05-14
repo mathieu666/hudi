@@ -49,7 +49,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.util.AccumulatorV2;
@@ -82,7 +82,7 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
   private AccumulatorV2<Long, Long> totalFileSlices;
 
   @Override
-  public JavaRDD<WriteStatus> compact(JavaSparkContext jsc, HoodieCompactionPlan compactionPlan,
+  public List<WriteStatus> compact(JavaSparkContext jsc, HoodieCompactionPlan compactionPlan,
       HoodieTable hoodieTable, HoodieWriteConfig config, String compactionInstantTime) throws IOException {
     if (compactionPlan == null || (compactionPlan.getOperations() == null)
         || (compactionPlan.getOperations().isEmpty())) {

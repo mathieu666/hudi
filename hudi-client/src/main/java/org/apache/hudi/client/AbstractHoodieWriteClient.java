@@ -40,7 +40,7 @@ import org.apache.hudi.metrics.HoodieMetrics;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
@@ -83,34 +83,34 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
   /**
    * Commit changes performed at the given instantTime marker.
    */
-  public boolean commit(String instantTime, JavaRDD<WriteStatus> writeStatuses) {
+  public boolean commit(String instantTime, List<WriteStatus> writeStatuses) {
     return commit(instantTime, writeStatuses, Option.empty());
   }
 
   /**
    * Commit changes performed at the given instantTime marker.
    */
-  public boolean commit(String instantTime, JavaRDD<WriteStatus> writeStatuses,
+  public boolean commit(String instantTime, List<WriteStatus> writeStatuses,
       Option<Map<String, String>> extraMetadata) {
     HoodieTableMetaClient metaClient = createMetaClient(false);
     return commit(instantTime, writeStatuses, extraMetadata, metaClient.getCommitActionType());
   }
 
-  protected JavaRDD<WriteStatus> updateIndexAndCommitIfNeeded(JavaRDD<WriteStatus> writeStatusRDD, HoodieTable<T> table,
+  protected List<WriteStatus> updateIndexAndCommitIfNeeded(List<WriteStatus> writeStatusRDD, HoodieTable<T> table,
       String instantTime) {
     // cache writeStatusRDD before updating index, so that all actions before this are not triggered again for future
     // RDD actions that are performed after updating the index.
     writeStatusRDD = writeStatusRDD.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
     Timer.Context indexTimer = metrics.getIndexCtx();
     // Update the index back
-    JavaRDD<WriteStatus> statuses = index.updateLocation(writeStatusRDD, jsc, table);
+    List<WriteStatus> statuses = index.updateLocation(writeStatusRDD, jsc, table);
     metrics.updateIndexMetrics(UPDATE_STR, metrics.getDurationInMs(indexTimer == null ? 0L : indexTimer.stop()));
     // Trigger the insert and collect statuses
     commitOnAutoCommit(instantTime, statuses, table.getMetaClient().getCommitActionType());
     return statuses;
   }
 
-  protected void commitOnAutoCommit(String instantTime, JavaRDD<WriteStatus> resultRDD, String actionType) {
+  protected void commitOnAutoCommit(String instantTime, List<WriteStatus> resultRDD, String actionType) {
     if (config.shouldAutoCommit()) {
       LOG.info("Auto commit enabled: Committing " + instantTime);
       boolean commitResult = commit(instantTime, resultRDD, Option.empty(), actionType);
@@ -122,7 +122,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload> e
     }
   }
 
-  private boolean commit(String instantTime, JavaRDD<WriteStatus> writeStatuses,
+  private boolean commit(String instantTime, List<WriteStatus> writeStatuses,
       Option<Map<String, String>> extraMetadata, String actionType) {
 
     LOG.info("Committing " + instantTime);

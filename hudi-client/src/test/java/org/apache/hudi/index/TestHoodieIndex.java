@@ -37,7 +37,7 @@ import org.apache.hudi.index.hbase.HBaseIndex;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.junit.After;
 import org.junit.Before;
@@ -110,17 +110,17 @@ public class TestHoodieIndex extends HoodieClientTestHarness {
     }
 
     @Override
-    public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys, JavaSparkContext jsc, HoodieTable<T> hoodieTable) {
+    public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(List<HoodieKey> hoodieKeys, JavaSparkContext jsc, HoodieTable<T> hoodieTable) {
       return null;
     }
 
     @Override
-    public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
+    public List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> recordRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
       return null;
     }
 
     @Override
-    public JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
+    public List<WriteStatus> updateLocation(List<WriteStatus> writeStatusRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
       return null;
     }
 

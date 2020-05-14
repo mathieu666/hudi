@@ -25,6 +25,7 @@ import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.table.timeline.versioning.TimelineLayoutVersion;
 import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
 import org.apache.hudi.common.util.ReflectionUtils;
+import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import javax.annotation.concurrent.Immutable;
@@ -93,6 +94,10 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
   private static final String MAX_CONSISTENCY_CHECKS_PROP = "hoodie.consistency.check.max_checks";
   private static int DEFAULT_MAX_CONSISTENCY_CHECKS = 7;
 
+  // engine type
+  private static final String ENGINE_TYPE = "hoodie.engine.type";
+  private static final String DEFAULT_ENGINE_TYPE = "SPARK";
+
   private ConsistencyGuardConfig consistencyGuardConfig;
 
   // Hoodie Write Client transparently rewrites File System View config when embedded mode is enabled
@@ -118,6 +123,10 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
    */
   public String getBasePath() {
     return props.getProperty(BASE_PATH_PROP);
+  }
+
+  public String getEngineType() {
+    return props.getProperty(ENGINE_TYPE);
   }
 
   public String getSchema() {
@@ -306,8 +315,8 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
   /**
    * index properties.
    */
-  public HoodieIndex.IndexType getIndexType() {
-    return HoodieIndex.IndexType.valueOf(props.getProperty(HoodieIndexConfig.INDEX_TYPE_PROP));
+  public HoodieIndexV2.IndexType getIndexType() {
+    return HoodieIndexV2.IndexType.valueOf(props.getProperty(HoodieIndexConfig.INDEX_TYPE_PROP));
   }
 
   public String getIndexClass() {
@@ -477,9 +486,9 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
     return Boolean.parseBoolean(props.getProperty(HoodieMetricsConfig.METRICS_ON));
   }
 
-  public MetricsReporterType getMetricsReporterType() {
-    return MetricsReporterType.valueOf(props.getProperty(HoodieMetricsConfig.METRICS_REPORTER_TYPE));
-  }
+//  public MetricsReporterType getMetricsReporterType() {
+//    return MetricsReporterType.valueOf(props.getProperty(HoodieMetricsConfig.METRICS_REPORTER_TYPE));
+//  }
 
   public String getGraphiteServerHost() {
     return props.getProperty(HoodieMetricsConfig.GRAPHITE_SERVER_HOST);
@@ -701,6 +710,11 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       return this;
     }
 
+    public Builder withEngine(String engineType) {
+      props.setProperty(ENGINE_TYPE, String.valueOf(engineType));
+      return this;
+    }
+
     public HoodieWriteConfig build() {
       // Check for mandatory properties
       setDefaultOnCondition(props, !props.containsKey(INSERT_PARALLELISM), INSERT_PARALLELISM, DEFAULT_PARALLELISM);
@@ -737,6 +751,9 @@ public class HoodieWriteConfig extends DefaultHoodieConfig {
       setDefaultOnCondition(props, !props.containsKey(FAIL_ON_TIMELINE_ARCHIVING_ENABLED_PROP),
           FAIL_ON_TIMELINE_ARCHIVING_ENABLED_PROP, DEFAULT_FAIL_ON_TIMELINE_ARCHIVING_ENABLED);
       setDefaultOnCondition(props, !props.containsKey(AVRO_SCHEMA_VALIDATE), AVRO_SCHEMA_VALIDATE, DEFAULT_AVRO_SCHEMA_VALIDATE);
+
+      setDefaultOnCondition(props, !props.containsKey(ENGINE_TYPE),
+          ENGINE_TYPE, DEFAULT_ENGINE_TYPE);
 
       // Make sure the props is propagated
       setDefaultOnCondition(props, !isIndexConfigSet, HoodieIndexConfig.newBuilder().fromProperties(props).build());

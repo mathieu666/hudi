@@ -37,7 +37,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
 
@@ -65,7 +65,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
   }
 
   @Override
-  public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
+  public List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
                                               HoodieTable<T> hoodieTable) {
 
     // Step 0: cache the input record RDD
@@ -92,7 +92,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
 
     // Step 4: Tag the incoming records, as inserts or updates, by joining with existing record keys
     // Cost: 4 sec.
-    JavaRDD<HoodieRecord<T>> taggedRecordRDD = tagLocationBacktoRecords(keyFilenamePairRDD, recordRDD);
+    List<HoodieRecord<T>> taggedRecordRDD = tagLocationBacktoRecords(keyFilenamePairRDD, recordRDD);
 
     if (config.getBloomIndexUseCaching()) {
       recordRDD.unpersist(); // unpersist the input Record RDD
@@ -110,7 +110,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
    * @param hoodieTable hoodie table object
    */
   @Override
-  public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys,
+  public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(List<HoodieKey> hoodieKeys,
                                                                                   JavaSparkContext jsc, HoodieTable<T> hoodieTable) {
     JavaPairRDD<String, String> partitionRecordKeyPairRDD =
         hoodieKeys.mapToPair(key -> new Tuple2<>(key.getPartitionPath(), key.getRecordKey()));
@@ -261,7 +261,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
    * Sub-partition to ensure the records can be looked up against files & also prune file<=>record comparisons based on
    * recordKey ranges in the index info.
    */
-  JavaRDD<Tuple2<String, HoodieKey>> explodeRecordRDDWithFileComparisons(
+  List<Tuple2<String, HoodieKey>> explodeRecordRDDWithFileComparisons(
       final Map<String, List<BloomIndexFileInfo>> partitionToFileIndexInfo,
       JavaPairRDD<String, String> partitionRecordKeyPairRDD) {
     IndexFileFilter indexFileFilter =
@@ -291,7 +291,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
       final Map<String, List<BloomIndexFileInfo>> partitionToFileIndexInfo,
       JavaPairRDD<String, String> partitionRecordKeyPairRDD, int shuffleParallelism, HoodieTable hoodieTable,
       Map<String, Long> fileGroupToComparisons) {
-    JavaRDD<Tuple2<String, HoodieKey>> fileComparisonsRDD =
+    List<Tuple2<String, HoodieKey>> fileComparisonsRDD =
         explodeRecordRDDWithFileComparisons(partitionToFileIndexInfo, partitionRecordKeyPairRDD);
 
     if (config.useBloomIndexBucketizedChecking()) {
@@ -331,8 +331,8 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
   /**
    * Tag the <rowKey, filename> back to the original HoodieRecord RDD.
    */
-  protected JavaRDD<HoodieRecord<T>> tagLocationBacktoRecords(
-      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyFilenamePairRDD, JavaRDD<HoodieRecord<T>> recordRDD) {
+  protected List<HoodieRecord<T>> tagLocationBacktoRecords(
+      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyFilenamePairRDD, List<HoodieRecord<T>> recordRDD) {
     JavaPairRDD<HoodieKey, HoodieRecord<T>> keyRecordPairRDD =
         recordRDD.mapToPair(record -> new Tuple2<>(record.getKey(), record));
     // Here as the recordRDD might have more data than rowKeyRDD (some rowKeys' fileId is null),
@@ -342,7 +342,7 @@ public class HoodieBloomIndex<T extends HoodieRecordPayload> extends HoodieIndex
   }
 
   @Override
-  public JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
+  public List<WriteStatus> updateLocation(List<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
                                              HoodieTable<T> hoodieTable) {
     return writeStatusRDD;
   }

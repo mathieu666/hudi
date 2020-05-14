@@ -31,7 +31,7 @@ import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.Optional;
 
@@ -81,7 +81,7 @@ public class HoodieGlobalBloomIndex<T extends HoodieRecordPayload> extends Hoodi
    */
 
   @Override
-  JavaRDD<Tuple2<String, HoodieKey>> explodeRecordRDDWithFileComparisons(
+  List<Tuple2<String, HoodieKey>> explodeRecordRDDWithFileComparisons(
       final Map<String, List<BloomIndexFileInfo>> partitionToFileIndexInfo,
       JavaPairRDD<String, String> partitionRecordKeyPairRDD) {
 
@@ -104,8 +104,8 @@ public class HoodieGlobalBloomIndex<T extends HoodieRecordPayload> extends Hoodi
    * Tagging for global index should only consider the record key.
    */
   @Override
-  protected JavaRDD<HoodieRecord<T>> tagLocationBacktoRecords(
-      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyLocationPairRDD, JavaRDD<HoodieRecord<T>> recordRDD) {
+  protected List<HoodieRecord<T>> tagLocationBacktoRecords(
+      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyLocationPairRDD, List<HoodieRecord<T>> recordRDD) {
 
     JavaPairRDD<String, HoodieRecord<T>> incomingRowKeyRecordPairRDD =
         recordRDD.mapToPair(record -> new Tuple2<>(record.getRecordKey(), record));

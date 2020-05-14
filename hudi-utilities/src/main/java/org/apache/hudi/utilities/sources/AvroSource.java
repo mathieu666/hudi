@@ -22,11 +22,11 @@ import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 
 import org.apache.avro.generic.GenericRecord;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
-public abstract class AvroSource extends Source<JavaRDD<GenericRecord>> {
+public abstract class AvroSource extends Source<List<GenericRecord>> {
 
   public AvroSource(TypedProperties props, JavaSparkContext sparkContext, SparkSession sparkSession,
       SchemaProvider schemaProvider) {

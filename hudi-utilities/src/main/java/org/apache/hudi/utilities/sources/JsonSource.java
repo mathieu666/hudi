@@ -21,11 +21,11 @@ package org.apache.hudi.utilities.sources;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
-public abstract class JsonSource extends Source<JavaRDD<String>> {
+public abstract class JsonSource extends Source<List<String>> {
 
   public JsonSource(TypedProperties props, JavaSparkContext sparkContext, SparkSession sparkSession,
       SchemaProvider schemaProvider) {

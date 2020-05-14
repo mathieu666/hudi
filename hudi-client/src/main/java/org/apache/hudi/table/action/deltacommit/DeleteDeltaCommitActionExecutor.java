@@ -26,17 +26,17 @@ import org.apache.hudi.table.HoodieTable;
 
 import org.apache.hudi.table.action.commit.DeleteHelper;
 import org.apache.hudi.table.action.commit.HoodieWriteMetadata;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class DeleteDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends DeltaCommitActionExecutor<T> {
 
-  private final JavaRDD<HoodieKey> keys;
+  private final List<HoodieKey> keys;
 
   public DeleteDeltaCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieKey> keys) {
+      String instantTime, List<HoodieKey> keys) {
     super(jsc, config, table, instantTime, WriteOperationType.DELETE);
     this.keys = keys;
   }

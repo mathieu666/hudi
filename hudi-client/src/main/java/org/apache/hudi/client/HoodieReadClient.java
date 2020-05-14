@@ -37,7 +37,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -132,7 +132,7 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
    *
    * @return a dataframe
    */
-  public Dataset<Row> readROView(JavaRDD<HoodieKey> hoodieKeys, int parallelism) {
+  public Dataset<Row> readROView(List<HoodieKey> hoodieKeys, int parallelism) {
     assertSqlContext();
     JavaPairRDD<HoodieKey, Option<Pair<String, String>>> lookupResultRDD =
         index.fetchRecordLocation(hoodieKeys, jsc, hoodieTable);
@@ -145,14 +145,14 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
     Set<String> uniquePaths = new HashSet<>(paths);
     Dataset<Row> originalDF = sqlContextOpt.get().read().parquet(uniquePaths.toArray(new String[uniquePaths.size()]));
     StructType schema = originalDF.schema();
-    JavaPairRDD<HoodieKey, Row> keyRowRDD = originalDF.javaRDD().mapToPair(row -> {
+    JavaPairRDD<HoodieKey, Row> keyRowRDD = originalDF.List().mapToPair(row -> {
       HoodieKey key = new HoodieKey(row.getAs(HoodieRecord.RECORD_KEY_METADATA_FIELD),
           row.getAs(HoodieRecord.PARTITION_PATH_METADATA_FIELD));
       return new Tuple2<>(key, row);
     });
 
     // Now, we need to further filter out, for only rows that match the supplied hoodie keys
-    JavaRDD<Row> rowRDD = keyRowRDD.join(keyToFileRDD, parallelism).map(tuple -> tuple._2()._1());
+    List<Row> rowRDD = keyRowRDD.join(keyToFileRDD, parallelism).map(tuple -> tuple._2()._1());
     return sqlContextOpt.get().createDataFrame(rowRDD, schema);
   }
 
@@ -161,7 +161,7 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
    * FullFilePath value is not present, then the key is not found. If the FullFilePath value is present, it is the path
    * component (without scheme) of the URI underlying file
    */
-  public JavaPairRDD<HoodieKey, Option<String>> checkExists(JavaRDD<HoodieKey> hoodieKeys) {
+  public JavaPairRDD<HoodieKey, Option<String>> checkExists(List<HoodieKey> hoodieKeys) {
     return index.fetchRecordLocation(hoodieKeys, jsc, hoodieTable);
   }
 
@@ -171,8 +171,8 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
    * @param hoodieRecords Input RDD of Hoodie records.
    * @return A subset of hoodieRecords RDD, with existing records filtered out.
    */
-  public JavaRDD<HoodieRecord<T>> filterExists(JavaRDD<HoodieRecord<T>> hoodieRecords) {
-    JavaRDD<HoodieRecord<T>> recordsWithLocation = tagLocation(hoodieRecords);
+  public List<HoodieRecord<T>> filterExists(List<HoodieRecord<T>> hoodieRecords) {
+    List<HoodieRecord<T>> recordsWithLocation = tagLocation(hoodieRecords);
     return recordsWithLocation.filter(v1 -> !v1.isCurrentLocationKnown());
   }
 
@@ -183,7 +183,7 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
    * @param hoodieRecords Input RDD of Hoodie records
    * @return Tagged RDD of Hoodie records
    */
-  public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> hoodieRecords) throws HoodieIndexException {
+  public List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> hoodieRecords) throws HoodieIndexException {
     return index.tagLocation(hoodieRecords, jsc, hoodieTable);
   }
 

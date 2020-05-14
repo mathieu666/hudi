@@ -44,7 +44,7 @@ public class WriteJob {
 
     HoodieWriteConfig writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
     HoodieEngineContext context = new HoodieFlinkEngineContext(new SerializableConfiguration(UtilHelpers.getHadoopConf()));
-    HoodieWriteClientV2 writeClient = new HoodieWriteFlinkClient(UtilHelpers.getHadoopConf(), writeConfig);
+    HoodieWriteClientV2 writeClient = new HoodieWriteFlinkClient(context, writeConfig,false);
 
     // read from source
     DataStream<HoodieRecord> records = env.addSource(new SourceReader());

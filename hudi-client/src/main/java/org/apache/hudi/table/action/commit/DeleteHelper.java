@@ -27,7 +27,7 @@ import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.WorkloadProfile;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.time.Duration;
@@ -45,7 +45,7 @@ public class DeleteHelper<T extends HoodieRecordPayload<T>> {
    * @param keys RDD of HoodieKey to deduplicate
    * @return RDD of HoodieKey already be deduplicated
    */
-  private static  <T extends HoodieRecordPayload<T>> JavaRDD<HoodieKey> deduplicateKeys(JavaRDD<HoodieKey> keys,
+  private static  <T extends HoodieRecordPayload<T>> List<HoodieKey> deduplicateKeys(List<HoodieKey> keys,
       HoodieTable<T> table) {
     boolean isIndexingGlobal = table.getIndex().isGlobal();
     if (isIndexingGlobal) {
@@ -58,23 +58,23 @@ public class DeleteHelper<T extends HoodieRecordPayload<T>> {
   }
 
   public static <T extends HoodieRecordPayload<T>> HoodieWriteMetadata execute(String instantTime,
-      JavaRDD<HoodieKey> keys, JavaSparkContext jsc, HoodieWriteConfig config, HoodieTable<T> table,
+      List<HoodieKey> keys, JavaSparkContext jsc, HoodieWriteConfig config, HoodieTable<T> table,
       CommitActionExecutor<T> deleteExecutor) {
     try {
       HoodieWriteMetadata result = null;
       // De-dupe/merge if needed
-      JavaRDD<HoodieKey> dedupedKeys = config.shouldCombineBeforeDelete() ? deduplicateKeys(keys, table) : keys;
+      List<HoodieKey> dedupedKeys = config.shouldCombineBeforeDelete() ? deduplicateKeys(keys, table) : keys;
 
-      JavaRDD<HoodieRecord<T>> dedupedRecords =
+      List<HoodieRecord<T>> dedupedRecords =
           dedupedKeys.map(key -> new HoodieRecord(key, new EmptyHoodieRecordPayload()));
       Instant beginTag = Instant.now();
       // perform index loop up to get existing location of records
-      JavaRDD<HoodieRecord<T>> taggedRecords =
+      List<HoodieRecord<T>> taggedRecords =
           ((HoodieTable<T>)table).getIndex().tagLocation(dedupedRecords, jsc, (HoodieTable<T>)table);
       Duration tagLocationDuration = Duration.between(beginTag, Instant.now());
 
       // filter out non existant keys/records
-      JavaRDD<HoodieRecord<T>> taggedValidRecords = taggedRecords.filter(HoodieRecord::isCurrentLocationKnown);
+      List<HoodieRecord<T>> taggedValidRecords = taggedRecords.filter(HoodieRecord::isCurrentLocationKnown);
       if (!taggedValidRecords.isEmpty()) {
         result = deleteExecutor.execute(taggedValidRecords);
         result.setIndexLookupDuration(tagLocationDuration);

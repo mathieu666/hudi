@@ -40,7 +40,7 @@ import org.apache.hudi.table.HoodieTable;
 import org.apache.avro.Schema;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -280,7 +280,7 @@ public class TestHoodieBloomIndex extends HoodieClientTestHarness {
   @Test
   public void testTagLocationWithEmptyRDD() {
     // We have some records to be tagged (two different partitions)
-    JavaRDD<HoodieRecord> recordRDD = jsc.emptyRDD();
+    List<HoodieRecord> recordRDD = jsc.emptyRDD();
     // Also create the metadata and config
     HoodieWriteConfig config = makeConfig();
     metaClient = HoodieTableMetaClient.reload(metaClient);
@@ -319,7 +319,7 @@ public class TestHoodieBloomIndex extends HoodieClientTestHarness {
     TestRawTripPayload rowChange4 = new TestRawTripPayload(recordStr4);
     HoodieRecord record4 =
         new HoodieRecord(new HoodieKey(rowChange4.getRowKey(), rowChange4.getPartitionPath()), rowChange4);
-    JavaRDD<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2, record3, record4));
+    List<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2, record3, record4));
 
     // Also create the metadata and config
     HoodieWriteConfig config = makeConfig();
@@ -328,7 +328,7 @@ public class TestHoodieBloomIndex extends HoodieClientTestHarness {
 
     // Let's tag
     HoodieBloomIndex bloomIndex = new HoodieBloomIndex(config);
-    JavaRDD<HoodieRecord> taggedRecordRDD = bloomIndex.tagLocation(recordRDD, jsc, table);
+    List<HoodieRecord> taggedRecordRDD = bloomIndex.tagLocation(recordRDD, jsc, table);
 
     // Should not find any files
     for (HoodieRecord record : taggedRecordRDD.collect()) {
@@ -389,7 +389,7 @@ public class TestHoodieBloomIndex extends HoodieClientTestHarness {
     TestRawTripPayload rowChange4 = new TestRawTripPayload(recordStr4);
     HoodieKey key4 = new HoodieKey(rowChange4.getRowKey(), rowChange4.getPartitionPath());
     HoodieRecord record4 = new HoodieRecord(key4, rowChange4);
-    JavaRDD<HoodieKey> keysRDD = jsc.parallelize(Arrays.asList(key1, key2, key3, key4));
+    List<HoodieKey> keysRDD = jsc.parallelize(Arrays.asList(key1, key2, key3, key4));
 
     // Also create the metadata and config
     HoodieWriteConfig config = makeConfig();
@@ -462,13 +462,13 @@ public class TestHoodieBloomIndex extends HoodieClientTestHarness {
     assertTrue(filter.mightContain(record2.getRecordKey()));
 
     // We do the tag
-    JavaRDD<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2));
+    List<HoodieRecord> recordRDD = jsc.parallelize(Arrays.asList(record1, record2));
     HoodieWriteConfig config = makeConfig();
     metaClient = HoodieTableMetaClient.reload(metaClient);
     HoodieTable table = HoodieTable.create(metaClient, config, jsc);
 
     HoodieBloomIndex bloomIndex = new HoodieBloomIndex(config);
-    JavaRDD<HoodieRecord> taggedRecordRDD = bloomIndex.tagLocation(recordRDD, jsc, table);
+    List<HoodieRecord> taggedRecordRDD = bloomIndex.tagLocation(recordRDD, jsc, table);
 
     // Check results
     for (HoodieRecord record : taggedRecordRDD.collect()) {

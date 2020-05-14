@@ -27,7 +27,7 @@ import org.apache.hudi.exception.HoodieException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,7 +58,7 @@ public class DataSourceUtilsTest {
   private HoodieWriteClient hoodieWriteClient;
 
   @Mock
-  private JavaRDD<HoodieRecord> hoodieRecords;
+  private List<HoodieRecord> hoodieRecords;
 
   @Captor
   private ArgumentCaptor<Option> optionCaptor;

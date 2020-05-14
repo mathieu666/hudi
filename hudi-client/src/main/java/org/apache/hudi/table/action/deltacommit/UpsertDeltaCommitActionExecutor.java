@@ -26,17 +26,17 @@ import org.apache.hudi.table.HoodieTable;
 
 import org.apache.hudi.table.action.commit.HoodieWriteMetadata;
 import org.apache.hudi.table.action.commit.WriteHelper;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class UpsertDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends DeltaCommitActionExecutor<T> {
 
-  private JavaRDD<HoodieRecord<T>> inputRecordsRDD;
+  private List<HoodieRecord<T>> inputRecordsRDD;
 
   public UpsertDeltaCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+      String instantTime, List<HoodieRecord<T>> inputRecordsRDD) {
     super(jsc, config, table, instantTime, WriteOperationType.UPSERT);
     this.inputRecordsRDD = inputRecordsRDD;
   }

@@ -29,7 +29,7 @@ import org.apache.avro.mapred.AvroKey;
 import org.apache.avro.mapreduce.AvroKeyInputFormat;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
@@ -47,7 +47,7 @@ public class AvroDFSSource extends AvroSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
+  protected InputBatch<List<GenericRecord>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
     Pair<Option<String>, String> selectPathsWithMaxModificationTime =
         pathSelector.getNextFilePathsAndMaxModificationTime(lastCkptStr, sourceLimit);
     return selectPathsWithMaxModificationTime.getLeft()
@@ -55,7 +55,7 @@ public class AvroDFSSource extends AvroSource {
         .orElseGet(() -> new InputBatch<>(Option.empty(), selectPathsWithMaxModificationTime.getRight()));
   }
 
-  private JavaRDD<GenericRecord> fromFiles(String pathStr) {
+  private List<GenericRecord> fromFiles(String pathStr) {
     JavaPairRDD<AvroKey, NullWritable> avroRDD = sparkContext.newAPIHadoopFile(pathStr, AvroKeyInputFormat.class,
         AvroKey.class, NullWritable.class, sparkContext.hadoopConfiguration());
     return avroRDD.keys().map(r -> ((GenericRecord) r.datum()));

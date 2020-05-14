@@ -51,7 +51,7 @@ import org.apache.hudi.table.HoodieTable;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -434,9 +434,9 @@ public class TestAsyncCompaction extends TestHoodieClientBase {
       // Use first instant for inserting records
       String firstInstant = deltaInstants.get(0);
       deltaInstants = deltaInstants.subList(1, deltaInstants.size());
-      JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+      List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
       client.startCommitWithTime(firstInstant);
-      JavaRDD<WriteStatus> statuses = client.upsert(writeRecords, firstInstant);
+      List<WriteStatus> statuses = client.upsert(writeRecords, firstInstant);
       List<WriteStatus> statusList = statuses.collect();
 
       if (!cfg.shouldAutoCommit()) {
@@ -516,11 +516,11 @@ public class TestAsyncCompaction extends TestHoodieClientBase {
 
   private List<WriteStatus> createNextDeltaCommit(String instantTime, List<HoodieRecord> records,
       HoodieWriteClient client, HoodieTableMetaClient metaClient, HoodieWriteConfig cfg, boolean skipCommit) {
-    JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+    List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
 
     client.startCommitWithTime(instantTime);
 
-    JavaRDD<WriteStatus> statuses = client.upsert(writeRecords, instantTime);
+    List<WriteStatus> statuses = client.upsert(writeRecords, instantTime);
     List<WriteStatus> statusList = statuses.collect();
     assertNoWriteErrors(statusList);
     if (!cfg.shouldAutoCommit() && !skipCommit) {

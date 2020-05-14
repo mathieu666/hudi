@@ -24,17 +24,17 @@ import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class InsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends CommitActionExecutor<T> {
 
-  private final JavaRDD<HoodieRecord<T>> inputRecordsRDD;
+  private final List<HoodieRecord<T>> inputRecordsRDD;
 
   public InsertCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+      String instantTime, List<HoodieRecord<T>> inputRecordsRDD) {
     super(jsc, config, table, instantTime, WriteOperationType.INSERT);
     this.inputRecordsRDD = inputRecordsRDD;
   }

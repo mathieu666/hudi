@@ -22,7 +22,7 @@ import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.table.UserDefinedBulkInsertPartitioner;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 
 import java.io.IOException;
 import java.util.List;
@@ -60,7 +60,7 @@ public class DataSourceTestUtils {
           implements UserDefinedBulkInsertPartitioner<T> {
 
     @Override
-    public JavaRDD<HoodieRecord<T>> repartitionRecords(JavaRDD<HoodieRecord<T>> records, int outputSparkPartitions) {
+    public List<HoodieRecord<T>> repartitionRecords(List<HoodieRecord<T>> records, int outputSparkPartitions) {
       return records;
     }
   }

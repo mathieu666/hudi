@@ -30,7 +30,7 @@ import org.apache.hudi.utilities.sources.helpers.AvroConvertor;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
@@ -52,12 +52,12 @@ public final class SourceFormatAdapter {
   /**
    * Fetch new data in avro format. If the source provides data in different format, they are translated to Avro format
    */
-  public InputBatch<JavaRDD<GenericRecord>> fetchNewDataInAvroFormat(Option<String> lastCkptStr, long sourceLimit) {
+  public InputBatch<List<GenericRecord>> fetchNewDataInAvroFormat(Option<String> lastCkptStr, long sourceLimit) {
     switch (source.getSourceType()) {
       case AVRO:
         return ((AvroSource) source).fetchNext(lastCkptStr, sourceLimit);
       case JSON: {
-        InputBatch<JavaRDD<String>> r = ((JsonSource) source).fetchNext(lastCkptStr, sourceLimit);
+        InputBatch<List<String>> r = ((JsonSource) source).fetchNext(lastCkptStr, sourceLimit);
         AvroConvertor convertor = new AvroConvertor(r.getSchemaProvider().getSourceSchema());
         return new InputBatch<>(Option.ofNullable(r.getBatch().map(rdd -> rdd.map(convertor::fromJson)).orElse(null)),
             r.getCheckpointForNextBatch(), r.getSchemaProvider());
@@ -72,9 +72,9 @@ public final class SourceFormatAdapter {
                     // to avoid nullability mismatch between Avro schema and Row schema
                     ? AvroConversionUtils.createRdd(
                         rdd, r.getSchemaProvider().getSourceSchema(),
-                        HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD()
+                        HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toList()
                     : AvroConversionUtils.createRdd(
-                        rdd, HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD()
+                        rdd, HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toList()
                 ))
             .orElse(null)), r.getCheckpointForNextBatch(), r.getSchemaProvider());
       }
@@ -91,20 +91,20 @@ public final class SourceFormatAdapter {
       case ROW:
         return ((RowSource) source).fetchNext(lastCkptStr, sourceLimit);
       case AVRO: {
-        InputBatch<JavaRDD<GenericRecord>> r = ((AvroSource) source).fetchNext(lastCkptStr, sourceLimit);
+        InputBatch<List<GenericRecord>> r = ((AvroSource) source).fetchNext(lastCkptStr, sourceLimit);
         Schema sourceSchema = r.getSchemaProvider().getSourceSchema();
         return new InputBatch<>(
             Option
                 .ofNullable(
                     r.getBatch()
-                        .map(rdd -> AvroConversionUtils.createDataFrame(JavaRDD.toRDD(rdd), sourceSchema.toString(),
+                        .map(rdd -> AvroConversionUtils.createDataFrame(List.toRDD(rdd), sourceSchema.toString(),
                             source.getSparkSession())
                         )
                         .orElse(null)),
             r.getCheckpointForNextBatch(), r.getSchemaProvider());
       }
       case JSON: {
-        InputBatch<JavaRDD<String>> r = ((JsonSource) source).fetchNext(lastCkptStr, sourceLimit);
+        InputBatch<List<String>> r = ((JsonSource) source).fetchNext(lastCkptStr, sourceLimit);
         Schema sourceSchema = r.getSchemaProvider().getSourceSchema();
         StructType dataType = AvroConversionUtils.convertAvroSchemaToStructType(sourceSchema);
         return new InputBatch<>(

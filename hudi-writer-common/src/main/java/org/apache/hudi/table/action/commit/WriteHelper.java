@@ -23,7 +23,6 @@ import org.apache.hudi.HoodieWriteMetadata;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.exception.HoodieUpsertException;
-import org.apache.hudi.table.HoodieTable;
 
 import java.time.Duration;
 import java.time.Instant;

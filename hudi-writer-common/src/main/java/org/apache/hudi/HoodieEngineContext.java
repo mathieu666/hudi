@@ -3,7 +3,6 @@ package org.apache.hudi;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.config.SerializableConfiguration;
-import org.apache.hudi.table.HoodieTable;
 
 public interface HoodieEngineContext<INPUT extends HoodieWriteInput, OUTPUT extends HoodieWriteOutput> {
 

@@ -26,7 +26,7 @@ import org.apache.hudi.utilities.sources.config.TestSourceConfig;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
@@ -50,7 +50,7 @@ public class DistributedTestDataSource extends AbstractBaseTestSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
+  protected InputBatch<List<GenericRecord>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
     int nextCommitNum = lastCkptStr.map(s -> Integer.parseInt(s) + 1).orElse(0);
     String instantTime = String.format("%05d", nextCommitNum);
     LOG.info("Source Limit is set to " + sourceLimit);
@@ -69,7 +69,7 @@ public class DistributedTestDataSource extends AbstractBaseTestSource {
     String maxUniqueRecordsPerPartition = String.valueOf(Math.max(1, maxUniqueRecords / numTestSourcePartitions));
     newProps.setProperty(TestSourceConfig.MAX_UNIQUE_RECORDS_PROP, maxUniqueRecordsPerPartition);
     int perPartitionSourceLimit = Math.max(1, (int) (sourceLimit / numTestSourcePartitions));
-    JavaRDD<GenericRecord> avroRDD =
+    List<GenericRecord> avroRDD =
         sparkContext.parallelize(IntStream.range(0, numTestSourcePartitions).boxed().collect(Collectors.toList()),
             numTestSourcePartitions).mapPartitionsWithIndex((p, idx) -> {
               LOG.info("Initializing source with newProps=" + newProps);

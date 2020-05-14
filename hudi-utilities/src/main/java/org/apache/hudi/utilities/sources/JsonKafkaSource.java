@@ -27,7 +27,7 @@ import org.apache.hudi.utilities.sources.helpers.KafkaOffsetGen.CheckpointUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.streaming.kafka010.KafkaUtils;
@@ -52,18 +52,18 @@ public class JsonKafkaSource extends JsonSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<String>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
+  protected InputBatch<List<String>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
     OffsetRange[] offsetRanges = offsetGen.getNextOffsetRanges(lastCheckpointStr, sourceLimit);
     long totalNewMsgs = CheckpointUtils.totalNewMessages(offsetRanges);
     if (totalNewMsgs <= 0) {
       return new InputBatch<>(Option.empty(), lastCheckpointStr.isPresent() ? lastCheckpointStr.get() : "");
     }
     LOG.info("About to read " + totalNewMsgs + " from Kafka for topic :" + offsetGen.getTopicName());
-    JavaRDD<String> newDataRDD = toRDD(offsetRanges);
+    List<String> newDataRDD = toRDD(offsetRanges);
     return new InputBatch<>(Option.of(newDataRDD), CheckpointUtils.offsetsToStr(offsetRanges));
   }
 
-  private JavaRDD<String> toRDD(OffsetRange[] offsetRanges) {
+  private List<String> toRDD(OffsetRange[] offsetRanges) {
     return KafkaUtils.createRDD(sparkContext, offsetGen.getKafkaParams(), offsetRanges,
             LocationStrategies.PreferConsistent()).map(x -> (String) x.value());
   }

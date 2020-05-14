@@ -21,6 +21,9 @@ package org.apache.hudi.table.action.commit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.HoodieWriteMetadata;
 import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
+import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
@@ -29,18 +32,18 @@ import org.apache.hudi.table.HoodieTable;
 public class UpsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends CommitActionExecutor<T> {
 
-  private HoodieWriteInput inputRecordsRDD;
+  private HoodieWriteInput inputRecords;
 
   public UpsertCommitActionExecutor(Configuration hadoopConf,
-                                    HoodieWriteConfig config, HoodieTable table,
-                                    String instantTime, HoodieWriteInput inputRecordsRDD) {
+                                    HoodieWriteConfig config, HoodieTable<T,INPUT,KEY,OUTPUT> table,
+                                    String instantTime, HoodieWriteInput<T> inputRecordsRDD) {
     super(hadoopConf, config, table, instantTime, WriteOperationType.UPSERT);
-    this.inputRecordsRDD = inputRecordsRDD;
+    this.inputRecords = inputRecordsRDD;
   }
 
   @Override
   public HoodieWriteMetadata execute() {
-    return WriteHelper.write(instantTime, inputRecordsRDD, context, table,
+    return WriteHelper.write(instantTime, inputRecords, context, table,
         config.shouldCombineBeforeUpsert(), config.getUpsertShuffleParallelism(), this, true);
   }
 }

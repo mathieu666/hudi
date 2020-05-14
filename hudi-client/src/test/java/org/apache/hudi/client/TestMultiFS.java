@@ -36,7 +36,7 @@ import org.apache.hudi.index.HoodieIndex;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.junit.After;
@@ -95,7 +95,7 @@ public class TestMultiFS extends HoodieClientTestHarness {
       String readCommitTime = hdfsWriteClient.startCommit();
       LOG.info("Starting commit " + readCommitTime);
       List<HoodieRecord> records = dataGen.generateInserts(readCommitTime, 100);
-      JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+      List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
       hdfsWriteClient.upsert(writeRecords, readCommitTime);
 
       // Read from hdfs
@@ -112,7 +112,7 @@ public class TestMultiFS extends HoodieClientTestHarness {
       String writeCommitTime = localWriteClient.startCommit();
       LOG.info("Starting write commit " + writeCommitTime);
       List<HoodieRecord> localRecords = dataGen.generateInserts(writeCommitTime, 100);
-      JavaRDD<HoodieRecord> localWriteRecords = jsc.parallelize(localRecords, 1);
+      List<HoodieRecord> localWriteRecords = jsc.parallelize(localRecords, 1);
       LOG.info("Writing to path: " + tablePath);
       localWriteClient.upsert(localWriteRecords, writeCommitTime);
 

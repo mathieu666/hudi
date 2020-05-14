@@ -45,7 +45,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.apache.parquet.hadoop.ParquetInputFormat;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
@@ -145,10 +145,10 @@ public class HDFSParquetImporter implements Serializable {
       HoodieWriteClient client =
           UtilHelpers.createHoodieClient(jsc, cfg.targetPath, schemaStr, cfg.parallelism, Option.empty(), props);
 
-      JavaRDD<HoodieRecord<HoodieRecordPayload>> hoodieRecords = buildHoodieRecordsForImport(jsc, schemaStr);
+      List<HoodieRecord<HoodieRecordPayload>> hoodieRecords = buildHoodieRecordsForImport(jsc, schemaStr);
       // Get instant time.
       String instantTime = client.startCommit();
-      JavaRDD<WriteStatus> writeResponse = load(client, instantTime, hoodieRecords);
+      List<WriteStatus> writeResponse = load(client, instantTime, hoodieRecords);
       return UtilHelpers.handleErrors(jsc, instantTime, writeResponse);
     } catch (Throwable t) {
       LOG.error("Error occurred.", t);
@@ -156,7 +156,7 @@ public class HDFSParquetImporter implements Serializable {
     return -1;
   }
 
-  protected JavaRDD<HoodieRecord<HoodieRecordPayload>> buildHoodieRecordsForImport(JavaSparkContext jsc,
+  protected List<HoodieRecord<HoodieRecordPayload>> buildHoodieRecordsForImport(JavaSparkContext jsc,
       String schemaStr) throws IOException {
     Job job = Job.getInstance(jsc.hadoopConfiguration());
     // Allow recursive directories to be found
@@ -202,8 +202,8 @@ public class HDFSParquetImporter implements Serializable {
    * @param hoodieRecords Hoodie Records
    * @param <T> Type
    */
-  protected <T extends HoodieRecordPayload> JavaRDD<WriteStatus> load(HoodieWriteClient client, String instantTime,
-      JavaRDD<HoodieRecord<T>> hoodieRecords) {
+  protected <T extends HoodieRecordPayload> List<WriteStatus> load(HoodieWriteClient client, String instantTime,
+      List<HoodieRecord<T>> hoodieRecords) {
     switch (cfg.command.toLowerCase()) {
       case "upsert": {
         return client.upsert(hoodieRecords, instantTime);

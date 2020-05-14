@@ -24,7 +24,7 @@ import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
@@ -53,6 +53,6 @@ public interface HoodieCompactor extends Serializable {
   /**
    * Execute compaction operations and report back status.
    */
-  JavaRDD<WriteStatus> compact(JavaSparkContext jsc, HoodieCompactionPlan compactionPlan, HoodieTable hoodieTable,
+  List<WriteStatus> compact(JavaSparkContext jsc, HoodieCompactionPlan compactionPlan, HoodieTable hoodieTable,
       HoodieWriteConfig config, String compactionInstantTime) throws IOException;
 }

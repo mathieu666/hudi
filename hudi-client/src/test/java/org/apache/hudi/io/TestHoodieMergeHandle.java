@@ -36,7 +36,7 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.HoodieIndex;
 
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.junit.After;
@@ -103,7 +103,7 @@ public class TestHoodieMergeHandle extends HoodieClientTestHarness {
         HoodieRecord dup = dataGen.generateUpdateRecord(record2.getKey(), newCommitTime);
         records.add(dup);
       }
-      JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
+      List<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
       List<WriteStatus> statuses = client.bulkInsert(writeRecords, newCommitTime).collect();
       assertNoWriteErrors(statuses);
 
@@ -177,7 +177,7 @@ public class TestHoodieMergeHandle extends HoodieClientTestHarness {
       // This exists in 001 and should be updated
       HoodieRecord sameAsRecord2 = dataGen.generateUpdateRecord(record2.getKey(), newCommitTime);
       updateRecords.add(sameAsRecord2);
-      JavaRDD<HoodieRecord> updateRecordsRDD = jsc.parallelize(updateRecords, 1);
+      List<HoodieRecord> updateRecordsRDD = jsc.parallelize(updateRecords, 1);
       statuses = client.upsert(updateRecordsRDD, newCommitTime).collect();
 
       // Verify there are no errors
@@ -229,7 +229,7 @@ public class TestHoodieMergeHandle extends HoodieClientTestHarness {
       writeClient.startCommitWithTime(newCommitTime);
 
       List<HoodieRecord> records = dataGen.generateInserts(newCommitTime, 100);
-      JavaRDD<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
+      List<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
       List<WriteStatus> statuses = writeClient.insert(recordsRDD, newCommitTime).collect();
 
       // All records should be inserts into new parquet
@@ -254,7 +254,7 @@ public class TestHoodieMergeHandle extends HoodieClientTestHarness {
       writeClient.startCommitWithTime(newCommitTime);
 
       List<HoodieRecord> updatedRecords = dataGen.generateUpdates(newCommitTime, records);
-      JavaRDD<HoodieRecord> updatedRecordsRDD = jsc.parallelize(updatedRecords, 1);
+      List<HoodieRecord> updatedRecordsRDD = jsc.parallelize(updatedRecords, 1);
       statuses = writeClient.upsert(updatedRecordsRDD, newCommitTime).collect();
 
       // All records should be upserts into existing parquet
@@ -278,7 +278,7 @@ public class TestHoodieMergeHandle extends HoodieClientTestHarness {
 
       List<HoodieRecord> allRecords = dataGen.generateInserts(newCommitTime, 100);
       allRecords.addAll(updatedRecords);
-      JavaRDD<HoodieRecord> allRecordsRDD = jsc.parallelize(allRecords, 1);
+      List<HoodieRecord> allRecordsRDD = jsc.parallelize(allRecords, 1);
       statuses = writeClient.upsert(allRecordsRDD, newCommitTime).collect();
 
       // All records should be upserts into existing parquet (with inserts as updates small file handled)

@@ -31,7 +31,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -131,7 +131,7 @@ public abstract class AbstractDFSSourceTestBase extends UtilitiesTestBase {
     assertEquals(Option.empty(),
         sourceFormatAdapter.fetchNewDataInAvroFormat(Option.empty(), sourceLimit).getBatch());
     // Test fetching Avro format
-    InputBatch<JavaRDD<GenericRecord>> fetch1 =
+    InputBatch<List<GenericRecord>> fetch1 =
         sourceFormatAdapter.fetchNewDataInAvroFormat(Option.empty(), Long.MAX_VALUE);
     assertEquals(100, fetch1.getBatch().get().count());
     // Test fetching Row format
@@ -140,14 +140,14 @@ public abstract class AbstractDFSSourceTestBase extends UtilitiesTestBase {
     assertEquals(100, fetch1AsRows.getBatch().get().count());
     // Test Avro to Row format
     Dataset<Row> fetch1Rows = AvroConversionUtils
-        .createDataFrame(JavaRDD.toRDD(fetch1.getBatch().get()),
+        .createDataFrame(List.toRDD(fetch1.getBatch().get()),
             schemaProvider.getSourceSchema().toString(), sparkSession);
     assertEquals(100, fetch1Rows.count());
 
     // 2. Produce new data, extract new data
     generateOneFile("2", "001", 10000);
     // Test fetching Avro format
-    InputBatch<JavaRDD<GenericRecord>> fetch2 = sourceFormatAdapter.fetchNewDataInAvroFormat(
+    InputBatch<List<GenericRecord>> fetch2 = sourceFormatAdapter.fetchNewDataInAvroFormat(
         Option.of(fetch1.getCheckpointForNextBatch()), Long.MAX_VALUE);
     assertEquals(10000, fetch2.getBatch().get().count());
     // Test fetching Row format
@@ -167,12 +167,12 @@ public abstract class AbstractDFSSourceTestBase extends UtilitiesTestBase {
     assertEquals(10000, rowDataset.count());
 
     // 4. Extract with latest checkpoint => no new data returned
-    InputBatch<JavaRDD<GenericRecord>> fetch4 = sourceFormatAdapter.fetchNewDataInAvroFormat(
+    InputBatch<List<GenericRecord>> fetch4 = sourceFormatAdapter.fetchNewDataInAvroFormat(
         Option.of(fetch2.getCheckpointForNextBatch()), Long.MAX_VALUE);
     assertEquals(Option.empty(), fetch4.getBatch());
 
     // 5. Extract from the beginning
-    InputBatch<JavaRDD<GenericRecord>> fetch5 = sourceFormatAdapter.fetchNewDataInAvroFormat(
+    InputBatch<List<GenericRecord>> fetch5 = sourceFormatAdapter.fetchNewDataInAvroFormat(
         Option.empty(), Long.MAX_VALUE);
     assertEquals(10100, fetch5.getBatch().get().count());
   }

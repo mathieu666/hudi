@@ -57,7 +57,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -213,7 +213,7 @@ public class DeltaSync implements Serializable {
     // Refresh Timeline
     refreshTimeline();
 
-    Pair<SchemaProvider, Pair<String, JavaRDD<HoodieRecord>>> srcRecordsWithCkpt = readFromSource(commitTimelineOpt);
+    Pair<SchemaProvider, Pair<String, List<HoodieRecord>>> srcRecordsWithCkpt = readFromSource(commitTimelineOpt);
 
     if (null != srcRecordsWithCkpt) {
       // this is the first input batch. If schemaProvider not set, use it and register Avro Schema and start
@@ -230,14 +230,14 @@ public class DeltaSync implements Serializable {
     }
 
     // Clear persistent RDDs
-    jssc.getPersistentRDDs().values().forEach(JavaRDD::unpersist);
+    jssc.getPersistentRDDs().values().forEach(List::unpersist);
     return scheduledCompaction;
   }
 
   /**
    * Read from Upstream Source and apply transformation if needed.
    */
-  private Pair<SchemaProvider, Pair<String, JavaRDD<HoodieRecord>>> readFromSource(
+  private Pair<SchemaProvider, Pair<String, List<HoodieRecord>>> readFromSource(
       Option<HoodieTimeline> commitTimelineOpt) throws Exception {
     // Retrieve the previous round checkpoints, if any
     Option<String> resumeCheckpointStr = Option.empty();
@@ -268,7 +268,7 @@ public class DeltaSync implements Serializable {
     }
     LOG.info("Checkpoint to resume from : " + resumeCheckpointStr);
 
-    final Option<JavaRDD<GenericRecord>> avroRDDOptional;
+    final Option<List<GenericRecord>> avroRDDOptional;
     final String checkpointStr;
     final SchemaProvider schemaProvider;
     if (transformer.isPresent()) {
@@ -287,11 +287,11 @@ public class DeltaSync implements Serializable {
         avroRDDOptional = transformed
             .map(t -> AvroConversionUtils.createRdd(
                 t, this.schemaProvider.getTargetSchema(),
-                HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD());
+                HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toList());
       } else {
         avroRDDOptional = transformed
             .map(t -> AvroConversionUtils.createRdd(
-                t, HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toJavaRDD());
+                t, HOODIE_RECORD_STRUCT_NAME, HOODIE_RECORD_NAMESPACE).toList());
       }
 
       // Use Transformed Row's schema if not overridden. If target schema is not specified
@@ -302,7 +302,7 @@ public class DeltaSync implements Serializable {
           : this.schemaProvider;
     } else {
       // Pull the data from the source & prepare the write
-      InputBatch<JavaRDD<GenericRecord>> dataAndCheckpoint =
+      InputBatch<List<GenericRecord>> dataAndCheckpoint =
           formatAdapter.fetchNewDataInAvroFormat(resumeCheckpointStr, cfg.sourceLimit);
       avroRDDOptional = dataAndCheckpoint.getBatch();
       checkpointStr = dataAndCheckpoint.getCheckpointForNextBatch();
@@ -320,8 +320,8 @@ public class DeltaSync implements Serializable {
       return Pair.of(schemaProvider, Pair.of(checkpointStr, jssc.emptyRDD()));
     }
 
-    JavaRDD<GenericRecord> avroRDD = avroRDDOptional.get();
-    JavaRDD<HoodieRecord> records = avroRDD.map(gr -> {
+    List<GenericRecord> avroRDD = avroRDDOptional.get();
+    List<HoodieRecord> records = avroRDD.map(gr -> {
       HoodieRecordPayload payload = DataSourceUtils.createPayload(cfg.payloadClassName, gr,
           (Comparable) DataSourceUtils.getNestedFieldVal(gr, cfg.sourceOrderingField, false));
       return new HoodieRecord<>(keyGenerator.getKey(gr), payload);
@@ -339,7 +339,7 @@ public class DeltaSync implements Serializable {
    * @param overallTimerContext Timer Context
    * @return Option Compaction instant if one is scheduled
    */
-  private Option<String> writeToSink(JavaRDD<HoodieRecord> records, String checkpointStr,
+  private Option<String> writeToSink(List<HoodieRecord> records, String checkpointStr,
                                      HoodieDeltaStreamerMetrics metrics, Timer.Context overallTimerContext) throws Exception {
 
     Option<String> scheduledCompactionInstant = Option.empty();
@@ -353,7 +353,7 @@ public class DeltaSync implements Serializable {
     String instantTime = startCommit();
     LOG.info("Starting commit  : " + instantTime);
 
-    JavaRDD<WriteStatus> writeStatusRDD;
+    List<WriteStatus> writeStatusRDD;
     if (cfg.operation == Operation.INSERT) {
       writeStatusRDD = writeClient.insert(records, instantTime);
     } else if (cfg.operation == Operation.UPSERT) {

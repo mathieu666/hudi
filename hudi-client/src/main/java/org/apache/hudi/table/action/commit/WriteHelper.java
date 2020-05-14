@@ -25,7 +25,7 @@ import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.table.HoodieTable;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.time.Duration;
@@ -35,16 +35,16 @@ import scala.Tuple2;
 public class WriteHelper<T extends HoodieRecordPayload<T>> {
 
   public static <T extends HoodieRecordPayload<T>> HoodieWriteMetadata write(String instantTime,
-      JavaRDD<HoodieRecord<T>> inputRecordsRDD, JavaSparkContext jsc,
+      List<HoodieRecord<T>> inputRecordsRDD, JavaSparkContext jsc,
       HoodieTable<T> table, boolean shouldCombine,
       int shuffleParallelism, CommitActionExecutor<T> executor, boolean performTagging) {
     try {
       // De-dupe/merge if needed
-      JavaRDD<HoodieRecord<T>> dedupedRecords =
+      List<HoodieRecord<T>> dedupedRecords =
           combineOnCondition(shouldCombine, inputRecordsRDD, shuffleParallelism, table);
 
       Instant lookupBegin = Instant.now();
-      JavaRDD<HoodieRecord<T>> taggedRecords = dedupedRecords;
+      List<HoodieRecord<T>> taggedRecords = dedupedRecords;
       if (performTagging) {
         // perform index loop up to get existing location of records
         taggedRecords = tag(dedupedRecords, jsc, table);
@@ -62,14 +62,14 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
     }
   }
 
-  private static <T extends HoodieRecordPayload<T>> JavaRDD<HoodieRecord<T>> tag(
-      JavaRDD<HoodieRecord<T>> dedupedRecords, JavaSparkContext jsc, HoodieTable<T> table) {
+  private static <T extends HoodieRecordPayload<T>> List<HoodieRecord<T>> tag(
+      List<HoodieRecord<T>> dedupedRecords, JavaSparkContext jsc, HoodieTable<T> table) {
     // perform index loop up to get existing location of records
     return table.getIndex().tagLocation(dedupedRecords, jsc, table);
   }
 
-  public static <T extends HoodieRecordPayload<T>> JavaRDD<HoodieRecord<T>> combineOnCondition(
-      boolean condition, JavaRDD<HoodieRecord<T>> records, int parallelism, HoodieTable<T> table) {
+  public static <T extends HoodieRecordPayload<T>> List<HoodieRecord<T>> combineOnCondition(
+      boolean condition, List<HoodieRecord<T>> records, int parallelism, HoodieTable<T> table) {
     return condition ? deduplicateRecords(records, table, parallelism) : records;
   }
 
@@ -80,13 +80,13 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
    * @param parallelism parallelism or partitions to be used while reducing/deduplicating
    * @return RDD of HoodieRecord already be deduplicated
    */
-  public static <T extends HoodieRecordPayload<T>> JavaRDD<HoodieRecord<T>> deduplicateRecords(
-      JavaRDD<HoodieRecord<T>> records, HoodieTable<T> table, int parallelism) {
+  public static <T extends HoodieRecordPayload<T>> List<HoodieRecord<T>> deduplicateRecords(
+      List<HoodieRecord<T>> records, HoodieTable<T> table, int parallelism) {
     return deduplicateRecords(records, table.getIndex(), parallelism);
   }
 
-  public static <T extends HoodieRecordPayload<T>> JavaRDD<HoodieRecord<T>> deduplicateRecords(
-      JavaRDD<HoodieRecord<T>> records, HoodieIndex<T> index, int parallelism) {
+  public static <T extends HoodieRecordPayload<T>> List<HoodieRecord<T>> deduplicateRecords(
+      List<HoodieRecord<T>> records, HoodieIndex<T> index, int parallelism) {
     boolean isIndexingGlobal = index.isGlobal();
     return records.mapToPair(record -> {
       HoodieKey hoodieKey = record.getKey();

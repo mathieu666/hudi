@@ -47,13 +47,13 @@ public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload>
 
   protected final HoodieWriteConfig hoodieConfig;
   protected final String instantTime;
-  protected final HoodieTable<T> hoodieTable;
+  protected final HoodieTable hoodieTable;
   protected final String idPrefix;
   protected int numFilesWritten;
   protected SparkTaskContextSupplier sparkTaskContextSupplier;
 
   public CopyOnWriteLazyInsertIterable(Iterator<HoodieRecord<T>> sortedRecordItr, HoodieWriteConfig config,
-                                       String instantTime, HoodieTable<T> hoodieTable, String idPrefix,
+                                       String instantTime, HoodieTable hoodieTable, String idPrefix,
                                        SparkTaskContextSupplier sparkTaskContextSupplier) {
     super(sortedRecordItr);
     this.hoodieConfig = config;

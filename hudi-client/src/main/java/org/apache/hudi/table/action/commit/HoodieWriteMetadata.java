@@ -24,7 +24,7 @@ import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.model.HoodieWriteStat;
 import org.apache.hudi.common.util.Option;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 
 import java.time.Duration;
 
@@ -33,7 +33,7 @@ import java.time.Duration;
  */
 public class HoodieWriteMetadata {
 
-  private JavaRDD<WriteStatus> writeStatuses;
+  private List<WriteStatus> writeStatuses;
   private Option<Duration> indexLookupDuration = Option.empty();
 
   // Will be set when auto-commit happens
@@ -46,7 +46,7 @@ public class HoodieWriteMetadata {
   public HoodieWriteMetadata() {
   }
 
-  public JavaRDD<WriteStatus> getWriteStatuses() {
+  public List<WriteStatus> getWriteStatuses() {
     return writeStatuses;
   }
 
@@ -54,7 +54,7 @@ public class HoodieWriteMetadata {
     return commitMetadata;
   }
 
-  public void setWriteStatuses(JavaRDD<WriteStatus> writeStatuses) {
+  public void setWriteStatuses(List<WriteStatus> writeStatuses) {
     this.writeStatuses = writeStatuses;
   }
 

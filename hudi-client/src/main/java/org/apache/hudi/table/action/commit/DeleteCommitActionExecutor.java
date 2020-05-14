@@ -24,17 +24,17 @@ import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class DeleteCommitActionExecutor<T extends HoodieRecordPayload<T>>
     extends CommitActionExecutor<T> {
 
-  private final JavaRDD<HoodieKey> keys;
+  private final List<HoodieKey> keys;
 
   public DeleteCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieKey> keys) {
+      String instantTime, List<HoodieKey> keys) {
     super(jsc, config, table, instantTime, WriteOperationType.DELETE);
     this.keys = keys;
   }

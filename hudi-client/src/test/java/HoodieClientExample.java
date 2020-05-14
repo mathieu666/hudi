@@ -39,7 +39,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.util.ArrayList;
@@ -107,7 +107,7 @@ public class HoodieClientExample {
 
     List<HoodieRecord> records = dataGen.generateInserts(newCommitTime, 100);
     recordsSoFar.addAll(records);
-    JavaRDD<HoodieRecord> writeRecords = jsc.<HoodieRecord>parallelize(records, 1);
+    List<HoodieRecord> writeRecords = jsc.<HoodieRecord>parallelize(records, 1);
     client.upsert(writeRecords, newCommitTime);
 
     /**
@@ -128,7 +128,7 @@ public class HoodieClientExample {
     LOG.info("Starting commit " + newCommitTime);
     List<HoodieKey> toBeDeleted = HoodieClientTestUtils
         .getKeysToDelete(HoodieClientTestUtils.getHoodieKeys(recordsSoFar), 10);
-    JavaRDD<HoodieKey> deleteRecords = jsc.<HoodieKey>parallelize(toBeDeleted, 1);
+    List<HoodieKey> deleteRecords = jsc.<HoodieKey>parallelize(toBeDeleted, 1);
     client.delete(deleteRecords, newCommitTime);
 
     /**
@@ -136,7 +136,7 @@ public class HoodieClientExample {
      */
     if (HoodieTableType.valueOf(tableType) == HoodieTableType.MERGE_ON_READ) {
       Option<String> instant = client.scheduleCompaction(Option.empty());
-      JavaRDD<WriteStatus> writeStatues = client.compact(instant.get());
+      List<WriteStatus> writeStatues = client.compact(instant.get());
       client.commitCompaction(instant.get(), writeStatues, Option.empty());
     }
   }

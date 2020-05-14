@@ -35,7 +35,7 @@ import org.apache.hudi.index.hbase.HBaseIndex;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.Serializable;
@@ -80,13 +80,13 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
    * optional is empty, then the key is not found.
    */
   public abstract JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(
-      JavaRDD<HoodieKey> hoodieKeys, final JavaSparkContext jsc, HoodieTable<T> hoodieTable);
+      List<HoodieKey> hoodieKeys, final JavaSparkContext jsc, HoodieTable<T> hoodieTable);
 
   /**
    * Looks up the index and tags each incoming record with a location of a file that contains the row (if it is actually
    * present).
    */
-  public abstract JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
+  public abstract List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
       HoodieTable<T> hoodieTable) throws HoodieIndexException;
 
   /**
@@ -94,7 +94,7 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
    * <p>
    * TODO(vc): We may need to propagate the record as well in a WriteStatus class
    */
-  public abstract JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
+  public abstract List<WriteStatus> updateLocation(List<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
       HoodieTable<T> hoodieTable) throws HoodieIndexException;
 
   /**

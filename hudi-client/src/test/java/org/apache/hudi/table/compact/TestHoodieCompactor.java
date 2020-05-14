@@ -40,7 +40,7 @@ import org.apache.hudi.index.bloom.HoodieBloomIndex;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -114,11 +114,11 @@ public class TestHoodieCompactor extends HoodieClientTestHarness {
 
       String newCommitTime = writeClient.startCommit();
       List<HoodieRecord> records = dataGen.generateInserts(newCommitTime, 100);
-      JavaRDD<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
+      List<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
       writeClient.insert(recordsRDD, newCommitTime).collect();
 
       String compactionInstantTime = HoodieActiveTimeline.createNewInstantTime();
-      JavaRDD<WriteStatus> result =
+      List<WriteStatus> result =
           table.compact(jsc, compactionInstantTime, table.scheduleCompaction(jsc, compactionInstantTime));
       assertTrue("If there is nothing to compact, result will be empty", result.isEmpty());
     }
@@ -133,7 +133,7 @@ public class TestHoodieCompactor extends HoodieClientTestHarness {
       writeClient.startCommitWithTime(newCommitTime);
 
       List<HoodieRecord> records = dataGen.generateInserts(newCommitTime, 100);
-      JavaRDD<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
+      List<HoodieRecord> recordsRDD = jsc.parallelize(records, 1);
       List<WriteStatus> statuses = writeClient.insert(recordsRDD, newCommitTime).collect();
 
       // Update all the 100 records
@@ -144,7 +144,7 @@ public class TestHoodieCompactor extends HoodieClientTestHarness {
       writeClient.startCommitWithTime(newCommitTime);
 
       List<HoodieRecord> updatedRecords = dataGen.generateUpdates(newCommitTime, records);
-      JavaRDD<HoodieRecord> updatedRecordsRDD = jsc.parallelize(updatedRecords, 1);
+      List<HoodieRecord> updatedRecordsRDD = jsc.parallelize(updatedRecords, 1);
       HoodieIndex index = new HoodieBloomIndex<>(config);
       updatedRecords = index.tagLocation(updatedRecordsRDD, jsc, table).collect();
 
@@ -168,7 +168,7 @@ public class TestHoodieCompactor extends HoodieClientTestHarness {
       table = HoodieTable.create(metaClient, config, jsc);
 
       String compactionInstantTime = HoodieActiveTimeline.createNewInstantTime();
-      JavaRDD<WriteStatus> result =
+      List<WriteStatus> result =
           table.compact(jsc, compactionInstantTime, table.scheduleCompaction(jsc, compactionInstantTime));
 
       // Verify that all partition paths are present in the WriteStatus result

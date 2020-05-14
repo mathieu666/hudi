@@ -44,7 +44,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
@@ -216,7 +216,7 @@ public class DataSourceUtils {
     return new HoodieWriteClient<>(jssc, writeConfig, true);
   }
 
-  public static JavaRDD<WriteStatus> doWriteOperation(HoodieWriteClient client, JavaRDD<HoodieRecord> hoodieRecords,
+  public static List<WriteStatus> doWriteOperation(HoodieWriteClient client, List<HoodieRecord> hoodieRecords,
                                                       String instantTime, String operation) throws HoodieException {
     if (operation.equals(DataSourceWriteOptions.BULK_INSERT_OPERATION_OPT_VAL())) {
       Option<UserDefinedBulkInsertPartitioner> userDefinedBulkInsertPartitioner =
@@ -230,7 +230,7 @@ public class DataSourceUtils {
     }
   }
 
-  public static JavaRDD<WriteStatus> doDeleteOperation(HoodieWriteClient client, JavaRDD<HoodieKey> hoodieKeys,
+  public static List<WriteStatus> doDeleteOperation(HoodieWriteClient client, List<HoodieKey> hoodieKeys,
                                                        String instantTime) {
     return client.delete(hoodieKeys, instantTime);
   }
@@ -242,7 +242,7 @@ public class DataSourceUtils {
   }
 
   @SuppressWarnings("unchecked")
-  public static JavaRDD<HoodieRecord> dropDuplicates(JavaSparkContext jssc, JavaRDD<HoodieRecord> incomingHoodieRecords,
+  public static List<HoodieRecord> dropDuplicates(JavaSparkContext jssc, List<HoodieRecord> incomingHoodieRecords,
                                                      HoodieWriteConfig writeConfig) {
     try {
       HoodieReadClient client = new HoodieReadClient<>(jssc, writeConfig);
@@ -256,7 +256,7 @@ public class DataSourceUtils {
   }
 
   @SuppressWarnings("unchecked")
-  public static JavaRDD<HoodieRecord> dropDuplicates(JavaSparkContext jssc, JavaRDD<HoodieRecord> incomingHoodieRecords,
+  public static List<HoodieRecord> dropDuplicates(JavaSparkContext jssc, List<HoodieRecord> incomingHoodieRecords,
                                                      Map<String, String> parameters) {
     HoodieWriteConfig writeConfig =
         HoodieWriteConfig.newBuilder().withPath(parameters.get("path")).withProps(parameters).build();

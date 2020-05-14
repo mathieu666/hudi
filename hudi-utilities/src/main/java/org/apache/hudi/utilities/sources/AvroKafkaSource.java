@@ -29,7 +29,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.streaming.kafka010.KafkaUtils;
@@ -54,7 +54,7 @@ public class AvroKafkaSource extends AvroSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
+  protected InputBatch<List<GenericRecord>> fetchNewData(Option<String> lastCheckpointStr, long sourceLimit) {
     OffsetRange[] offsetRanges = offsetGen.getNextOffsetRanges(lastCheckpointStr, sourceLimit);
     long totalNewMsgs = CheckpointUtils.totalNewMessages(offsetRanges);
     if (totalNewMsgs <= 0) {
@@ -62,11 +62,11 @@ public class AvroKafkaSource extends AvroSource {
     } else {
       LOG.info("About to read " + totalNewMsgs + " from Kafka for topic :" + offsetGen.getTopicName());
     }
-    JavaRDD<GenericRecord> newDataRDD = toRDD(offsetRanges);
+    List<GenericRecord> newDataRDD = toRDD(offsetRanges);
     return new InputBatch<>(Option.of(newDataRDD), KafkaOffsetGen.CheckpointUtils.offsetsToStr(offsetRanges));
   }
 
-  private JavaRDD<GenericRecord> toRDD(OffsetRange[] offsetRanges) {
+  private List<GenericRecord> toRDD(OffsetRange[] offsetRanges) {
     return KafkaUtils.createRDD(sparkContext, offsetGen.getKafkaParams(), offsetRanges,
             LocationStrategies.PreferConsistent()).map(obj -> (GenericRecord) obj.value());
   }

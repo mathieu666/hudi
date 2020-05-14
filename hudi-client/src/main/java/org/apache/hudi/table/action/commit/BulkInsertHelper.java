@@ -30,7 +30,7 @@ import org.apache.hudi.execution.BulkInsertMapFunction;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.UserDefinedBulkInsertPartitioner;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,21 +39,21 @@ import java.util.stream.IntStream;
 public class BulkInsertHelper<T extends HoodieRecordPayload<T>> {
 
   public static <T extends HoodieRecordPayload<T>> HoodieWriteMetadata bulkInsert(
-      JavaRDD<HoodieRecord<T>> inputRecords, String instantTime,
+      List<HoodieRecord<T>> inputRecords, String instantTime,
       HoodieTable<T> table, HoodieWriteConfig config,
       CommitActionExecutor<T> executor, boolean performDedupe,
       Option<UserDefinedBulkInsertPartitioner> bulkInsertPartitioner) {
     HoodieWriteMetadata result = new HoodieWriteMetadata();
 
     // De-dupe/merge if needed
-    JavaRDD<HoodieRecord<T>> dedupedRecords = inputRecords;
+    List<HoodieRecord<T>> dedupedRecords = inputRecords;
 
     if (performDedupe) {
       dedupedRecords = WriteHelper.combineOnCondition(config.shouldCombineBeforeInsert(), inputRecords,
           config.getInsertShuffleParallelism(), ((HoodieTable<T>)table));
     }
 
-    final JavaRDD<HoodieRecord<T>> repartitionedRecords;
+    final List<HoodieRecord<T>> repartitionedRecords;
     final int parallelism = config.getBulkInsertShuffleParallelism();
     if (bulkInsertPartitioner.isPresent()) {
       repartitionedRecords = bulkInsertPartitioner.get().repartitionRecords(dedupedRecords, parallelism);
@@ -74,7 +74,7 @@ public class BulkInsertHelper<T extends HoodieRecordPayload<T>> {
     table.getActiveTimeline().transitionRequestedToInflight(new HoodieInstant(State.REQUESTED,
         table.getMetaClient().getCommitActionType(), instantTime), Option.empty());
 
-    JavaRDD<WriteStatus> writeStatusRDD = repartitionedRecords
+    List<WriteStatus> writeStatusRDD = repartitionedRecords
         .mapPartitionsWithIndex(new BulkInsertMapFunction<T>(instantTime, config, table, fileIDPrefixes), true)
         .flatMap(List::iterator);
 

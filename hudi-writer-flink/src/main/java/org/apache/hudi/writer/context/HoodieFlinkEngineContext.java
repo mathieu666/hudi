@@ -6,7 +6,6 @@ import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.table.HoodieTable;
 
 import java.util.List;
 

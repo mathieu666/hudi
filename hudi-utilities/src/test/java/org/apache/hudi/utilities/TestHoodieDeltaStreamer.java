@@ -59,7 +59,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.AnalysisException;
 import org.apache.spark.sql.Dataset;
@@ -731,7 +731,7 @@ public class TestHoodieDeltaStreamer extends UtilitiesTestBase {
     props.setProperty(TestSourceConfig.NUM_SOURCE_PARTITIONS_PROP, "1");
     props.setProperty(TestSourceConfig.USE_ROCKSDB_FOR_TEST_DATAGEN_KEYS, "true");
     DistributedTestDataSource distributedTestDataSource = new DistributedTestDataSource(props, jsc, sparkSession, null);
-    InputBatch<JavaRDD<GenericRecord>> batch = distributedTestDataSource.fetchNext(Option.empty(), 10000000);
+    InputBatch<List<GenericRecord>> batch = distributedTestDataSource.fetchNext(Option.empty(), 10000000);
     batch.getBatch().get().cache();
     long c = batch.getBatch().get().count();
     Assert.assertEquals(1000, c);

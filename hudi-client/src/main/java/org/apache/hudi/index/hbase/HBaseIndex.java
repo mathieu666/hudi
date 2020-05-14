@@ -56,7 +56,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 
@@ -126,7 +126,7 @@ public class HBaseIndex<T extends HoodieRecordPayload> extends HoodieIndex<T> {
   }
 
   @Override
-  public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys,
+  public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(List<HoodieKey> hoodieKeys,
       JavaSparkContext jsc, HoodieTable<T> hoodieTable) {
     throw new UnsupportedOperationException("HBase index does not implement check exist");
   }
@@ -258,7 +258,7 @@ public class HBaseIndex<T extends HoodieRecordPayload> extends HoodieIndex<T> {
   }
 
   @Override
-  public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
+  public List<HoodieRecord<T>> tagLocation(List<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
       HoodieTable<T> hoodieTable) {
     return recordRDD.mapPartitionsWithIndex(locationTagFunction(hoodieTable.getMetaClient()), true);
   }
@@ -342,18 +342,18 @@ public class HBaseIndex<T extends HoodieRecordPayload> extends HoodieIndex<T> {
   }
 
   @Override
-  public JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
+  public List<WriteStatus> updateLocation(List<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
       HoodieTable<T> hoodieTable) {
     final HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator = createQPSResourceAllocator(this.config);
     setPutBatchSize(writeStatusRDD, hBaseIndexQPSResourceAllocator, jsc);
     LOG.info("multiPutBatchSize: before hbase puts" + multiPutBatchSize);
-    JavaRDD<WriteStatus> writeStatusJavaRDD = writeStatusRDD.mapPartitionsWithIndex(updateLocationFunction(), true);
+    List<WriteStatus> writeStatusList = writeStatusRDD.mapPartitionsWithIndex(updateLocationFunction(), true);
     // caching the index updated status RDD
-    writeStatusJavaRDD = writeStatusJavaRDD.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
-    return writeStatusJavaRDD;
+    writeStatusList = writeStatusList.persist(SparkConfigUtils.getWriteStatusStorageLevel(config.getProps()));
+    return writeStatusList;
   }
 
-  private void setPutBatchSize(JavaRDD<WriteStatus> writeStatusRDD,
+  private void setPutBatchSize(List<WriteStatus> writeStatusRDD,
       HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator, final JavaSparkContext jsc) {
     if (config.getHbaseIndexPutBatchSizeAutoCompute()) {
       SparkConf conf = jsc.getConf();
@@ -386,7 +386,7 @@ public class HBaseIndex<T extends HoodieRecordPayload> extends HoodieIndex<T> {
     }
   }
 
-  public Tuple2<Long, Integer> getHBasePutAccessParallelism(final JavaRDD<WriteStatus> writeStatusRDD) {
+  public Tuple2<Long, Integer> getHBasePutAccessParallelism(final List<WriteStatus> writeStatusRDD) {
     final JavaPairRDD<Long, Integer> insertOnlyWriteStatusRDD = writeStatusRDD
         .filter(w -> w.getStat().getNumInserts() > 0).mapToPair(w -> new Tuple2<>(w.getStat().getNumInserts(), 1));
     return insertOnlyWriteStatusRDD.fold(new Tuple2<>(0L, 0), (w, c) -> new Tuple2<>(w._1 + c._1, w._2 + c._2));

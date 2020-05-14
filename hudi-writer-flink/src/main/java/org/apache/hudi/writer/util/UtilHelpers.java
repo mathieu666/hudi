@@ -71,8 +71,12 @@ public class UtilHelpers {
   public static HoodieWriteConfig getHoodieClientConfig(WriteJob.Config cfg) {
     FileSystem fs = FSUtils.getFs(cfg.targetBasePath, getHadoopConf());
     HoodieWriteConfig.Builder builder =
-        HoodieWriteConfig.newBuilder().withPath(cfg.targetBasePath).combineInput(cfg.filterDupes, true)
-            .withCompactionConfig(HoodieCompactionConfig.newBuilder().withPayloadClass(cfg.payloadClassName)
+        HoodieWriteConfig.newBuilder()
+            .withPath(cfg.targetBasePath)
+            .withEngine("FLINK")
+            .combineInput(cfg.filterDupes, true)
+            .withCompactionConfig(HoodieCompactionConfig.newBuilder()
+                .withPayloadClass(cfg.payloadClassName)
                 // Inline compaction is disabled for continuous mode. otherwise enabled for MOR
                 .withInlineCompaction(cfg.isInlineCompactionEnabled()).build())
             .forTable(cfg.targetTableName)

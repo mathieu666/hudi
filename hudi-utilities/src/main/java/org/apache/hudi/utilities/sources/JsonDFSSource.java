@@ -24,7 +24,7 @@ import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 import org.apache.hudi.utilities.sources.helpers.DFSPathSelector;
 
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.List;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
 
@@ -42,7 +42,7 @@ public class JsonDFSSource extends JsonSource {
   }
 
   @Override
-  protected InputBatch<JavaRDD<String>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
+  protected InputBatch<List<String>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
     Pair<Option<String>, String> selPathsWithMaxModificationTime =
         pathSelector.getNextFilePathsAndMaxModificationTime(lastCkptStr, sourceLimit);
     return selPathsWithMaxModificationTime.getLeft()
@@ -50,7 +50,7 @@ public class JsonDFSSource extends JsonSource {
         .orElse(new InputBatch<>(Option.empty(), selPathsWithMaxModificationTime.getRight()));
   }
 
-  private JavaRDD<String> fromFiles(String pathStr) {
+  private List<String> fromFiles(String pathStr) {
     return sparkContext.textFile(pathStr);
   }
 }

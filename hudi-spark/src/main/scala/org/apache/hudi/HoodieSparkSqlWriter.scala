@@ -34,7 +34,7 @@ import org.apache.hudi.config.HoodieWriteConfig
 import org.apache.hudi.exception.HoodieException
 import org.apache.hudi.hive.{HiveSyncConfig, HiveSyncTool}
 import org.apache.log4j.LogManager
-import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
+import org.apache.spark.api.java.{List, JavaSparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 
@@ -103,7 +103,7 @@ private[hudi] object HoodieSparkSqlWriter {
           gr, parameters(PRECOMBINE_FIELD_OPT_KEY), false).asInstanceOf[Comparable[_]]
         DataSourceUtils.createHoodieRecord(gr,
           orderingVal, keyGenerator.getKey(gr), parameters(PAYLOAD_CLASS_OPT_KEY))
-      }).toJavaRDD()
+      }).toList()
 
       // Handle various save modes
       if (mode == SaveMode.ErrorIfExists && exists) {
@@ -160,7 +160,7 @@ private[hudi] object HoodieSparkSqlWriter {
       // Convert to RDD[HoodieKey]
       val keyGenerator = DataSourceUtils.createKeyGenerator(toProperties(parameters))
       val genericRecords: RDD[GenericRecord] = AvroConversionUtils.createRdd(df, structName, nameSpace)
-      val hoodieKeysToDelete = genericRecords.map(gr => keyGenerator.getKey(gr)).toJavaRDD()
+      val hoodieKeysToDelete = genericRecords.map(gr => keyGenerator.getKey(gr)).toList()
 
       if (!exists) {
         throw new HoodieException(s"hoodie table at $basePath does not exist")
@@ -244,7 +244,7 @@ private[hudi] object HoodieSparkSqlWriter {
     hiveSyncConfig
   }
 
-  private def checkWriteStatus(writeStatuses: JavaRDD[WriteStatus],
+  private def checkWriteStatus(writeStatuses: List[WriteStatus],
                                parameters: Map[String, String],
                                client: HoodieWriteClient[_],
                                instantTime: String,
