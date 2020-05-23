@@ -33,8 +33,6 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.Partitioner;
-import org.apache.hudi.table.WorkloadProfile;
-import org.apache.hudi.table.WorkloadStat;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import scala.Tuple2;

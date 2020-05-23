@@ -28,6 +28,7 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.ParquetUtils;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieIndexException;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
@@ -44,7 +45,7 @@ import java.util.Set;
 /**
  * Takes a bunch of keys and returns ones that are present in the file group.
  */
-public class HoodieKeyLookupHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends HoodieReadHandle<T,I,K,O> {
+public class HoodieKeyLookupHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieReadHandle<T,C,I,K,O,P> {
 
   private static final Logger LOG = LoggerFactory.getLogger(HoodieKeyLookupHandle.class);
 
@@ -56,7 +57,7 @@ public class HoodieKeyLookupHandle<T extends HoodieRecordPayload, I extends Hood
 
   private long totalKeysChecked;
 
-  public HoodieKeyLookupHandle(HoodieWriteConfig config, HoodieTable<T,I,K,O> hoodieTable,
+  public HoodieKeyLookupHandle(HoodieWriteConfig config, HoodieTable<T,C,I,K,O,P> hoodieTable,
                                Pair<String, String> partitionPathFilePair) {
     super(config, null, hoodieTable, partitionPathFilePair);
     this.tableType = hoodieTable.getMetaClient().getTableType();

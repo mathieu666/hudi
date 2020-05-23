@@ -38,6 +38,7 @@ import org.apache.hudi.common.util.HoodieRecordSizeEstimator;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.ExternalSpillableMap;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.format.HoodieWriteInput;
@@ -55,8 +56,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-@SuppressWarnings("Duplicates")
-public class HoodieMergeHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends HoodieWriteHandle<T,I,K,O> {
+public class HoodieMergeHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieWriteHandle<T,C,I,K,O,P> {
 
   private static final Logger LOG = LogManager.getLogger(HoodieMergeHandle.class);
 
@@ -71,7 +71,7 @@ public class HoodieMergeHandle<T extends HoodieRecordPayload, I extends HoodieWr
   private long insertRecordsWritten = 0;
   private boolean useWriterSchema;
 
-  public HoodieMergeHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O> hoodieTable,
+  public HoodieMergeHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,C,I,K,O,P> hoodieTable,
                            Iterator<HoodieRecord<T>> recordItr, String partitionPath, String fileId, TaskContextSupplier taskContextSupplier) {
     super(config, instantTime, partitionPath, fileId, hoodieTable, taskContextSupplier);
     init(fileId, recordItr);
@@ -81,7 +81,7 @@ public class HoodieMergeHandle<T extends HoodieRecordPayload, I extends HoodieWr
   /**
    * Called by compactor code path.
    */
-  public HoodieMergeHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O> hoodieTable,
+  public HoodieMergeHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,C,I,K,O,P> hoodieTable,
                            Map<String, HoodieRecord<T>> keyToNewRecords, String partitionPath, String fileId,
                            HoodieBaseFile dataFileToBeMerged, TaskContextSupplier taskContextSupplier) {
     super(config, instantTime, partitionPath, fileId, hoodieTable, taskContextSupplier);

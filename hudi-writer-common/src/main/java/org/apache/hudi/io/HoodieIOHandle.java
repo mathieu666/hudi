@@ -21,19 +21,20 @@ package org.apache.hudi.io;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
-public abstract class HoodieIOHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> {
+public abstract class HoodieIOHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> {
 
   protected final String instantTime;
   protected final HoodieWriteConfig config;
   protected final FileSystem fs;
-  protected final HoodieTable<T,I,K,O> hoodieTable;
+  protected final HoodieTable<T, C, I, K, O, P> hoodieTable;
 
-  HoodieIOHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O> hoodieTable) {
+  HoodieIOHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, C, I, K, O, P> hoodieTable) {
     this.instantTime = instantTime;
     this.config = config;
     this.hoodieTable = hoodieTable;

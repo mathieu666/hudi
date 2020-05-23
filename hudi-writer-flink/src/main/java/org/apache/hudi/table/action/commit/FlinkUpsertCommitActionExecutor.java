@@ -12,7 +12,6 @@ import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.table.FLinkWorkloadProfile;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.Partitioner;
-import org.apache.hudi.table.WorkloadProfile;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import scala.Tuple2;

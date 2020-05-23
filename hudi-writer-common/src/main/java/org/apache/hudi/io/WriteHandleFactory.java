@@ -21,16 +21,17 @@ package org.apache.hudi.io;
 import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
-public abstract class WriteHandleFactory<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> {
+public abstract class WriteHandleFactory<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> {
   private int numFilesWritten = 0;
 
-  public abstract HoodieWriteHandle<T, I, K, O> create(HoodieWriteConfig config, String commitTime, HoodieTable<T, I, K, O> hoodieTable,
-                                                       String partitionPath, String fileIdPrefix, TaskContextSupplier taskContextSupplier);
+  public abstract HoodieWriteHandle<T, C, I, K, O, P> create(HoodieWriteConfig config, String commitTime, HoodieTable<T, C, I, K, O, P> hoodieTable,
+                                                             String partitionPath, String fileIdPrefix, TaskContextSupplier taskContextSupplier);
 
   protected String getNextFileId(String idPfx) {
     return String.format("%s-%d", idPfx, numFilesWritten++);

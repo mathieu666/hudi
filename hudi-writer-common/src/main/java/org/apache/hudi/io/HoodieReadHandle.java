@@ -23,6 +23,7 @@ import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
@@ -31,12 +32,12 @@ import org.apache.hudi.table.HoodieTable;
 /**
  * Base class for read operations done logically on the file group.
  */
-public abstract class HoodieReadHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends HoodieIOHandle<T,I,K,O> {
+public abstract class HoodieReadHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieIOHandle<T, C, I, K, O, P> {
 
   protected final Pair<String, String> partitionPathFilePair;
 
-  public HoodieReadHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O> hoodieTable,
-      Pair<String, String> partitionPathFilePair) {
+  public HoodieReadHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, C, I, K, O, P> hoodieTable,
+                          Pair<String, String> partitionPathFilePair) {
     super(config, instantTime, hoodieTable);
     this.partitionPathFilePair = partitionPathFilePair;
   }

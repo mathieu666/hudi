@@ -33,6 +33,7 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.format.HoodieWriteInput;
@@ -47,7 +48,7 @@ import java.io.IOException;
 /**
  * Base class for all write operations logically performed at the file group level.
  */
-public abstract class HoodieWriteHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends HoodieIOHandle {
+public abstract class HoodieWriteHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieIOHandle<T, C, I, K, O, P> {
 
   private static final Logger LOG = LogManager.getLogger(HoodieWriteHandle.class);
   protected final Schema originalSchema;
@@ -60,7 +61,7 @@ public abstract class HoodieWriteHandle<T extends HoodieRecordPayload, I extends
   protected final TaskContextSupplier taskContextSupplier;
 
   public HoodieWriteHandle(HoodieWriteConfig config, String instantTime, String partitionPath,
-                           String fileId, HoodieTable<T,I,K,O> hoodieTable, TaskContextSupplier taskContextSupplier) {
+                           String fileId, HoodieTable<T, C, I, K, O, P> hoodieTable, TaskContextSupplier taskContextSupplier) {
     super(config, instantTime, hoodieTable);
     this.partitionPath = partitionPath;
     this.fileId = fileId;

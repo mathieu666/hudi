@@ -21,7 +21,6 @@ package org.apache.hudi.table.action.compact.strategy;
 import org.apache.hudi.avro.model.HoodieCompactionOperation;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.action.compact.strategy.CompactionStrategy;
 
 import java.util.ArrayList;
 import java.util.List;

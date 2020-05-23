@@ -39,8 +39,6 @@ import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.Partitioner;
-import org.apache.hudi.table.WorkloadProfile;
-import org.apache.hudi.table.WorkloadStat;
 import org.apache.hudi.table.action.BaseActionExecutor;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;

@@ -40,7 +40,6 @@ import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.io.HoodieMergeHandle;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.Partitioner;
-import org.apache.hudi.table.WorkloadProfile;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetReader;

@@ -35,7 +35,7 @@ import java.util.Set;
 /**
  * A HoodieCompactor runs compaction on a hoodie table.
  */
-public interface HoodieCompactor<C, T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends Serializable {
+public interface HoodieCompactor<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends Serializable {
 
   /**
    * Generate a new compaction plan for scheduling.
@@ -48,12 +48,12 @@ public interface HoodieCompactor<C, T extends HoodieRecordPayload, I extends Hoo
    * @return Compaction Plan
    * @throws IOException when encountering errors
    */
-  HoodieCompactionPlan generateCompactionPlan(HoodieEngineContext<C> context, HoodieTable<T, I, K, O> hoodieTable, HoodieWriteConfig config,
+  HoodieCompactionPlan generateCompactionPlan(HoodieEngineContext<C> context, HoodieTable<T, C, I, K, O, P> hoodieTable, HoodieWriteConfig config,
                                               String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions) throws IOException;
 
   /**
    * Execute compaction operations and report back status.
    */
-  O compact(HoodieEngineContext<C> context, HoodieCompactionPlan compactionPlan, HoodieTable hoodieTable,
-                               HoodieWriteConfig config, String compactionInstantTime) throws IOException;
+  O compact(HoodieEngineContext<C> context, HoodieCompactionPlan compactionPlan, HoodieTable<T, C, I, K, O, P> hoodieTable,
+            HoodieWriteConfig config, String compactionInstantTime) throws IOException;
 }

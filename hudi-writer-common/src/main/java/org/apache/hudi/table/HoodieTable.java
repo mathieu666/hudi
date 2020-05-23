@@ -26,7 +26,7 @@ import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.avro.model.HoodieRestoreMetadata;
 import org.apache.hudi.avro.model.HoodieRollbackMetadata;
 import org.apache.hudi.avro.model.HoodieSavepointMetadata;
-import org.apache.hudi.client.SparkTaskContextSupplier;
+import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.fs.ConsistencyGuard.FileVisibility;
 import org.apache.hudi.common.model.HoodieKey;
@@ -37,7 +37,6 @@ import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.table.timeline.TimelineMetadataUtils;
-import org.apache.hudi.common.table.timeline.versioning.TimelineLayoutVersion;
 import org.apache.hudi.common.table.view.FileSystemViewManager;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.common.table.view.SyncableFileSystemView;
@@ -48,14 +47,14 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.context.HoodieEngineContext;
-import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieSavepointException;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.index.HoodieIndexV2;
-import org.apache.hudi.table.action.commit.HoodieWriteMetadata;
+import org.apache.hudi.table.action.HoodieWriteMetadata;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,7 @@ import java.util.stream.Stream;
 /**
  * Abstract implementation of a HoodieTable.
  */
-public abstract class HoodieTable<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> implements Serializable {
+public abstract class HoodieTable<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(HoodieTable.class);
 
@@ -78,19 +77,20 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
   protected final HoodieIndexV2 index;
 
   private SerializableConfiguration hadoopConfiguration;
-  private HoodieEngineContext context;
+  private HoodieEngineContext<C> context;
   private transient FileSystemViewManager viewManager;
 
-  protected final SparkTaskContextSupplier sparkTaskContextSupplier = new SparkTaskContextSupplier();
+  protected final TaskContextSupplier taskContextSupplier;
 
-  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext context) {
+  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext<C> context, HoodieIndexV2<C, T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
     this.config = config;
     this.context = context;
     this.hadoopConfiguration = new SerializableConfiguration(context.getHadoopConf());
     this.viewManager = FileSystemViewManager.createViewManager(new SerializableConfiguration(context.getHadoopConf()),
         config.getViewStorageConfig());
     this.metaClient = metaClient;
-    this.index = new HoodieIndexV2.createIndex(config);
+    this.index = index;
+    this.taskContextSupplier = taskContextSupplier;
   }
 
   private synchronized FileSystemViewManager getViewManager() {
@@ -98,35 +98,6 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
       viewManager = FileSystemViewManager.createViewManager(hadoopConfiguration, config.getViewStorageConfig());
     }
     return viewManager;
-  }
-
-  public static <T extends HoodieRecordPayload,
-      I extends HoodieWriteInput,
-      K extends HoodieWriteKey,
-      O extends HoodieWriteOutput> HoodieTable<T, I, K, O> create(HoodieWriteConfig config, HoodieEngineContext context) {
-    HoodieTableMetaClient metaClient = new HoodieTableMetaClient(
-        context.getHadoopConf().get(),
-        config.getBasePath(),
-        true,
-        config.getConsistencyGuardConfig(),
-        Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion()))
-    );
-    return HoodieTable.create(metaClient, config, context);
-  }
-
-  public static <T extends HoodieRecordPayload,
-      I extends HoodieWriteInput,
-      K extends HoodieWriteKey,
-      O extends HoodieWriteOutput> HoodieTable<T, I, K, O> create(HoodieTableMetaClient metaClient,
-                                                                  HoodieWriteConfig config, HoodieEngineContext context) {
-    switch (metaClient.getTableType()) {
-      case COPY_ON_WRITE:
-        return TableFactory.createCopyOnWriteTable(config, metaClient, context);
-      case MERGE_ON_READ:
-        return TableFactory.createMergeOnReadTable(config, metaClient, context);
-      default:
-        throw new HoodieException("Unsupported table type :" + metaClient.getTableType());
-    }
   }
 
   /**
@@ -412,7 +383,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
    */
   public abstract void waitForAllFiles(Map<String, List<Pair<String, String>>> groupByPartition, FileVisibility visibility);
 
-  public SparkTaskContextSupplier getSparkTaskContextSupplier() {
-    return sparkTaskContextSupplier;
+  public TaskContextSupplier getTaskContextSupplier() {
+    return taskContextSupplier;
   }
 }

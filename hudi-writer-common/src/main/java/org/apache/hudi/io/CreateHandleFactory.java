@@ -21,17 +21,18 @@ package org.apache.hudi.io;
 import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.format.HoodieWriteInput;
 import org.apache.hudi.format.HoodieWriteKey;
 import org.apache.hudi.format.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
-public class CreateHandleFactory<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput> extends WriteHandleFactory<T, I, K, O> {
+public class CreateHandleFactory<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends WriteHandleFactory<T, C, I, K, O, P> {
 
   @Override
-  public HoodieWriteHandle<T, I, K, O> create(final HoodieWriteConfig hoodieConfig, final String commitTime,
-                                              final HoodieTable<T, I, K, O> hoodieTable, final String partitionPath,
-                                              final String fileIdPrefix, TaskContextSupplier taskContextSupplier) {
+  public HoodieWriteHandle<T, C, I, K, O, P> create(final HoodieWriteConfig hoodieConfig, final String commitTime,
+                                                    final HoodieTable<T, C, I, K, O, P> hoodieTable, final String partitionPath,
+                                                    final String fileIdPrefix, TaskContextSupplier taskContextSupplier) {
 
     return new HoodieCreateHandle(hoodieConfig, commitTime, hoodieTable, partitionPath,
         getNextFileId(fileIdPrefix), taskContextSupplier);

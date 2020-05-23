@@ -16,17 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.format;
+package org.apache.hudi.table;
 
-public class HoodieWriteOutput<O> {
+/**
+ * Repartition input records into at least expected number of output spark partitions. It should give below guarantees -
+ * Output spark partition will have records from only one hoodie partition. - Average records per output spark
+ * partitions should be almost equal to (#inputRecords / #outputSparkPartitions) to avoid possible skews.
+ */
+public interface UserDefinedBulkInsertPartitioner<I> {
 
-  private O output;
-
-  public HoodieWriteOutput(O output) {
-    this.output = output;
-  }
-
-  public O getOutput() {
-    return output;
-  }
+  I repartitionRecords(I records, int outputSparkPartitions);
 }
