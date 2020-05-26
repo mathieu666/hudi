@@ -23,7 +23,7 @@ import org.apache.hudi.common.config.SerializableConfiguration;
 /**
  * An abstract class taking care of holding a serializable hadoopConf.
  */
-public abstract class AbstractHoodieEngineContext {
+public class AbstractHoodieEngineContext {
   /**
    * A wrapped hadoop configuration which can be serialized.
    */
