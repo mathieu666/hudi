@@ -28,10 +28,9 @@ import org.apache.hudi.common.bloom.BloomFilterFactory;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.parquet.avro.AvroSchemaConverter;
 
@@ -42,8 +41,8 @@ import static org.apache.hudi.common.model.HoodieFileFormat.PARQUET;
 
 public class HoodieStorageWriterFactory {
 
-  public static <T extends HoodieRecordPayload, C extends HoodieEngineContext, R extends IndexedRecord, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> HoodieStorageWriter<R> getStorageWriter(
-      String instantTime, Path path, HoodieTable<T, C, I, K, O, P> hoodieTable, HoodieWriteConfig config, Schema schema,
+  public static <T extends HoodieRecordPayload, R extends IndexedRecord, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> HoodieStorageWriter<R> getStorageWriter(
+      String instantTime, Path path, HoodieTable<T, I, K, O, P> hoodieTable, HoodieWriteConfig config, Schema schema,
       TaskContextSupplier taskContextSupplier) throws IOException {
     final String name = path.getName();
     final String extension = FSUtils.isLogFile(path) ? HOODIE_LOG.getFileExtension() : FSUtils.getFileExtension(name);
@@ -53,8 +52,8 @@ public class HoodieStorageWriterFactory {
     throw new UnsupportedOperationException(extension + " format not supported yet.");
   }
 
-  private static <T extends HoodieRecordPayload, C extends HoodieEngineContext, R extends IndexedRecord, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> HoodieStorageWriter<R> newParquetStorageWriter(
-      String instantTime, Path path, HoodieWriteConfig config, Schema schema, HoodieTable<T, C, I, K, O, P> hoodieTable,
+  private static <T extends HoodieRecordPayload, R extends IndexedRecord, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> HoodieStorageWriter<R> newParquetStorageWriter(
+      String instantTime, Path path, HoodieWriteConfig config, Schema schema, HoodieTable<T, I, K, O, P> hoodieTable,
       TaskContextSupplier taskContextSupplier) throws IOException {
     BloomFilter filter = BloomFilterFactory
         .createBloomFilter(config.getBloomFilterNumEntries(), config.getBloomFilterFPP(),

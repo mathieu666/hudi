@@ -16,17 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.format;
+package org.apache.hudi.common;
 
-public class HoodieWriteOutput<O> {
+public class HoodieWriteKey<K> {
 
-  private O output;
+  private K keys;
 
-  public HoodieWriteOutput(O output) {
-    this.output = output;
+  public HoodieWriteKey(K keys) {
+    this.keys = keys;
   }
 
-  public O getOutput() {
-    return output;
+  public K getKeys() {
+    return keys;
   }
 }

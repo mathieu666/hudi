@@ -40,9 +40,9 @@ import org.apache.hudi.config.HoodieHBaseIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieDependentSystemUnavailableException;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.index.HoodieIndexV2;
 
 import org.slf4j.Logger;

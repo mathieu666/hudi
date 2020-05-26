@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.format;
+package org.apache.hudi.common;
 
 public class HoodieWriteInput<I> {
 

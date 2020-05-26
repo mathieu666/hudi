@@ -16,17 +16,25 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.format;
+package org.apache.hudi.common;
 
-public class HoodieWriteKey<K> {
+import org.apache.hudi.common.config.SerializableConfiguration;
 
-  private K keys;
+/**
+ * An abstract class taking care of holding a serializable hadoopConf.
+ */
+public abstract class AbstractHoodieEngineContext {
+  /**
+   * A wrapped hadoop configuration which can be serialized.
+   */
+  private SerializableConfiguration hadoopConf;
 
-  public HoodieWriteKey(K keys) {
-    this.keys = keys;
+  public AbstractHoodieEngineContext(SerializableConfiguration hadoopConf) {
+    this.hadoopConf = hadoopConf;
   }
 
-  public K getKeys() {
-    return keys;
+  public SerializableConfiguration getHadoopConf() {
+    return hadoopConf;
   }
+
 }

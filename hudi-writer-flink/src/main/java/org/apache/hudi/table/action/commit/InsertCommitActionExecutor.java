@@ -18,14 +18,12 @@
 
 package org.apache.hudi.table.action.commit;
 
-import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.context.HoodieEngineContext;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
 public abstract class InsertCommitActionExecutor<T extends HoodieRecordPayload<T>, I extends HoodieWriteInput, O extends HoodieWriteOutput>

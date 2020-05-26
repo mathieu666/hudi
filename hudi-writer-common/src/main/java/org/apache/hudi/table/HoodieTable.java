@@ -46,12 +46,12 @@ import org.apache.hudi.common.table.view.TableFileSystemView.SliceView;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
+import org.apache.hudi.common.AbstractHoodieEngineContext;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieSavepointException;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.index.HoodieIndexV2;
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 
@@ -68,7 +68,7 @@ import java.util.stream.Stream;
 /**
  * Abstract implementation of a HoodieTable.
  */
-public abstract class HoodieTable<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> implements Serializable {
+public abstract class HoodieTable<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(HoodieTable.class);
 
@@ -77,12 +77,12 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, C extends Hoodi
   protected final HoodieIndexV2 index;
 
   private SerializableConfiguration hadoopConfiguration;
-  private HoodieEngineContext<C> context;
+  private AbstractHoodieEngineContext context;
   private transient FileSystemViewManager viewManager;
 
   protected final TaskContextSupplier taskContextSupplier;
 
-  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext<C> context, HoodieIndexV2<C, T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
+  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, AbstractHoodieEngineContext context, HoodieIndexV2<T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
     this.config = config;
     this.context = context;
     this.hadoopConfiguration = new SerializableConfiguration(context.getHadoopConf());
@@ -294,7 +294,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, C extends Hoodi
     return index;
   }
 
-  public HoodieEngineContext getContext() {
+  public AbstractHoodieEngineContext getContext() {
     return context;
   }
 
@@ -349,7 +349,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, C extends Hoodi
    * @param stats List of HoodieWriteStats
    * @throws HoodieIOException if some paths can't be finalized on storage
    */
-  public void finalizeWrite(HoodieEngineContext context, String instantTs, List<HoodieWriteStat> stats) throws HoodieIOException {
+  public void finalizeWrite(AbstractHoodieEngineContext context, String instantTs, List<HoodieWriteStat> stats) throws HoodieIOException {
     cleanFailedWrites(instantTs, stats, config.getConsistencyGuardConfig().isConsistencyCheckEnabled());
   }
 

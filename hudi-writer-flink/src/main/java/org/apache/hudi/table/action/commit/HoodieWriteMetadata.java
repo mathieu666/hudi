@@ -21,7 +21,7 @@ package org.apache.hudi.table.action.commit;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.model.HoodieWriteStat;
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteOutput;
 
 import java.time.Duration;
 import java.util.List;

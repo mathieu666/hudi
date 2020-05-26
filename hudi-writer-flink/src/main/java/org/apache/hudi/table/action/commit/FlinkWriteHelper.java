@@ -1,9 +1,9 @@
 package org.apache.hudi.table.action.commit;
 
 import org.apache.hudi.common.model.HoodieRecordPayload;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 
 /**
  * @author xianghu.wang

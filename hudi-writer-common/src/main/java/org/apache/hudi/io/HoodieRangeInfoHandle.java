@@ -24,18 +24,17 @@ import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.ParquetUtils;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
 /**
  * Extract range information for a given file slice.
  */
-public class HoodieRangeInfoHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieReadHandle<T, C, I, K, O, P> {
+public class HoodieRangeInfoHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieReadHandle<T, I, K, O, P> {
 
-  public HoodieRangeInfoHandle(HoodieWriteConfig config, HoodieTable<T, C, I, K, O, P> hoodieTable,
+  public HoodieRangeInfoHandle(HoodieWriteConfig config, HoodieTable<T, I, K, O, P> hoodieTable,
                                Pair<String, String> partitionPathFilePair) {
     super(config, null, hoodieTable, partitionPathFilePair);
   }

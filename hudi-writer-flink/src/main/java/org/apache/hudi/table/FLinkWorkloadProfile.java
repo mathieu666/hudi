@@ -23,7 +23,7 @@ import org.apache.hudi.common.model.HoodieRecordLocation;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
-import org.apache.hudi.format.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteInput;
 
 import java.util.List;
 import java.util.Map;

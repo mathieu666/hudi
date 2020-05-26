@@ -18,15 +18,13 @@
 
 package org.apache.hudi.execution;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.client.AbstractHoodieWriteClient;
-import org.apache.hudi.client.HoodieFlinkWriteClient;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieException;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 

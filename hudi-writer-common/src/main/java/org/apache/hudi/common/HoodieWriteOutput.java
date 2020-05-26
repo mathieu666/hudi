@@ -16,12 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.context;
+package org.apache.hudi.common;
 
-import org.apache.hudi.common.config.SerializableConfiguration;
+public class HoodieWriteOutput<O> {
 
-public interface HoodieEngineContext<C> {
-  C getContext();
+  private O output;
 
-  SerializableConfiguration getHadoopConf();
+  public HoodieWriteOutput(O output) {
+    this.output = output;
+  }
+
+  public O getOutput() {
+    return output;
+  }
 }

@@ -32,11 +32,10 @@ import org.apache.hudi.common.model.HoodieWriteStat;
 import org.apache.hudi.common.model.HoodieWriteStat.RuntimeStats;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieInsertException;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.io.storage.HoodieStorageWriter;
 import org.apache.hudi.io.storage.HoodieStorageWriterFactory;
 import org.apache.hudi.table.HoodieTable;
@@ -47,7 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Iterator;
 
-public class HoodieCreateHandle<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieWriteHandle<T, C, I, K, O, P> {
+public class HoodieCreateHandle<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieWriteHandle<T, I, K, O, P> {
 
   private static final Logger LOG = LoggerFactory.getLogger(HoodieCreateHandle.class);
 
@@ -59,7 +58,7 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload, C extends HoodieE
   private Iterator<HoodieRecord<T>> recordIterator;
   private boolean useWriterSchema = false;
 
-  public HoodieCreateHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, C, I, K, O, P> hoodieTable,
+  public HoodieCreateHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, I, K, O, P> hoodieTable,
                             String partitionPath, String fileId, TaskContextSupplier sparkTaskContextSupplier) {
     super(config, instantTime, partitionPath, fileId, hoodieTable, sparkTaskContextSupplier);
     writeStatus.setFileId(fileId);
@@ -83,7 +82,7 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload, C extends HoodieE
   /**
    * Called by the compactor code path.
    */
-  public HoodieCreateHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, C, I, K, O, P> hoodieTable,
+  public HoodieCreateHandle(HoodieWriteConfig config, String instantTime, HoodieTable<T, I, K, O, P> hoodieTable,
                             String partitionPath, String fileId, Iterator<HoodieRecord<T>> recordIterator, TaskContextSupplier taskContextSupplier) {
     this(config, instantTime, hoodieTable, partitionPath, fileId, taskContextSupplier);
     this.recordIterator = recordIterator;

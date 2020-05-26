@@ -21,17 +21,16 @@ package org.apache.hudi.io;
 import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
-import org.apache.hudi.format.HoodieWriteInput;
-import org.apache.hudi.format.HoodieWriteKey;
-import org.apache.hudi.format.HoodieWriteOutput;
+import org.apache.hudi.common.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteKey;
+import org.apache.hudi.common.HoodieWriteOutput;
 import org.apache.hudi.table.HoodieTable;
 
-public class AppendHandleFactory<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends WriteHandleFactory<T, C, I, K, O, P> {
+public class AppendHandleFactory<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends WriteHandleFactory<T, I, K, O, P> {
 
   @Override
-  public HoodieAppendHandle<T, C, I, K, O, P> create(final HoodieWriteConfig hoodieConfig, final String commitTime,
-                                                     final HoodieTable<T, C, I, K, O, P> hoodieTable, final String partitionPath,
+  public HoodieAppendHandle<T, I, K, O, P> create(final HoodieWriteConfig hoodieConfig, final String commitTime,
+                                                     final HoodieTable<T, I, K, O, P> hoodieTable, final String partitionPath,
                                                      final String fileIdPrefix, final TaskContextSupplier sparkTaskContextSupplier) {
 
     return new HoodieAppendHandle(hoodieConfig, commitTime, hoodieTable, partitionPath,

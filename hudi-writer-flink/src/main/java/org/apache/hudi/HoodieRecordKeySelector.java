@@ -2,7 +2,7 @@ package org.apache.hudi;
 
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.format.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteInput;
 
 public class HoodieRecordKeySelector implements KeySelector<HoodieWriteInput<HoodieRecord>, String> {
   @Override

@@ -13,7 +13,7 @@ import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
 import org.apache.hudi.common.Operation;
-import org.apache.hudi.format.HoodieWriteInput;
+import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.source.SourceReader;
 
 import java.util.ArrayList;
