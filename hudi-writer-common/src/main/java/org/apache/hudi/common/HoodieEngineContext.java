@@ -21,15 +21,15 @@ package org.apache.hudi.common;
 import org.apache.hudi.common.config.SerializableConfiguration;
 
 /**
- * An abstract class taking care of holding a serializable hadoopConf.
+ * An base class taking care of holding a serializable hadoopConf.
  */
-public class AbstractHoodieEngineContext {
+public class HoodieEngineContext {
   /**
    * A wrapped hadoop configuration which can be serialized.
    */
   private SerializableConfiguration hadoopConf;
 
-  public AbstractHoodieEngineContext(SerializableConfiguration hadoopConf) {
+  public HoodieEngineContext(SerializableConfiguration hadoopConf) {
     this.hadoopConf = hadoopConf;
   }
 
