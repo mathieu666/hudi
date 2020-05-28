@@ -22,7 +22,7 @@ import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.common.AbstractHoodieEngineContext;
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteKey;
 import org.apache.hudi.common.HoodieWriteOutput;
@@ -39,11 +39,11 @@ public abstract class HoodieIndexV2<T extends HoodieRecordPayload,
     this.config = config;
   }
 
-  public abstract P fetchRecordLocation(I inputs, final AbstractHoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable);
+  public abstract P fetchRecordLocation(I inputs, final HoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable);
 
-  public abstract I tagLocation(I inputs, AbstractHoodieEngineContext context, HoodieTable<T, I, K, O, P> table);
+  public abstract I tagLocation(I inputs, HoodieEngineContext context, HoodieTable<T, I, K, O, P> table);
 
-  public abstract O updateLocation(O inputs, AbstractHoodieEngineContext context, HoodieTable<T, I, K, O, P> table);
+  public abstract O updateLocation(O inputs, HoodieEngineContext context, HoodieTable<T, I, K, O, P> table);
 
   /**
    * Rollback the efffects of the commit made at commitTime.

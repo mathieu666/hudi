@@ -46,7 +46,7 @@ import org.apache.hudi.common.table.view.TableFileSystemView.SliceView;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.common.AbstractHoodieEngineContext;
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieSavepointException;
 import org.apache.hudi.common.HoodieWriteInput;
@@ -77,12 +77,12 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
   protected final HoodieIndexV2 index;
 
   private SerializableConfiguration hadoopConfiguration;
-  private AbstractHoodieEngineContext context;
+  private HoodieEngineContext context;
   private transient FileSystemViewManager viewManager;
 
   protected final TaskContextSupplier taskContextSupplier;
 
-  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, AbstractHoodieEngineContext context, HoodieIndexV2<T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
+  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext context, HoodieIndexV2<T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
     this.config = config;
     this.context = context;
     this.hadoopConfiguration = new SerializableConfiguration(context.getHadoopConf());
@@ -294,7 +294,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
     return index;
   }
 
-  public AbstractHoodieEngineContext getContext() {
+  public HoodieEngineContext getContext() {
     return context;
   }
 
@@ -349,7 +349,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
    * @param stats List of HoodieWriteStats
    * @throws HoodieIOException if some paths can't be finalized on storage
    */
-  public void finalizeWrite(AbstractHoodieEngineContext context, String instantTs, List<HoodieWriteStat> stats) throws HoodieIOException {
+  public void finalizeWrite(HoodieEngineContext context, String instantTs, List<HoodieWriteStat> stats) throws HoodieIOException {
     cleanFailedWrites(instantTs, stats, config.getConsistencyGuardConfig().isConsistencyCheckEnabled());
   }
 
