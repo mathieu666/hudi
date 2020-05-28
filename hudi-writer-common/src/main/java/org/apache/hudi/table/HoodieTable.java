@@ -52,7 +52,7 @@ import org.apache.hudi.exception.HoodieSavepointException;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteKey;
 import org.apache.hudi.common.HoodieWriteOutput;
-import org.apache.hudi.index.HoodieIndexV2;
+import org.apache.hudi.index.AbstractHoodieIndex;
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 
 import org.slf4j.Logger;
@@ -74,7 +74,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
 
   protected final HoodieWriteConfig config;
   protected final HoodieTableMetaClient metaClient;
-  protected final HoodieIndexV2 index;
+  protected final AbstractHoodieIndex<T, I, K, O, P> index;
 
   private SerializableConfiguration hadoopConfiguration;
   private HoodieEngineContext context;
@@ -82,7 +82,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
 
   protected final TaskContextSupplier taskContextSupplier;
 
-  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext context, HoodieIndexV2<T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
+  protected HoodieTable(HoodieWriteConfig config, HoodieTableMetaClient metaClient, HoodieEngineContext context, AbstractHoodieIndex<T, I, K, O, P> index, TaskContextSupplier taskContextSupplier) {
     this.config = config;
     this.context = context;
     this.hadoopConfiguration = new SerializableConfiguration(context.getHadoopConf());
@@ -290,7 +290,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload, I extends Hoodi
   /**
    * Return the index.
    */
-  public HoodieIndexV2 getIndex() {
+  public AbstractHoodieIndex getIndex() {
     return index;
   }
 

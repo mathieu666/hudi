@@ -26,7 +26,7 @@ import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteKey;
 import org.apache.hudi.common.HoodieWriteOutput;
-import org.apache.hudi.index.HoodieIndexV2;
+import org.apache.hudi.index.AbstractHoodieIndex;
 import org.apache.hudi.table.HoodieCommitArchiveLog;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.action.commit.HoodieWriteMetadata;
@@ -64,7 +64,7 @@ public class HoodieFlinkWriteClient<T extends HoodieRecordPayload> extends Abstr
   }
 
   public HoodieFlinkWriteClient(HoodieEngineContext context, HoodieWriteConfig clientConfig, boolean rollbackPending) {
-    this(context, clientConfig, rollbackPending, HoodieIndexV2.createIndex(clientConfig));
+    this(context, clientConfig, rollbackPending, AbstractHoodieIndex.createIndex(clientConfig));
   }
 
   /**
@@ -75,7 +75,7 @@ public class HoodieFlinkWriteClient<T extends HoodieRecordPayload> extends Abstr
    * @param rollbackPending whether need to cleanup pending commits
    */
   public HoodieFlinkWriteClient(HoodieEngineContext context, HoodieWriteConfig clientConfig, boolean rollbackPending,
-                                HoodieIndexV2 index) {
+                                AbstractHoodieIndex index) {
     super(context, index, clientConfig);
     this.rollbackPending = rollbackPending;
   }

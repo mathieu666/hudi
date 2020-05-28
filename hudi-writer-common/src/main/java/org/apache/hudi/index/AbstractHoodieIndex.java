@@ -30,12 +30,12 @@ import org.apache.hudi.table.HoodieTable;
 
 import java.io.Serializable;
 
-public abstract class HoodieIndexV2<T extends HoodieRecordPayload,
+public abstract class AbstractHoodieIndex<T extends HoodieRecordPayload,
     I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> implements Serializable {
 
   protected final HoodieWriteConfig config;
 
-  protected HoodieIndexV2(HoodieWriteConfig config) {
+  protected AbstractHoodieIndex(HoodieWriteConfig config) {
     this.config = config;
   }
 

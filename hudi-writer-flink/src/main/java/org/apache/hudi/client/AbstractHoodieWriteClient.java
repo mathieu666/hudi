@@ -22,13 +22,12 @@ import org.apache.hudi.common.model.*;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
-import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieCommitException;
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.index.HoodieIndexV2;
+import org.apache.hudi.index.AbstractHoodieIndex;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -48,7 +47,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   private static final Logger LOG = LogManager.getLogger(AbstractHoodieWriteClient.class);
   private static final String UPDATE_STR = "update";
 
-  private final transient HoodieIndexV2<T, I, O> index;
+  private final transient AbstractHoodieIndex<T, I, O> index;
 
   private transient WriteOperationType operationType;
 
@@ -60,7 +59,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
     return this.operationType;
   }
 
-  protected AbstractHoodieWriteClient(HoodieEngineContext context, HoodieIndexV2 index, HoodieWriteConfig clientConfig) {
+  protected AbstractHoodieWriteClient(HoodieEngineContext context, AbstractHoodieIndex index, HoodieWriteConfig clientConfig) {
     super(context, clientConfig);
     this.index = index;
   }
@@ -168,7 +167,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   }
 
 
-  public HoodieIndexV2 getIndex() {
+  public AbstractHoodieIndex getIndex() {
     return index;
   }
 

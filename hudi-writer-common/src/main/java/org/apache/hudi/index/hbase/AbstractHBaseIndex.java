@@ -38,12 +38,11 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.config.HoodieHBaseIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.exception.HoodieDependentSystemUnavailableException;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteKey;
 import org.apache.hudi.common.HoodieWriteOutput;
-import org.apache.hudi.index.HoodieIndexV2;
+import org.apache.hudi.index.AbstractHoodieIndex;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 
-public abstract class AbstractHBaseIndex<C extends HoodieEngineContext, T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends HoodieIndexV2<C, T, I, K, O, P> {
+public abstract class AbstractHBaseIndex<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends AbstractHoodieIndex<T, I, K, O, P> {
   public static final String DEFAULT_SPARK_EXECUTOR_INSTANCES_CONFIG_NAME = "spark.executor.instances";
   public static final String DEFAULT_SPARK_DYNAMIC_ALLOCATION_ENABLED_CONFIG_NAME = "spark.dynamicAllocation.enabled";
   public static final String DEFAULT_SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS_CONFIG_NAME =
@@ -64,7 +63,7 @@ public abstract class AbstractHBaseIndex<C extends HoodieEngineContext, T extend
   private static final byte[] PARTITION_PATH_COLUMN = Bytes.toBytes("partition_path");
   private static final int SLEEP_TIME_MILLISECONDS = 100;
 
-  private static final Logger LOG = LoggerFactory.getLogger(HoodieIndexV2.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractHoodieIndex.class);
   private static Connection hbaseConnection = null;
   private HBaseIndexQPSResourceAllocator hBaseIndexQPSResourceAllocator = null;
   private float qpsFraction;

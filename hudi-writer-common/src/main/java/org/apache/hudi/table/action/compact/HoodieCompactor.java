@@ -19,10 +19,10 @@
 package org.apache.hudi.table.action.compact;
 
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.context.HoodieEngineContext;
 import org.apache.hudi.common.HoodieWriteInput;
 import org.apache.hudi.common.HoodieWriteKey;
 import org.apache.hudi.common.HoodieWriteOutput;
@@ -35,7 +35,7 @@ import java.util.Set;
 /**
  * A HoodieCompactor runs compaction on a hoodie table.
  */
-public interface HoodieCompactor<T extends HoodieRecordPayload, C extends HoodieEngineContext, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends Serializable {
+public interface HoodieCompactor<T extends HoodieRecordPayload, I extends HoodieWriteInput, K extends HoodieWriteKey, O extends HoodieWriteOutput, P> extends Serializable {
 
   /**
    * Generate a new compaction plan for scheduling.
@@ -48,12 +48,12 @@ public interface HoodieCompactor<T extends HoodieRecordPayload, C extends Hoodie
    * @return Compaction Plan
    * @throws IOException when encountering errors
    */
-  HoodieCompactionPlan generateCompactionPlan(HoodieEngineContext<C> context, HoodieTable<T, C, I, K, O, P> hoodieTable, HoodieWriteConfig config,
+  HoodieCompactionPlan generateCompactionPlan(HoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable, HoodieWriteConfig config,
                                               String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions) throws IOException;
 
   /**
    * Execute compaction operations and report back status.
    */
-  O compact(HoodieEngineContext<C> context, HoodieCompactionPlan compactionPlan, HoodieTable<T, C, I, K, O, P> hoodieTable,
+  O compact(HoodieEngineContext context, HoodieCompactionPlan compactionPlan, HoodieTable<T, I, K, O, P> hoodieTable,
             HoodieWriteConfig config, String compactionInstantTime) throws IOException;
 }

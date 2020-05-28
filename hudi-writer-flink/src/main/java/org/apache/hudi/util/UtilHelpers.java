@@ -29,7 +29,7 @@ import org.apache.hudi.config.HoodieCompactionConfig;
 import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.index.HoodieIndexV2;
+import org.apache.hudi.index.AbstractHoodieIndex;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -79,7 +79,7 @@ public class UtilHelpers {
                 // Inline compaction is disabled for continuous mode. otherwise enabled for MOR
                 .withInlineCompaction(cfg.isInlineCompactionEnabled()).build())
             .forTable(cfg.targetTableName)
-            .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(HoodieIndexV2.IndexType.HBASE).build())
+            .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(AbstractHoodieIndex.IndexType.HBASE).build())
             .withAutoCommit(false)
             .withProps(readConfig(fs, new Path(cfg.propsFilePath), cfg.configs)
                 .getConfig());
