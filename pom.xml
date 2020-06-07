@@ -52,6 +52,7 @@
     <module>docker/hoodie/hadoop</module>
     <module>hudi-integ-test</module>
     <module>hudi-examples</module>
+    <module>hudi-client2</module>
   </modules>
 
   <licenses>
