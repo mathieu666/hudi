@@ -18,6 +18,10 @@
 
 package org.apache.hudi.utilities.functional;
 
+import org.apache.hudi.client.HoodieSparkWriteClient;
+import org.apache.hudi.common.HoodieSparkEngineContext;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.common.model.HoodieAvroPayload;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -26,7 +30,7 @@ import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.testutils.HoodieTestDataGenerator;
 import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.index.HoodieIndex.IndexType;
+import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.testutils.FunctionalTestHarness;
 import org.apache.hudi.utilities.HoodieSnapshotExporter;
 import org.apache.hudi.utilities.HoodieSnapshotExporter.Config;
@@ -85,7 +89,7 @@ public class TestHoodieSnapshotExporter extends FunctionalTestHarness {
 
     // Prepare data as source Hudi dataset
     HoodieWriteConfig cfg = getHoodieWriteConfig(sourcePath);
-    HoodieWriteClient hdfsWriteClient = new HoodieWriteClient(jsc(), cfg);
+    HoodieSparkWriteClient hdfsWriteClient = new HoodieSparkWriteClient(new HoodieSparkEngineContext(jsc()), cfg);
     hdfsWriteClient.startCommitWithTime(COMMIT_TIME);
     HoodieTestDataGenerator dataGen = new HoodieTestDataGenerator(new String[] {PARTITION_PATH});
     List<HoodieRecord> records = dataGen.generateInserts(COMMIT_TIME, NUM_RECORDS);
@@ -112,7 +116,7 @@ public class TestHoodieSnapshotExporter extends FunctionalTestHarness {
         .withParallelism(2, 2)
         .withBulkInsertParallelism(2)
         .forTable(TABLE_NAME)
-        .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(IndexType.BLOOM).build())
+        .withIndexConfig(HoodieIndexConfig.newBuilder().withIndexType(HoodieIndex.IndexType.BLOOM).build())
         .build();
   }
 

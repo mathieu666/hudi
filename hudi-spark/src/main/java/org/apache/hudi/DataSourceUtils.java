@@ -18,11 +18,12 @@
 
 package org.apache.hudi;
 
+import org.apache.hudi.client.HoodieSparkReadClient;
+import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hudi.client.HoodieReadClient;
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -51,7 +52,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -233,8 +233,8 @@ public class DataSourceUtils {
     });
   }
 
-  public static HoodieWriteClient createHoodieClient(JavaSparkContext jssc, String schemaStr, String basePath,
-                                                     String tblName, Map<String, String> parameters) {
+  public static HoodieSparkWriteClient createHoodieClient(HoodieSparkEngineContext context, String schemaStr, String basePath,
+                                                          String tblName, Map<String, String> parameters) {
 
     // inline compaction is on by default for MOR
     boolean inlineCompact = parameters.get(DataSourceWriteOptions.TABLE_TYPE_OPT_KEY())
@@ -252,10 +252,10 @@ public class DataSourceUtils {
         // override above with Hoodie configs specified as options.
         .withProps(parameters).build();
 
-    return new HoodieWriteClient<>(jssc, writeConfig, true);
+    return new HoodieSparkWriteClient(context, writeConfig, true);
   }
 
-  public static JavaRDD<WriteStatus> doWriteOperation(HoodieWriteClient client, JavaRDD<HoodieRecord> hoodieRecords,
+  public static JavaRDD<WriteStatus> doWriteOperation(HoodieSparkWriteClient client, JavaRDD<HoodieRecord> hoodieRecords,
                                                       String instantTime, String operation) throws HoodieException {
     if (operation.equals(DataSourceWriteOptions.BULK_INSERT_OPERATION_OPT_VAL())) {
       Option<UserDefinedBulkInsertPartitioner> userDefinedBulkInsertPartitioner =
@@ -269,7 +269,7 @@ public class DataSourceUtils {
     }
   }
 
-  public static JavaRDD<WriteStatus> doDeleteOperation(HoodieWriteClient client, JavaRDD<HoodieKey> hoodieKeys,
+  public static JavaRDD<WriteStatus> doDeleteOperation(HoodieSparkWriteClient client, JavaRDD<HoodieKey> hoodieKeys,
                                                        String instantTime) {
     return client.delete(hoodieKeys, instantTime);
   }
@@ -283,15 +283,15 @@ public class DataSourceUtils {
   /**
    * Drop records already present in the dataset.
    *
-   * @param jssc                  JavaSparkContext
+   * @param context               HoodieSparkEngineContext
    * @param incomingHoodieRecords HoodieRecords to deduplicate
    * @param writeConfig           HoodieWriteConfig
    */
   @SuppressWarnings("unchecked")
-  public static JavaRDD<HoodieRecord> dropDuplicates(JavaSparkContext jssc, JavaRDD<HoodieRecord> incomingHoodieRecords,
+  public static JavaRDD<HoodieRecord> dropDuplicates(HoodieSparkEngineContext context, JavaRDD<HoodieRecord> incomingHoodieRecords,
                                                      HoodieWriteConfig writeConfig) {
     try {
-      HoodieReadClient client = new HoodieReadClient<>(jssc, writeConfig);
+      HoodieSparkReadClient client = new HoodieSparkReadClient(context, writeConfig);
       return client.tagLocation(incomingHoodieRecords)
           .filter(r -> !((HoodieRecord<HoodieRecordPayload>) r).isCurrentLocationKnown());
     } catch (TableNotFoundException e) {
@@ -302,11 +302,11 @@ public class DataSourceUtils {
   }
 
   @SuppressWarnings("unchecked")
-  public static JavaRDD<HoodieRecord> dropDuplicates(JavaSparkContext jssc, JavaRDD<HoodieRecord> incomingHoodieRecords,
+  public static JavaRDD<HoodieRecord> dropDuplicates(HoodieSparkEngineContext context, JavaRDD<HoodieRecord> incomingHoodieRecords,
                                                      Map<String, String> parameters) {
     HoodieWriteConfig writeConfig =
         HoodieWriteConfig.newBuilder().withPath(parameters.get("path")).withProps(parameters).build();
-    return dropDuplicates(jssc, incomingHoodieRecords, writeConfig);
+    return dropDuplicates(context, incomingHoodieRecords, writeConfig);
   }
 
   public static HiveSyncConfig buildHiveSyncConfig(TypedProperties props, String basePath, String baseFileFormat) {
