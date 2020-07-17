@@ -19,60 +19,56 @@
 package org.apache.hudi.table.action.rollback;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.HoodieRollbackStat;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieLogFile;
+import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.table.log.HoodieLogFormat;
 import org.apache.hudi.common.table.log.block.HoodieCommandBlock;
 import org.apache.hudi.common.table.log.block.HoodieLogBlock;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.exception.HoodieRollbackException;
-import org.apache.hudi.io.IOType;
-import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.MarkerFiles;
+import org.apache.hudi.table.BaseHoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaSparkContext;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Performs rollback using marker files generated during the write..
  */
-public class MarkerBasedRollbackStrategy implements BaseRollbackActionExecutor.RollbackStrategy {
+public abstract class MarkerBasedRollbackStrategy<T extends HoodieRecordPayload, I, K, O, P> implements BaseRollbackActionExecutor.RollbackStrategy {
 
   private static final Logger LOG = LogManager.getLogger(MarkerBasedRollbackStrategy.class);
 
-  private final HoodieTable<?> table;
+  protected final BaseHoodieTable<T, I, K, O, P> table;
 
-  private final transient JavaSparkContext jsc;
+  protected final transient HoodieEngineContext context;
 
-  private final HoodieWriteConfig config;
+  protected final HoodieWriteConfig config;
 
   private final String basePath;
 
   private final String instantTime;
 
-  public MarkerBasedRollbackStrategy(HoodieTable<?> table, JavaSparkContext jsc, HoodieWriteConfig config, String instantTime) {
+  public MarkerBasedRollbackStrategy(BaseHoodieTable table, HoodieEngineContext context, HoodieWriteConfig config, String instantTime) {
     this.table = table;
-    this.jsc = jsc;
+    this.context = context;
     this.basePath = table.getMetaClient().getBasePath();
     this.config = config;
     this.instantTime = instantTime;
   }
 
-  private HoodieRollbackStat undoMerge(String mergedBaseFilePath) throws IOException {
+  protected HoodieRollbackStat undoMerge(String mergedBaseFilePath) throws IOException {
     LOG.info("Rolling back by deleting the merged base file:" + mergedBaseFilePath);
     return deleteBaseFile(mergedBaseFilePath);
   }
 
-  private HoodieRollbackStat undoCreate(String createdBaseFilePath) throws IOException {
+  protected HoodieRollbackStat undoCreate(String createdBaseFilePath) throws IOException {
     LOG.info("Rolling back by deleting the created base file:" + createdBaseFilePath);
     return deleteBaseFile(createdBaseFilePath);
   }
@@ -87,7 +83,7 @@ public class MarkerBasedRollbackStrategy implements BaseRollbackActionExecutor.R
         .build();
   }
 
-  private HoodieRollbackStat undoAppend(String appendBaseFilePath, HoodieInstant instantToRollback) throws IOException, InterruptedException {
+  protected HoodieRollbackStat undoAppend(String appendBaseFilePath, HoodieInstant instantToRollback) throws IOException, InterruptedException {
     Path baseFilePathForAppend = new Path(basePath, appendBaseFilePath);
     String fileId = FSUtils.getFileIdFromFilePath(baseFilePathForAppend);
     String baseCommitTime = FSUtils.getCommitTime(baseFilePathForAppend.getName());
@@ -128,34 +124,5 @@ public class MarkerBasedRollbackStrategy implements BaseRollbackActionExecutor.R
         // we don't use this field per se. Avoiding the extra file status call.
         .withRollbackBlockAppendResults(Collections.emptyMap())
         .build();
-  }
-
-  @Override
-  public List<HoodieRollbackStat> execute(HoodieInstant instantToRollback) {
-    try {
-      MarkerFiles markerFiles = new MarkerFiles(table, instantToRollback.getTimestamp());
-      List<String> markerFilePaths = markerFiles.allMarkerFilePaths();
-      int parallelism = Math.max(Math.min(markerFilePaths.size(), config.getRollbackParallelism()), 1);
-      return jsc.parallelize(markerFilePaths, parallelism)
-          .map(markerFilePath -> {
-            String typeStr = markerFilePath.substring(markerFilePath.lastIndexOf(".") + 1);
-            IOType type = IOType.valueOf(typeStr);
-            switch (type) {
-              case MERGE:
-                return undoMerge(MarkerFiles.stripMarkerSuffix(markerFilePath));
-              case APPEND:
-                return undoAppend(MarkerFiles.stripMarkerSuffix(markerFilePath), instantToRollback);
-              case CREATE:
-                return undoCreate(MarkerFiles.stripMarkerSuffix(markerFilePath));
-              default:
-                throw new HoodieRollbackException("Unknown marker type, during rollback of " + instantToRollback);
-            }
-          })
-          .mapToPair(rollbackStat -> new Tuple2<>(rollbackStat.getPartitionPath(), rollbackStat))
-          .reduceByKey(RollbackUtils::mergeRollbackStat)
-          .map(Tuple2::_2).collect();
-    } catch (Exception e) {
-      throw new HoodieRollbackException("Error rolling back using marker files written for " + instantToRollback, e);
-    }
   }
 }

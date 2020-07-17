@@ -79,7 +79,9 @@ public abstract class AbstractEmbeddedTimelineService {
    * Retrieves proper view storage configs for remote clients to access this service.
    */
   public FileSystemViewStorageConfig getRemoteFileSystemViewConfig() {
-    return FileSystemViewStorageConfig.newBuilder().withStorageType(FileSystemViewStorageType.REMOTE_FIRST)
+    FileSystemViewStorageType viewStorageType = config.shouldEnableBackupForRemoteFileSystemView()
+        ? FileSystemViewStorageType.REMOTE_FIRST : FileSystemViewStorageType.REMOTE_ONLY;
+    return FileSystemViewStorageConfig.newBuilder().withStorageType(viewStorageType)
         .withRemoteServerHost(hostAddr).withRemoteServerPort(serverPort).build();
   }
 
@@ -96,5 +98,4 @@ public abstract class AbstractEmbeddedTimelineService {
       LOG.info("Closed Timeline server");
     }
   }
-
 }

@@ -26,38 +26,34 @@ import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieLogFile;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.log.HoodieLogFormat;
-import org.apache.hudi.common.table.log.HoodieLogFormat.Writer;
 import org.apache.hudi.common.table.log.block.HoodieCommandBlock;
-import org.apache.hudi.common.table.log.block.HoodieLogBlock.HeaderMetadataType;
+import org.apache.hudi.common.table.log.block.HoodieLogBlock;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieRollbackException;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Performs Rollback of Hoodie Tables.
- */
-public class SparkRollbackHelper extends BaseRollbackHelper {
-  public SparkRollbackHelper(HoodieTableMetaClient metaClient, HoodieWriteConfig config) {
-    super(metaClient,config);
+public class SparkListingBasedRollbackHelper extends ListingBasedRollbackHelper {
+  public SparkListingBasedRollbackHelper(HoodieTableMetaClient metaClient, HoodieWriteConfig config) {
+    super(metaClient, config);
   }
 
   @Override
-  public List<HoodieRollbackStat> performRollback(HoodieEngineContext context, HoodieInstant instantToRollback, List<RollbackRequest> rollbackRequests) {
-    String basefileExtension = metaClient.getTableConfig().getBaseFileFormat().getFileExtension();
+  public List<HoodieRollbackStat> performRollback(HoodieEngineContext context, HoodieInstant instantToRollback, List<ListingBasedRollbackRequest> rollbackRequests) {
+    JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
     SerializablePathFilter filter = (path) -> {
-      if (path.toString().contains(basefileExtension)) {
+      if (path.toString().endsWith(this.metaClient.getTableConfig().getBaseFileFormat().getFileExtension())) {
         String fileCommitTime = FSUtils.getCommitTime(path.getName());
         return instantToRollback.getTimestamp().equals(fileCommitTime);
-      } else if (path.toString().contains(".log")) {
+      } else if (FSUtils.isLogFile(path)) {
         // Since the baseCommitTime is the only commit for new log files, it's okay here
         String fileCommitTime = FSUtils.getBaseCommitTimeFromLogPath(path);
         return instantToRollback.getTimestamp().equals(fileCommitTime);
@@ -66,26 +62,24 @@ public class SparkRollbackHelper extends BaseRollbackHelper {
     };
 
     int sparkPartitions = Math.max(Math.min(rollbackRequests.size(), config.getRollbackParallelism()), 1);
-    JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
     jsc.setJobGroup(this.getClass().getSimpleName(), "Perform rollback actions");
     return jsc.parallelize(rollbackRequests, sparkPartitions).mapToPair(rollbackRequest -> {
-      final Map<FileStatus, Boolean> filesToDeletedStatus = new HashMap<>();
-      switch (rollbackRequest.getRollbackAction()) {
+      switch (rollbackRequest.getType()) {
         case DELETE_DATA_FILES_ONLY: {
-          deleteCleanedFiles(metaClient, config, filesToDeletedStatus, instantToRollback.getTimestamp(),
+          final Map<FileStatus, Boolean> filesToDeletedStatus = deleteCleanedFiles(metaClient, config, instantToRollback.getTimestamp(),
               rollbackRequest.getPartitionPath());
           return new Tuple2<>(rollbackRequest.getPartitionPath(),
               HoodieRollbackStat.newBuilder().withPartitionPath(rollbackRequest.getPartitionPath())
                   .withDeletedFileResults(filesToDeletedStatus).build());
         }
         case DELETE_DATA_AND_LOG_FILES: {
-          deleteCleanedFiles(metaClient, config, filesToDeletedStatus, rollbackRequest.getPartitionPath(), filter);
+          final Map<FileStatus, Boolean> filesToDeletedStatus = deleteCleanedFiles(metaClient, config, rollbackRequest.getPartitionPath(), filter);
           return new Tuple2<>(rollbackRequest.getPartitionPath(),
               HoodieRollbackStat.newBuilder().withPartitionPath(rollbackRequest.getPartitionPath())
                   .withDeletedFileResults(filesToDeletedStatus).build());
         }
         case APPEND_ROLLBACK_BLOCK: {
-          Writer writer = null;
+          HoodieLogFormat.Writer writer = null;
           try {
             writer = HoodieLogFormat.newWriterBuilder()
                 .onParentPath(FSUtils.getPartitionPath(metaClient.getBasePath(), rollbackRequest.getPartitionPath()))
@@ -94,7 +88,7 @@ public class SparkRollbackHelper extends BaseRollbackHelper {
                 .withFileExtension(HoodieLogFile.DELTA_EXTENSION).build();
 
             // generate metadata
-            Map<HeaderMetadataType, String> header = generateHeader(instantToRollback.getTimestamp());
+            Map<HoodieLogBlock.HeaderMetadataType, String> header = generateHeader(instantToRollback.getTimestamp());
             // if update belongs to an existing log file
             writer = writer.appendBlock(new HoodieCommandBlock(header));
           } catch (IOException | InterruptedException io) {
@@ -105,15 +99,17 @@ public class SparkRollbackHelper extends BaseRollbackHelper {
                 writer.close();
               }
             } catch (IOException io) {
-              throw new UncheckedIOException(io);
+              throw new HoodieIOException("Error appending rollback block..", io);
             }
           }
 
           // This step is intentionally done after writer is closed. Guarantees that
           // getFileStatus would reflect correct stats and FileNotFoundException is not thrown in
           // cloud-storage : HUDI-168
-          Map<FileStatus, Long> filesToNumBlocksRollback = new HashMap<>();
-          filesToNumBlocksRollback.put(metaClient.getFs().getFileStatus(Objects.requireNonNull(writer).getLogFile().getPath()), 1L);
+          Map<FileStatus, Long> filesToNumBlocksRollback = Collections.singletonMap(
+              metaClient.getFs().getFileStatus(Objects.requireNonNull(writer).getLogFile().getPath()),
+              1L
+          );
           return new Tuple2<>(rollbackRequest.getPartitionPath(),
               HoodieRollbackStat.newBuilder().withPartitionPath(rollbackRequest.getPartitionPath())
                   .withRollbackBlockAppendResults(filesToNumBlocksRollback).build());
@@ -121,7 +117,6 @@ public class SparkRollbackHelper extends BaseRollbackHelper {
         default:
           throw new IllegalStateException("Unknown Rollback action " + rollbackRequest);
       }
-    }).reduceByKey(this::mergeRollbackStat).map(Tuple2::_2).collect();
+    }).reduceByKey(RollbackUtils::mergeRollbackStat).map(Tuple2::_2).collect();
   }
-
 }

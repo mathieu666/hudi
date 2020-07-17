@@ -57,7 +57,7 @@ public class MarkerFiles {
     this.basePath = basePath;
   }
 
-  public MarkerFiles(HoodieTable<?> table, String instantTime) {
+  public MarkerFiles(BaseHoodieTable table, String instantTime) {
     this(table.getMetaClient().getFs(),
         table.getMetaClient().getBasePath(),
         table.getMetaClient().getMarkerFolderPath(instantTime),

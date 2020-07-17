@@ -21,7 +21,7 @@ package org.apache.hudi.table.action.rollback;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.HoodieRollbackStat;
-import org.apache.hudi.common.HoodieSparkEngineContext;
+import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -32,18 +32,17 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.BaseHoodieTable;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SparkCopyOnWriteRollbackActionExecutor<T extends HoodieRecordPayload> extends BaseCopyOnWriteRollbackActionExecutor<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
   private static final Logger LOG = LogManager.getLogger(SparkCopyOnWriteRollbackActionExecutor.class);
@@ -65,7 +64,16 @@ public class SparkCopyOnWriteRollbackActionExecutor<T extends HoodieRecordPayloa
                                                 boolean deleteInstants,
                                                 boolean skipTimelinePublish,
                                                 boolean useMarkerBasedStrategy) {
-    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish,useMarkerBasedStrategy);
+    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish, useMarkerBasedStrategy);
+  }
+
+  @Override
+  protected RollbackStrategy getRollbackStrategy() {
+    if (useMarkerBasedStrategy) {
+      return new SparkMarkerBasedRollbackStrategy(table, context, config, instantTime);
+    } else {
+      return this::executeRollbackUsingFileListing;
+    }
   }
 
   @Override
@@ -111,6 +119,6 @@ public class SparkCopyOnWriteRollbackActionExecutor<T extends HoodieRecordPayloa
   @Override
   protected List<HoodieRollbackStat> executeRollbackUsingFileListing(HoodieInstant instantToRollback) {
     List<ListingBasedRollbackRequest> rollbackRequests = generateRollbackRequestsByListing();
-    return new ListingBasedRollbackHelper(table.getMetaClient(), config).performRollback(jsc, instantToRollback, rollbackRequests);
+    return new SparkListingBasedRollbackHelper(table.getMetaClient(), config).performRollback(context, instantToRollback, rollbackRequests);
   }
 }

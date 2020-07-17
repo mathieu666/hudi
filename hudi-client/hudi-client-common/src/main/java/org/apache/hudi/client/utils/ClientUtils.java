@@ -25,19 +25,19 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 
 /**
- * A Util helps to build clients.
+ * Util helps to build clients.
  */
 public class ClientUtils {
 
   /**
    * Create Consistency Aware MetaClient.
    *
-   * @param hadoopConf               Configuration
-   * @param config                   HoodieWriteConfig
+   * @param hadoopConf Configuration
+   * @param config HoodieWriteConfig
    * @param loadActiveTimelineOnLoad early loading of timeline
    */
   public static HoodieTableMetaClient createMetaClient(Configuration hadoopConf, HoodieWriteConfig config,
-                                                       boolean loadActiveTimelineOnLoad) {
+      boolean loadActiveTimelineOnLoad) {
     return new HoodieTableMetaClient(hadoopConf, config.getBasePath(), loadActiveTimelineOnLoad,
         config.getConsistencyGuardConfig(),
         Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion())));

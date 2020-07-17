@@ -34,6 +34,7 @@ import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
+import org.apache.hudi.common.table.timeline.HoodieInstant.State;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ValidationUtils;
@@ -360,7 +361,7 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
     try {
       activeTimeline.saveAsComplete(new HoodieInstant(true, actionType, instantTime),
           Option.of(metadata.toJsonString().getBytes(StandardCharsets.UTF_8)));
-      postCommit(metadata, instantTime, extraMetadata);
+      postCommit(table, metadata, instantTime, extraMetadata);
       emitCommitMetrics(instantTime, metadata, actionType);
       LOG.info("Committed " + instantTime);
     } catch (IOException e) {
@@ -371,7 +372,7 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
   }
 
   @Override
-  protected void postCommit(HoodieTable<?> table, HoodieCommitMetadata metadata, String instantTime, Option<Map<String, String>> extraMetadata) {
+  protected void postCommit(BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> table, HoodieCommitMetadata metadata, String instantTime, Option<Map<String, String>> extraMetadata) {
     try {
 
       // Delete the marker directory for the instant.
@@ -386,11 +387,8 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
         metadata.addMetadata(HoodieCompactionConfig.INLINE_COMPACT_PROP, "false");
       }
       // We cannot have unbounded commit files. Archive commits if we have to archive
-      HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(config, hadoopConf);
+      HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(config, table);
       archiveLog.archiveIfRequired();
-      HoodieSparkTable<T> table = HoodieSparkTable.create(config, hadoopConf);
-      HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(config, createMetaClient(true), table);
-      archiveLog.archiveIfRequired(hadoopConf);
       autoCleanOnCommit(instantTime);
     } catch (IOException ioe) {
       throw new HoodieIOException(ioe.getMessage(), ioe);

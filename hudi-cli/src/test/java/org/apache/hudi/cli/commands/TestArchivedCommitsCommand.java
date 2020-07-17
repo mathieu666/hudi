@@ -94,7 +94,7 @@ public class TestArchivedCommitsCommand extends AbstractShellIntegrationTest {
     hoodieTable = HoodieSparkTable.create(cfg,jsc.hadoopConfiguration());
 
     // archive
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hadoopConf);
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
     archiveLog.archiveIfRequired();
   }
 

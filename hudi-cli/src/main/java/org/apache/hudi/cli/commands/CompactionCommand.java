@@ -593,7 +593,7 @@ public class CompactionCommand implements CommandMarker {
   }
 
   private String getRenamesToBePrinted(List<BaseCompactionAdminClient.RenameOpResult> res, Integer limit, String sortByField, boolean descending,
-                                       boolean headerOnly, String operation) {
+      boolean headerOnly, String operation) {
 
     Option<Boolean> result =
         Option.fromJavaOptional(res.stream().map(r -> r.isExecuted() && r.isSuccess()).reduce(Boolean::logicalAnd));

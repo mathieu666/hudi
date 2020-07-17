@@ -55,6 +55,7 @@ import scala.Tuple2;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
+import static org.apache.hudi.index.HoodieIndexUtils.getLatestBaseFilesForAllPartitions;
 
 public class HoodieSparkBloomIndex<T extends HoodieRecordPayload> extends BaseHoodieBloomIndex<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
   private static final Logger LOG = LogManager.getLogger(HoodieSparkBloomIndex.class);
@@ -192,7 +193,7 @@ public class HoodieSparkBloomIndex<T extends HoodieRecordPayload> extends BaseHo
       jsc.setJobDescription("Obtain key ranges for file slices (range pruning=on)");
       return jsc.parallelize(partitionPathFileIDList, Math.max(partitionPathFileIDList.size(), 1)).mapToPair(pf -> {
         try {
-          HoodieRangeInfoHandle<T> rangeInfoHandle = new HoodieRangeInfoHandle<T>(config, hoodieTable, pf);
+          HoodieRangeInfoHandle rangeInfoHandle = new HoodieRangeInfoHandle(config, hoodieTable, pf);
           String[] minMaxKeys = rangeInfoHandle.getMinMaxKeys();
           return new Tuple2<>(pf.getKey(), new BloomIndexFileInfo(pf.getValue(), minMaxKeys[0], minMaxKeys[1]));
         } catch (MetadataNotFoundException me) {

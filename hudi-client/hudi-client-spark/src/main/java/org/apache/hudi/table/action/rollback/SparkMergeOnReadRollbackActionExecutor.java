@@ -33,12 +33,10 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.common.util.HoodieTimer;
-import org.apache.hudi.common.util.ValidationUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.BaseHoodieTable;
 
 import org.apache.hudi.exception.HoodieIOException;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -69,8 +67,23 @@ public class SparkMergeOnReadRollbackActionExecutor<T extends HoodieRecordPayloa
                                                 String instantTime,
                                                 HoodieInstant commitInstant,
                                                 boolean deleteInstants,
+                                                boolean skipTimelinePublish,
                                                 boolean useMarkerBasedStrategy) {
-    super(context, config, table, instantTime, commitInstant, deleteInstants, useMarkerBasedStrategy);
+    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish, useMarkerBasedStrategy);
+  }
+
+  @Override
+  protected RollbackStrategy getRollbackStrategy() {
+    if (useMarkerBasedStrategy) {
+      return new SparkMarkerBasedRollbackStrategy(table, context, config, instantTime);
+    } else {
+      return this::executeRollbackUsingFileListing;
+    }
+  }
+
+  @Override
+  protected List<RollbackRequest> generateRollbackRequests(HoodieEngineContext context, HoodieInstant instantToRollback) throws IOException {
+    return null;
   }
 
   @Override
@@ -119,7 +132,7 @@ public class SparkMergeOnReadRollbackActionExecutor<T extends HoodieRecordPayloa
     } catch (IOException e) {
       throw new HoodieIOException("Error generating rollback requests by file listing.", e);
     }
-    return new ListingBasedRollbackHelper(table.getMetaClient(), config).performRollback(jsc, resolvedInstant, rollbackRequests);
+    return new SparkListingBasedRollbackHelper(table.getMetaClient(), config).performRollback(context, resolvedInstant, rollbackRequests);
   }
 
   /**
@@ -130,6 +143,7 @@ public class SparkMergeOnReadRollbackActionExecutor<T extends HoodieRecordPayloa
    * @return list of rollback requests
    */
   private List<ListingBasedRollbackRequest> generateRollbackRequestsUsingFileListing(HoodieInstant instantToRollback) throws IOException {
+    JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
     String commit = instantToRollback.getTimestamp();
     List<String> partitions = FSUtils.getAllPartitionPaths(table.getMetaClient().getFs(), table.getMetaClient().getBasePath(),
         config.shouldAssumeDatePartitioning());
@@ -221,38 +235,4 @@ public class SparkMergeOnReadRollbackActionExecutor<T extends HoodieRecordPayloa
     }).filter(Objects::nonNull).collect();
   }
 
-  private List<ListingBasedRollbackRequest> generateAppendRollbackBlocksAction(String partitionPath, HoodieInstant rollbackInstant,
-                                                                               HoodieCommitMetadata commitMetadata) {
-    ValidationUtils.checkArgument(rollbackInstant.getAction().equals(HoodieTimeline.DELTA_COMMIT_ACTION));
-
-    // wStat.getPrevCommit() might not give the right commit time in the following
-    // scenario : If a compaction was scheduled, the new commitTime associated with the requested compaction will be
-    // used to write the new log files. In this case, the commit time for the log file is the compaction requested time.
-    // But the index (global) might store the baseCommit of the parquet and not the requested, hence get the
-    // baseCommit always by listing the file slice
-    Map<String, String> fileIdToBaseCommitTimeForLogMap = table.getSliceView().getLatestFileSlices(partitionPath)
-        .collect(Collectors.toMap(FileSlice::getFileId, FileSlice::getBaseInstantTime));
-    return commitMetadata.getPartitionToWriteStats().get(partitionPath).stream().filter(wStat -> {
-
-      // Filter out stats without prevCommit since they are all inserts
-      boolean validForRollback = (wStat != null) && (!wStat.getPrevCommit().equals(HoodieWriteStat.NULL_COMMIT))
-          && (wStat.getPrevCommit() != null) && fileIdToBaseCommitTimeForLogMap.containsKey(wStat.getFileId());
-
-      if (validForRollback) {
-        // For sanity, log instant time can never be less than base-commit on which we are rolling back
-        ValidationUtils
-            .checkArgument(HoodieTimeline.compareTimestamps(fileIdToBaseCommitTimeForLogMap.get(wStat.getFileId()),
-                HoodieTimeline.LESSER_THAN_OR_EQUALS, rollbackInstant.getTimestamp()));
-      }
-
-      return validForRollback && HoodieTimeline.compareTimestamps(fileIdToBaseCommitTimeForLogMap.get(
-          // Base Ts should be strictly less. If equal (for inserts-to-logs), the caller employs another option
-          // to delete and we should not step on it
-          wStat.getFileId()), HoodieTimeline.LESSER_THAN, rollbackInstant.getTimestamp());
-    }).map(wStat -> {
-      String baseCommitTime = fileIdToBaseCommitTimeForLogMap.get(wStat.getFileId());
-      return ListingBasedRollbackRequest.createRollbackRequestWithAppendRollbackBlockAction(partitionPath, wStat.getFileId(),
-          baseCommitTime);
-    }).collect(Collectors.toList());
-  }
 }

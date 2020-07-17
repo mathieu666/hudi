@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.io;
+package org.apache.hudi.io.storage;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -31,7 +31,6 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.testutils.HoodieTestUtils;
 import org.apache.hudi.config.HoodieCompactionConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.HoodieTimelineArchiveLog;
 import org.apache.hudi.testutils.HoodieClientTestHarness;
 import org.apache.hudi.testutils.HoodieTestDataGenerator;
@@ -51,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
+public class TestHoodieTimelineArchiveLog extends HoodieClientTestHarness {
 
   private Configuration hadoopConf;
   private HoodieTableMetaClient metaClient;
@@ -78,9 +77,8 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         HoodieWriteConfig.newBuilder().withPath(basePath).withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA)
             .withParallelism(2, 2).forTable("test-trip-table").build();
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient, table);
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
+    boolean result = archiveLog.archiveIfRequired();
     assertTrue(result);
   }
 
@@ -157,10 +155,8 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
     verifyInflightInstants(metaClient, 2);
 
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient, table);
-
-    assertTrue(archiveLog.archiveIfRequired(hadoopConf));
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
+    assertTrue(archiveLog.archiveIfRequired());
 
     // reload the timeline and remove the remaining commits
     timeline = metaClient.getActiveTimeline().reload().getAllCommitsTimeline().filterCompletedInstants();
@@ -217,8 +213,7 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 5).build())
         .build();
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
     // Requested Compaction
     HoodieTestDataGenerator.createCompactionAuxiliaryMetadata(basePath,
         new HoodieInstant(State.REQUESTED, HoodieTimeline.COMPACTION_ACTION, "100"), dfs.getConf());
@@ -250,7 +245,7 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
 
     HoodieTimeline timeline = metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants();
     assertEquals(4, timeline.countInstants(), "Loaded 4 commits and the count should match");
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
+    boolean result = archiveLog.archiveIfRequired();
     assertTrue(result);
     timeline = metaClient.getActiveTimeline().reload().getCommitsTimeline().filterCompletedInstants();
     assertEquals(4, timeline.countInstants(), "Should not archive commits when maxCommitsToKeep is 5");
@@ -283,8 +278,7 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 5).build())
         .build();
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
     HoodieTestDataGenerator.createCommitFile(basePath, "100", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "101", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "102", dfs.getConf());
@@ -294,7 +288,7 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
 
     HoodieTimeline timeline = metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants();
     assertEquals(6, timeline.countInstants(), "Loaded 6 commits and the count should match");
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
+    boolean result = archiveLog.archiveIfRequired();
     assertTrue(result);
     timeline = metaClient.getActiveTimeline().reload().getCommitsTimeline().filterCompletedInstants();
     assertTrue(timeline.containsOrBeforeTimelineStarts("100"), "Archived commits should always be safe");
@@ -309,9 +303,6 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         .withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA).withParallelism(2, 2).forTable("test-trip-table")
         .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 5).build())
         .build();
-    metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
     HoodieTestDataGenerator.createCommitFile(basePath, "100", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "101", dfs.getConf());
     HoodieTestDataGenerator.createSavepointFile(basePath, "101", dfs.getConf());
@@ -319,11 +310,11 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
     HoodieTestDataGenerator.createCommitFile(basePath, "103", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "104", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "105", dfs.getConf());
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
 
     HoodieTimeline timeline = metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants();
     assertEquals(6, timeline.countInstants(), "Loaded 6 commits and the count should match");
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
-    assertTrue(result);
+    assertTrue(archiveLog.archiveIfRequired());
     timeline = metaClient.getActiveTimeline().reload().getCommitsTimeline().filterCompletedInstants();
     assertEquals(5, timeline.countInstants(),
         "Since we have a savepoint at 101, we should never archive any commit after 101 (we only archive 100)");
@@ -341,9 +332,6 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         .withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA).withParallelism(2, 2).forTable("test-trip-table")
         .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 5).build())
         .build();
-    metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
     HoodieTestDataGenerator.createCommitFile(basePath, "100", dfs.getConf());
     HoodieTestDataGenerator.createCompactionRequestedFile(basePath, "101", dfs.getConf());
     HoodieTestDataGenerator.createCompactionAuxiliaryMetadata(basePath,
@@ -356,10 +344,11 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
     HoodieTestDataGenerator.createCommitFile(basePath, "105", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "106", dfs.getConf());
     HoodieTestDataGenerator.createCommitFile(basePath, "107", dfs.getConf());
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
 
     HoodieTimeline timeline = metaClient.getActiveTimeline().getCommitsAndCompactionTimeline();
     assertEquals(8, timeline.countInstants(), "Loaded 6 commits and the count should match");
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
+    boolean result = archiveLog.archiveIfRequired();
     assertTrue(result);
     timeline = metaClient.getActiveTimeline().reload().getCommitsAndCompactionTimeline();
     assertFalse(timeline.containsInstant(new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "100")),
@@ -384,35 +373,35 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
   }
 
   @Test
-  public void checkArchiveCommitTimeline() throws IOException {
+  public void testArchiveCommitTimeline() throws IOException {
     HoodieWriteConfig cfg =
-        HoodieWriteConfig.newBuilder().withPath(basePath).withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA)
-            .withParallelism(2, 2).forTable("test-trip-table")
-            .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 3).build())
-            .build();
+            HoodieWriteConfig.newBuilder().withPath(basePath).withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA)
+                    .withParallelism(2, 2).forTable("test-trip-table")
+                    .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 3).build())
+                    .build();
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
 
     HoodieTestDataGenerator.createCommitFile(basePath, "1", dfs.getConf());
     HoodieInstant instant1 = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "1");
     HoodieTestDataGenerator.createCommitFile(basePath, "2", dfs.getConf());
+    Path markerPath = new Path(metaClient.getMarkerFolderPath("2"));
+    dfs.mkdirs(markerPath);
     HoodieInstant instant2 = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "2");
     HoodieTestDataGenerator.createCommitFile(basePath, "3", dfs.getConf());
     HoodieInstant instant3 = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "3");
 
     //add 2 more instants to pass filter criteria set in compaction config above
     HoodieTestDataGenerator.createCommitFile(basePath, "4", dfs.getConf());
-    HoodieInstant instant4 = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "4");
     HoodieTestDataGenerator.createCommitFile(basePath, "5", dfs.getConf());
-    HoodieInstant instant5 = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "5");
 
-    boolean result = archiveLog.archiveIfRequired(hadoopConf);
+
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
+    boolean result = archiveLog.archiveIfRequired();
     assertTrue(result);
-
     HoodieArchivedTimeline archivedTimeline = metaClient.getArchivedTimeline();
     List<HoodieInstant> archivedInstants = Arrays.asList(instant1, instant2, instant3);
     assertEquals(new HashSet<>(archivedInstants), archivedTimeline.getInstants().collect(Collectors.toSet()));
+    assertFalse(dfs.exists(markerPath));
   }
 
   private void verifyInflightInstants(HoodieTableMetaClient metaClient, int expectedTotalInstants) {
@@ -432,8 +421,7 @@ public class TestHoodieCommitArchiveLog extends HoodieClientTestHarness {
         .withCompactionConfig(HoodieCompactionConfig.newBuilder().retainCommits(1).archiveCommitsWith(2, 5).build())
         .build();
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieSparkTable table = HoodieSparkTable.create(metaClient, cfg, jsc.hadoopConfiguration());
-    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, metaClient,table);
+    HoodieTimelineArchiveLog archiveLog = new HoodieTimelineArchiveLog(cfg, hoodieTable);
 
     org.apache.hudi.avro.model.HoodieCommitMetadata expectedCommitMetadata = archiveLog.convertCommitMetadata(hoodieCommitMetadata);
     assertEquals(expectedCommitMetadata.getOperationType(), WriteOperationType.INSERT.toString());

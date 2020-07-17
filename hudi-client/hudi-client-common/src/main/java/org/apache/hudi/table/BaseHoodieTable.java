@@ -21,7 +21,6 @@ package org.apache.hudi.table;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
@@ -32,7 +31,6 @@ import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.fs.ConsistencyGuard;
-import org.apache.hudi.common.fs.ConsistencyGuard.FileVisibility;
 import org.apache.hudi.common.fs.FailSafeConsistencyGuard;
 import org.apache.hudi.common.model.HoodieFileFormat;
 import org.apache.hudi.common.model.HoodieKey;
@@ -362,30 +360,10 @@ public abstract class BaseHoodieTable<T extends HoodieRecordPayload, I, K, O, P>
    */
 
   public void finalizeWrite(HoodieEngineContext context, String instantTs, List<org.apache.hudi.common.model.HoodieWriteStat> stats) throws HoodieIOException {
-    reconcileAgainstMarkers(jsc, instantTs, stats, config.getConsistencyGuardConfig().isConsistencyCheckEnabled());
+    reconcileAgainstMarkers(context, instantTs, stats, config.getConsistencyGuardConfig().isConsistencyCheckEnabled());
   }
 
-  private void deleteInvalidFilesByPartitions(JavaSparkContext jsc, Map<String, List<Pair<String, String>>> invalidFilesByPartition) {
-    // Now delete partially written files
-    jsc.parallelize(new ArrayList<>(invalidFilesByPartition.values()), config.getFinalizeWriteParallelism())
-        .map(partitionWithFileList -> {
-          final FileSystem fileSystem = metaClient.getFs();
-          LOG.info("Deleting invalid data files=" + partitionWithFileList);
-          if (partitionWithFileList.isEmpty()) {
-            return true;
-          }
-          // Delete
-          partitionWithFileList.stream().map(Pair::getValue).forEach(file -> {
-            try {
-              fileSystem.delete(new Path(file), false);
-            } catch (IOException e) {
-              throw new HoodieIOException(e.getMessage(), e);
-            }
-          });
-
-          return true;
-        }).collect();
-  }
+  protected abstract void deleteInvalidFilesByPartitions(HoodieEngineContext context, Map<String, List<Pair<String, String>>> invalidFilesByPartition);
 
   /**
    * Reconciles WriteStats and marker files to detect and safely delete duplicate data files created because of Spark
@@ -397,58 +375,10 @@ public abstract class BaseHoodieTable<T extends HoodieRecordPayload, I, K, O, P>
    * @param consistencyCheckEnabled Consistency Check Enabled
    * @throws HoodieIOException
    */
-  protected void reconcileAgainstMarkers(JavaSparkContext jsc,
+  protected abstract void reconcileAgainstMarkers(HoodieEngineContext context,
                                          String instantTs,
                                          List<HoodieWriteStat> stats,
-                                         boolean consistencyCheckEnabled) throws HoodieIOException {
-    try {
-      // Reconcile marker and data files with WriteStats so that partially written data-files due to failed
-      // (but succeeded on retry) tasks are removed.
-      String basePath = getMetaClient().getBasePath();
-      MarkerFiles markers = new MarkerFiles(this, instantTs);
-
-      if (!markers.doesMarkerDirExist()) {
-        // can happen if it was an empty write say.
-        return;
-      }
-
-      // we are not including log appends here, since they are already fail-safe.
-      List<String> invalidDataPaths = markers.createdAndMergedDataPaths();
-      List<String> validDataPaths = stats.stream()
-          .map(HoodieWriteStat::getPath)
-          .filter(p -> p.endsWith(this.getBaseFileExtension()))
-          .collect(Collectors.toList());
-      // Contains list of partially created files. These needs to be cleaned up.
-      invalidDataPaths.removeAll(validDataPaths);
-      if (!invalidDataPaths.isEmpty()) {
-        LOG.info("Removing duplicate data files created due to spark retries before committing. Paths=" + invalidDataPaths);
-      }
-      Map<String, List<Pair<String, String>>> invalidPathsByPartition = invalidDataPaths.stream()
-          .map(dp -> Pair.of(new Path(dp).getParent().toString(), new Path(basePath, dp).toString()))
-          .collect(Collectors.groupingBy(Pair::getKey));
-
-      if (!invalidPathsByPartition.isEmpty()) {
-        // Ensure all files in delete list is actually present. This is mandatory for an eventually consistent FS.
-        // Otherwise, we may miss deleting such files. If files are not found even after retries, fail the commit
-        if (consistencyCheckEnabled) {
-          // This will either ensure all files to be deleted are present.
-          waitForAllFiles(jsc, invalidPathsByPartition, FileVisibility.APPEAR);
-        }
-
-        // Now delete partially written files
-        jsc.setJobGroup(this.getClass().getSimpleName(), "Delete all partially written files");
-        deleteInvalidFilesByPartitions(jsc, invalidPathsByPartition);
-
-        // Now ensure the deleted files disappear
-        if (consistencyCheckEnabled) {
-          // This will either ensure all files to be deleted are absent.
-          waitForAllFiles(jsc, invalidPathsByPartition, FileVisibility.DISAPPEAR);
-        }
-      }
-    } catch (IOException ioe) {
-      throw new HoodieIOException(ioe.getMessage(), ioe);
-    }
-  }
+                                         boolean consistencyCheckEnabled) throws HoodieIOException;
 
   /**
    * Ensures all files passed either appear or disappear.

@@ -51,8 +51,9 @@ public abstract class BaseCopyOnWriteRollbackActionExecutor<T extends HoodieReco
                                                String instantTime,
                                                HoodieInstant commitInstant,
                                                boolean deleteInstants,
-                                               boolean skipTimelinePublish) {
-    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish);
+                                               boolean skipTimelinePublish,
+                                               boolean useMarkerBasedStrategy) {
+    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish, useMarkerBasedStrategy);
   }
 
   protected List<RollbackRequest> generateRollbackRequests(HoodieInstant instantToRollback)

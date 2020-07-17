@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
 public class SparkSavepointActionExecutor<T extends HoodieRecordPayload> extends BaseActionExecutor<HoodieSavepointMetadata, T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
 
   private static final Logger LOG = LogManager.getLogger(SparkSavepointActionExecutor.class);

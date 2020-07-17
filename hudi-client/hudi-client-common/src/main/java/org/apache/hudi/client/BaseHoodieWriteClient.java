@@ -96,7 +96,7 @@ public abstract class BaseHoodieWriteClient<T extends HoodieRecordPayload, I, K,
    * Commit changes performed at the given instantTime marker.
    */
   public boolean commit(String instantTime, O writeStatuses,
-                        Option<Map<String, String>> extraMetadata) {
+      Option<Map<String, String>> extraMetadata) {
     HoodieTableMetaClient metaClient = createMetaClient(false);
     return commit(instantTime, writeStatuses, extraMetadata, metaClient.getCommitActionType());
   }
@@ -127,7 +127,7 @@ public abstract class BaseHoodieWriteClient<T extends HoodieRecordPayload, I, K,
    * @param instantTime   Instant Time
    * @param extraMetadata Additional Metadata passed by user
    */
-  protected abstract void postCommit(HoodieTable<?> table, HoodieCommitMetadata metadata, String instantTime, Option<Map<String, String>> extraMetadata);
+  protected abstract void postCommit(BaseHoodieTable<T, I, K, O, P> table, HoodieCommitMetadata metadata, String instantTime, Option<Map<String, String>> extraMetadata);
 
   /**
    * Finalize Write operation.

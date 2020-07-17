@@ -51,8 +51,9 @@ public abstract class BaseMergeOnReadRollbackActionExecutor<T extends HoodieReco
                                                String instantTime,
                                                HoodieInstant commitInstant,
                                                boolean deleteInstants,
-                                               boolean skipTimelinePublish) {
-    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish);
+                                               boolean skipTimelinePublish,
+                                               boolean useMarkerBasedStrategy) {
+    super(context, config, table, instantTime, commitInstant, deleteInstants, skipTimelinePublish, useMarkerBasedStrategy);
   }
 
   /**
@@ -67,7 +68,7 @@ public abstract class BaseMergeOnReadRollbackActionExecutor<T extends HoodieReco
   protected abstract List<RollbackRequest> generateRollbackRequests(HoodieEngineContext context, HoodieInstant instantToRollback)
       throws IOException;
 
-  protected List<RollbackRequest> generateAppendRollbackBlocksAction(String partitionPath, HoodieInstant rollbackInstant,
+  protected List<ListingBasedRollbackRequest> generateAppendRollbackBlocksAction(String partitionPath, HoodieInstant rollbackInstant,
                                                                      HoodieCommitMetadata commitMetadata) {
     ValidationUtils.checkArgument(rollbackInstant.getAction().equals(HoodieTimeline.DELTA_COMMIT_ACTION));
 
@@ -97,8 +98,8 @@ public abstract class BaseMergeOnReadRollbackActionExecutor<T extends HoodieReco
           wStat.getFileId()), HoodieTimeline.LESSER_THAN, rollbackInstant.getTimestamp());
     }).map(wStat -> {
       String baseCommitTime = fileIdToBaseCommitTimeForLogMap.get(wStat.getFileId());
-      return RollbackRequest.createRollbackRequestWithAppendRollbackBlockAction(partitionPath, wStat.getFileId(),
-          baseCommitTime, rollbackInstant);
+      return ListingBasedRollbackRequest.createRollbackRequestWithAppendRollbackBlockAction(partitionPath, wStat.getFileId(),
+          baseCommitTime);
     }).collect(Collectors.toList());
   }
 

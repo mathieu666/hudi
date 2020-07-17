@@ -57,6 +57,7 @@ public class SparkCompactionAdminClient extends BaseCompactionAdminClient {
     if (plan.getOperations() != null) {
       List<CompactionOperation> ops = plan.getOperations().stream()
           .map(CompactionOperation::convertFromAvroRecordInstance).collect(Collectors.toList());
+      jsc.setJobGroup(this.getClass().getSimpleName(), "Validate compaction operations");
       return jsc.parallelize(ops, parallelism).map(op -> {
         try {
           return validateCompactionOperation(metaClient, compactionInstant, op, Option.of(fsView));
@@ -77,6 +78,7 @@ public class SparkCompactionAdminClient extends BaseCompactionAdminClient {
     } else {
       LOG.info("The following compaction renaming operations needs to be performed to un-schedule");
       if (!dryRun) {
+        jsc.setJobGroup(this.getClass().getSimpleName(), "Execute unschedule operations");
         return jsc.parallelize(renameActions, parallelism).map(lfPair -> {
           try {
             LOG.info("RENAME " + lfPair.getLeft().getPath() + " => " + lfPair.getRight().getPath());
@@ -99,6 +101,7 @@ public class SparkCompactionAdminClient extends BaseCompactionAdminClient {
 
   @Override
   public List<Pair<HoodieLogFile, HoodieLogFile>> getRenamingActionsForUnschedulingCompactionPlan(HoodieTableMetaClient metaClient, String compactionInstant, int parallelism, Option<HoodieTableFileSystemView> fsViewOpt, boolean skipValidation) throws IOException {
+    JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
     HoodieTableFileSystemView fsView = fsViewOpt.isPresent() ? fsViewOpt.get()
         : new HoodieTableFileSystemView(metaClient, metaClient.getCommitsAndCompactionTimeline());
     HoodieCompactionPlan plan = getCompactionPlan(metaClient, compactionInstant);
@@ -107,7 +110,8 @@ public class SparkCompactionAdminClient extends BaseCompactionAdminClient {
           "Number of Compaction Operations :" + plan.getOperations().size() + " for instant :" + compactionInstant);
       List<CompactionOperation> ops = plan.getOperations().stream()
           .map(CompactionOperation::convertFromAvroRecordInstance).collect(Collectors.toList());
-      return ((HoodieSparkEngineContext) context).getJavaSparkContext().parallelize(ops, parallelism).flatMap(op -> {
+      jsc.setJobGroup(this.getClass().getSimpleName(), "Generate compaction unscheduling operations");
+      return jsc.parallelize(ops, parallelism).flatMap(op -> {
         try {
           return getRenamingActionsForUnschedulingCompactionOperation(metaClient, compactionInstant, op,
               Option.of(fsView), skipValidation).iterator();

@@ -22,7 +22,6 @@ import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.common.model.HoodieAvroPayload;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;

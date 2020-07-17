@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.hudi.index;
+package org.apache.hudi.index.bloom;
 
 import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -30,16 +31,16 @@ import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIndexException;
+import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.index.HoodieIndex.IndexType;
-import org.apache.hudi.index.bloom.HoodieBloomIndex;
-import org.apache.hudi.index.bloom.HoodieGlobalBloomIndex;
-import org.apache.hudi.index.hbase.HBaseIndex;
-import org.apache.hudi.index.simple.HoodieSimpleIndex;
-import org.apache.hudi.table.HoodieTable;
 
+import org.apache.hudi.index.HoodieSparkIndexFactory;
+import org.apache.hudi.index.SparkInMemoryHashIndex;
+import org.apache.hudi.index.hbase.SparkHBaseIndex;
+import org.apache.hudi.index.simple.HoodieSparkSimpleIndex;
+import org.apache.hudi.table.BaseHoodieTable;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -70,29 +71,29 @@ public class TestHoodieIndexConfigs {
       case INMEMORY:
         config = clientConfigBuilder.withPath(basePath)
             .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.INMEMORY).build()).build();
-        assertTrue(HoodieIndex.createIndex(config) instanceof InMemoryHashIndex);
+        assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof SparkInMemoryHashIndex);
         break;
       case BLOOM:
         config = clientConfigBuilder.withPath(basePath)
             .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.BLOOM).build()).build();
-        assertTrue(HoodieIndex.createIndex(config) instanceof HoodieBloomIndex);
+        assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof HoodieSparkBloomIndex);
         break;
       case GLOBAL_BLOOM:
         config = clientConfigBuilder.withPath(basePath)
             .withIndexConfig(indexConfigBuilder.withIndexType(IndexType.GLOBAL_BLOOM).build()).build();
-        assertTrue(HoodieIndex.createIndex(config) instanceof HoodieGlobalBloomIndex);
+        assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof HoodieSparkGlobalBloomIndex);
         break;
       case SIMPLE:
         config = clientConfigBuilder.withPath(basePath)
             .withIndexConfig(indexConfigBuilder.withIndexType(IndexType.SIMPLE).build()).build();
-        assertTrue(HoodieIndex.createIndex(config) instanceof HoodieSimpleIndex);
+        assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof HoodieSparkSimpleIndex);
         break;
       case HBASE:
         config = clientConfigBuilder.withPath(basePath)
             .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.HBASE)
                 .withHBaseIndexConfig(new HoodieHBaseIndexConfig.Builder().build()).build())
             .build();
-        assertTrue(HoodieIndex.createIndex(config) instanceof HBaseIndex);
+        assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof SparkHBaseIndex);
         break;
       default:
         // no -op. just for checkstyle errors
@@ -105,7 +106,7 @@ public class TestHoodieIndexConfigs {
     HoodieIndexConfig.Builder indexConfigBuilder = HoodieIndexConfig.newBuilder();
     HoodieWriteConfig config = clientConfigBuilder.withPath(basePath)
         .withIndexConfig(indexConfigBuilder.withIndexClass(DummyHoodieIndex.class.getName()).build()).build();
-    assertTrue(HoodieIndex.createIndex(config) instanceof DummyHoodieIndex);
+    assertTrue(HoodieSparkIndexFactory.createIndex(config) instanceof DummyHoodieIndex);
   }
 
   @Test
@@ -115,36 +116,43 @@ public class TestHoodieIndexConfigs {
     final HoodieWriteConfig config1 = clientConfigBuilder.withPath(basePath)
         .withIndexConfig(indexConfigBuilder.withIndexClass(IndexWithConstructor.class.getName()).build()).build();
     final Throwable thrown1 = assertThrows(HoodieException.class, () -> {
-      HoodieIndex.createIndex(config1);
+      HoodieSparkIndexFactory.createIndex(config1);
     }, "exception is expected");
     assertTrue(thrown1.getMessage().contains("is not a subclass of HoodieIndex"));
 
     final HoodieWriteConfig config2 = clientConfigBuilder.withPath(basePath)
         .withIndexConfig(indexConfigBuilder.withIndexClass(IndexWithoutConstructor.class.getName()).build()).build();
     final Throwable thrown2 = assertThrows(HoodieException.class, () -> {
-      HoodieIndex.createIndex(config2);
+      HoodieSparkIndexFactory.createIndex(config2);
     }, "exception is expected");
     assertTrue(thrown2.getMessage().contains("Unable to instantiate class"));
   }
 
-  public static class DummyHoodieIndex<T extends HoodieRecordPayload<T>> extends HoodieIndex<T> {
+  public static class DummyHoodieIndex<T extends HoodieRecordPayload<T>> extends HoodieIndex<T,JavaRDD<HoodieRecord<T>>,
+      JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
 
     public DummyHoodieIndex(HoodieWriteConfig config) {
       super(config);
     }
 
     @Override
-    public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys, JavaSparkContext jsc, HoodieTable<T> hoodieTable) {
+    public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys,
+                                                                                    HoodieEngineContext context,
+                                                                                    BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) {
       return null;
     }
 
     @Override
-    public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
+    public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD,
+                                                HoodieEngineContext context,
+                                                BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) throws HoodieIndexException {
       return null;
     }
 
     @Override
-    public JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException {
+    public JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD,
+                                               HoodieEngineContext context,
+                                               BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) throws HoodieIndexException {
       return null;
     }
 

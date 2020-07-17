@@ -33,7 +33,6 @@ import org.apache.hudi.common.util.ValidationUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.HoodieRollbackException;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.MarkerFiles;
 import org.apache.hudi.table.BaseHoodieTable;
 import org.apache.hudi.table.action.BaseActionExecutor;
@@ -89,13 +88,7 @@ public abstract class BaseRollbackActionExecutor<T extends HoodieRecordPayload, 
     }
   }
 
-  protected RollbackStrategy getRollbackStrategy() {
-    if (useMarkerBasedStrategy) {
-      return new MarkerBasedRollbackStrategy(table, jsc, config, instantTime);
-    } else {
-      return this::executeRollbackUsingFileListing;
-    }
-  }
+  protected abstract RollbackStrategy getRollbackStrategy();
 
   protected abstract List<HoodieRollbackStat> executeRollback() throws IOException;
 

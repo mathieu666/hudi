@@ -49,9 +49,7 @@ import org.apache.hudi.index.HoodieIndex.IndexType;
 import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.action.commit.SparkWriteHelper;
 import org.apache.hudi.io.IOType;
-import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.MarkerFiles;
-import org.apache.hudi.table.action.commit.WriteHelper;
 import org.apache.hudi.testutils.HoodieClientTestBase;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
 
@@ -306,7 +304,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends HoodieClientTestBase {
     String newCommitTime = "001";
     String initCommitTime = "000";
     int numRecords = 200;
-    insertFirstBatch(hoodieWriteConfig, client, newCommitTime, initCommitTime, numRecords, HoodieWriteClient::insert,
+    insertFirstBatch(hoodieWriteConfig, client, newCommitTime, initCommitTime, numRecords, HoodieSparkWriteClient::insert,
         isPrepped, true, numRecords);
 
     // Write 2 (updates)
@@ -881,7 +879,7 @@ public class TestHoodieClientOnCopyOnWriteStorage extends HoodieClientTestBase {
     testDeletes(client, updateBatch3.getRight(), 10, file1, "007", 140, keysSoFar);
   }
 
-  private Pair<Set<String>, List<HoodieRecord>> testUpdates(String instantTime, HoodieWriteClient client,
+  private Pair<Set<String>, List<HoodieRecord>> testUpdates(String instantTime, HoodieSparkWriteClient client,
       int sizeToInsertAndUpdate, int expectedTotalRecords)
       throws IOException {
     client.startCommitWithTime(instantTime);

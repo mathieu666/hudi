@@ -77,6 +77,7 @@ public class SparkCleanActionExecutor<T extends HoodieRecordPayload> extends Abs
       int cleanerParallelism = Math.min(partitionsToClean.size(), config.getCleanerParallelism());
       LOG.info("Using cleanerParallelism: " + cleanerParallelism);
 
+      jsc.setJobGroup(this.getClass().getSimpleName(), "Generates list of file slices to be cleaned");
       Map<String, List<String>> cleanOps = jsc
           .parallelize(partitionsToClean, cleanerParallelism)
           .map(partitionPathToClean -> Pair.of(partitionPathToClean, planner.getDeletePaths(partitionPathToClean)))
@@ -98,6 +99,8 @@ public class SparkCleanActionExecutor<T extends HoodieRecordPayload> extends Abs
         (int) (cleanerPlan.getFilesToBeDeletedPerPartition().values().stream().mapToInt(List::size).count()),
         config.getCleanerParallelism());
     LOG.info("Using cleanerParallelism: " + cleanerParallelism);
+
+    jsc.setJobGroup(this.getClass().getSimpleName(), "Perform cleaning of partitions");
     List<Tuple2<String, PartitionCleanStat>> partitionCleanStats = jsc
         .parallelize(cleanerPlan.getFilesToBeDeletedPerPartition().entrySet().stream()
             .flatMap(x -> x.getValue().stream().map(y -> new Tuple2<>(x.getKey(), y)))
