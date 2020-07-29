@@ -56,8 +56,6 @@ public abstract class AbstractHoodieClient implements Serializable, AutoCloseabl
   public void close() {
   }
 
-
-
   public HoodieWriteConfig getConfig() {
     return config;
   }

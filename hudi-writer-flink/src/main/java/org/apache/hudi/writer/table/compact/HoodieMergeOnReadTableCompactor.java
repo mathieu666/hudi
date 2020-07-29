@@ -26,7 +26,11 @@ import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.avro.model.HoodieCompactionOperation;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.CompactionOperation;
+import org.apache.hudi.common.model.HoodieBaseFile;
+import org.apache.hudi.common.model.HoodieFileGroupId;
+import org.apache.hudi.common.model.HoodieLogFile;
+import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.HoodieWriteStat.RuntimeStats;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.log.HoodieMergedLogRecordScanner;
@@ -46,10 +50,12 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
@@ -64,10 +70,6 @@ import static java.util.stream.Collectors.toList;
 public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
 
   private static final Logger LOG = LogManager.getLogger(HoodieMergeOnReadTableCompactor.class);
-  // Accumulator to keep track of total log files for a table
-//  private AccumulatorV2<Long, Long> totalLogFiles;
-  // Accumulator to keep track of total log file slices for a table
-//  private AccumulatorV2<Long, Long> totalFileSlices;
 
   @Override
   public List<WriteStatus> compact(Configuration hadoopConf, HoodieCompactionPlan compactionPlan,
@@ -164,11 +166,6 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
                                                      HoodieWriteConfig config, String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions)
       throws IOException {
 
-//    totalLogFiles = new LongAccumulator();
-//    totalFileSlices = new LongAccumulator();
-//    jsc.sc().register(totalLogFiles);
-//    jsc.sc().register(totalFileSlices);
-
     ValidationUtils.checkArgument(hoodieTable.getMetaClient().getTableType() == HoodieTableType.MERGE_ON_READ,
         "Can only compact table of type " + HoodieTableType.MERGE_ON_READ + " and not "
             + hoodieTable.getMetaClient().getTableType().name());
@@ -206,22 +203,19 @@ public class HoodieMergeOnReadTableCompactor implements HoodieCompactor {
 
 
     LOG.info("Total of " + operations.size() + " compactions are retrieved");
-//      LOG.info("Total number of latest files slices " + totalFileSlices.value());
-//      LOG.info("Total number of log files " + totalLogFiles.value());
-//      LOG.info("Total number of file slices " + totalFileSlices.value());
-      // Filter the compactions with the passed in filter. This lets us choose most effective
-      // compactions only
-      HoodieCompactionPlan compactionPlan = config.getCompactionStrategy().generateCompactionPlan(config, operations,
-          CompactionUtils.getAllPendingCompactionPlans(metaClient).stream().map(Pair::getValue).collect(toList()));
-      ValidationUtils.checkArgument(
-          compactionPlan.getOperations().stream().noneMatch(
-              op -> fgIdsInPendingCompactions.contains(new HoodieFileGroupId(op.getPartitionPath(), op.getFileId()))),
-          "Bad Compaction Plan. FileId MUST NOT have multiple pending compactions. "
-              + "Please fix your strategy implementation. FileIdsWithPendingCompactions :" + fgIdsInPendingCompactions
-              + ", Selected workload :" + compactionPlan);
-      if (compactionPlan.getOperations().isEmpty()) {
-        LOG.warn("After filtering, Nothing to compact for " + metaClient.getBasePath());
-      }
-      return compactionPlan;
+
+    // compactions only
+    HoodieCompactionPlan compactionPlan = config.getCompactionStrategy().generateCompactionPlan(config, operations,
+        CompactionUtils.getAllPendingCompactionPlans(metaClient).stream().map(Pair::getValue).collect(toList()));
+    ValidationUtils.checkArgument(
+        compactionPlan.getOperations().stream().noneMatch(
+            op -> fgIdsInPendingCompactions.contains(new HoodieFileGroupId(op.getPartitionPath(), op.getFileId()))),
+        "Bad Compaction Plan. FileId MUST NOT have multiple pending compactions. "
+            + "Please fix your strategy implementation. FileIdsWithPendingCompactions :" + fgIdsInPendingCompactions
+            + ", Selected workload :" + compactionPlan);
+    if (compactionPlan.getOperations().isEmpty()) {
+      LOG.warn("After filtering, Nothing to compact for " + metaClient.getBasePath());
     }
+    return compactionPlan;
   }
+}

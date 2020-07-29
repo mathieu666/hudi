@@ -18,15 +18,11 @@
 
 package org.apache.hudi.writer.utils;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.config.DFSPropertiesConfiguration;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.common.table.timeline.HoodieInstant;
-import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.writer.WriteJob;
 import org.apache.hudi.writer.config.HoodieCompactionConfig;
@@ -40,7 +36,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.hudi.writer.source.HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA;
 
@@ -89,12 +84,6 @@ public class UtilHelpers {
 
     HoodieWriteConfig config = builder.build();
     config.setSchema(TRIP_EXAMPLE_SCHEMA);
-
-    // Validate what deltastreamer assumes of write-config to be really safe
-    Preconditions.checkArgument(config.isInlineCompaction() == cfg.isInlineCompactionEnabled());
-    Preconditions.checkArgument(!config.shouldAutoCommit());
-    Preconditions.checkArgument(config.shouldCombineBeforeInsert() == cfg.filterDupes);
-    Preconditions.checkArgument(config.shouldCombineBeforeUpsert());
 
     return config;
   }

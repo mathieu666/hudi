@@ -23,7 +23,11 @@ import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**

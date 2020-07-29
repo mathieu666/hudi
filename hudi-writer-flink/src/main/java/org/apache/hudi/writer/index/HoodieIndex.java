@@ -50,12 +50,6 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
     switch (config.getIndexType()) {
       case HBASE:
         return new HBaseIndex<>(config);
-//      case INMEMORY:
-//        return new InMemoryHashIndex<>(config);
-//      case BLOOM:
-//        return new HoodieBloomIndex<>(config);
-//      case GLOBAL_BLOOM:
-//        return new HoodieGlobalBloomIndex<>(config);
       default:
         throw new HoodieIndexException("Index type unspecified, set " + config.getIndexType());
     }

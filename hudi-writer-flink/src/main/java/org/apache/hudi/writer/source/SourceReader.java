@@ -1,6 +1,5 @@
 package org.apache.hudi.writer.source;
 
-import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -10,6 +9,7 @@ import org.mortbay.util.ajax.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +24,8 @@ public class SourceReader<T extends HoodieRecordPayload> extends RichSourceFunct
 
   @Override
   public void run(SourceContext<HoodieWriteInput<HoodieRecord<T>>> ctx) throws Exception {
-    String instantTime = DateUtil.formatDate(new Date(), "yyyyMMddHHmmSS");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmSS");
+    String instantTime = sdf.format(new Date());
     List<HoodieRecord> records = dataGen.generateInserts(instantTime, 1000);
     while (isRunning) {
       for (int i = 0; i < records.size(); i++) {

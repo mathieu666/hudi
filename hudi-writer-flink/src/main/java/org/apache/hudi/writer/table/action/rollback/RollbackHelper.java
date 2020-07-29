@@ -39,15 +39,16 @@ import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.exception.HoodieRollbackException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static org.apache.hudi.writer.table.action.rollback.RollbackRequest.RollbackAction.*;
 
 /**
  * Performs Rollback of Hoodie Tables.

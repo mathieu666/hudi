@@ -18,7 +18,6 @@
 
 package org.apache.hudi.writer.table.action;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.table.HoodieTable;

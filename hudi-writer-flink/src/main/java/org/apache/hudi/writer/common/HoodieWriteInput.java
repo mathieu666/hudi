@@ -1,14 +1,14 @@
 package org.apache.hudi.writer.common;
 
-public class HoodieWriteInput<IN> {
+public class HoodieWriteInput<I> {
 
-  private IN inputs;
+  private I inputs;
 
-  public HoodieWriteInput(IN inputs) {
+  public HoodieWriteInput(I inputs) {
     this.inputs = inputs;
   }
 
-  public IN getInputs() {
+  public I getInputs() {
     return inputs;
   }
 }

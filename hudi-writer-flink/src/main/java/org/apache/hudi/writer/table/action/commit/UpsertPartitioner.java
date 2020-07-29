@@ -20,7 +20,11 @@ package org.apache.hudi.writer.table.action.commit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.HoodieBaseFile;
+import org.apache.hudi.common.model.HoodieCommitMetadata;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodieRecordLocation;
+import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.NumericUtils;
@@ -35,8 +39,13 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**

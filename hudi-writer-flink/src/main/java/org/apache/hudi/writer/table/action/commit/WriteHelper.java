@@ -19,7 +19,6 @@
 package org.apache.hudi.writer.table.action.commit;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.collection.Pair;
@@ -27,14 +26,12 @@ import org.apache.hudi.writer.common.HoodieWriteInput;
 import org.apache.hudi.writer.exception.HoodieUpsertException;
 import org.apache.hudi.writer.index.HoodieIndex;
 import org.apache.hudi.writer.table.HoodieTable;
-import scala.Tuple2;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class WriteHelper<T extends HoodieRecordPayload<T>> {
@@ -44,10 +41,6 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
                                                                              HoodieTable<T> table, boolean shouldCombine,
                                                                              int shuffleParallelism, CommitActionExecutor<T> executor, boolean performTagging) {
     try {
-      // De-dupe/merge if needed
-//      List<HoodieRecord<T>> dedupedRecords =
-//          combineOnCondition(shouldCombine, inputRecordsRDD, shuffleParallelism, table);
-
       Instant lookupBegin = Instant.now();
       HoodieWriteInput<List<HoodieRecord<T>>> taggedRecords = inputRecordsRDD;
       if (performTagging) {

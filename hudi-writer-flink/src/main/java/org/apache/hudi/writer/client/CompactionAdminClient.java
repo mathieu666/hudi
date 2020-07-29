@@ -24,7 +24,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hudi.avro.model.HoodieCompactionOperation;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.CompactionOperation;
+import org.apache.hudi.common.model.FileSlice;
+import org.apache.hudi.common.model.HoodieBaseFile;
+import org.apache.hudi.common.model.HoodieFileGroupId;
+import org.apache.hudi.common.model.HoodieLogFile;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.log.HoodieLogFormat;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
@@ -383,22 +387,6 @@ public class CompactionAdminClient extends AbstractHoodieClient {
     HoodieTableFileSystemView fsView = fsViewOpt.isPresent() ? fsViewOpt.get()
         : new HoodieTableFileSystemView(metaClient, metaClient.getCommitsAndCompactionTimeline());
     HoodieCompactionPlan plan = getCompactionPlan(metaClient, compactionInstant);
-//    if (plan.getOperations() != null) {
-//      LOG.info(
-//          "Number of Compaction Operations :" + plan.getOperations().size() + " for instant :" + compactionInstant);
-//      List<CompactionOperation> ops = plan.getOperations().stream()
-//          .map(CompactionOperation::convertFromAvroRecordInstance).collect(Collectors.toList());
-//      return jsc.parallelize(ops, parallelism).flatMap(op -> {
-//        try {
-//          return getRenamingActionsForUnschedulingCompactionOperation(metaClient, compactionInstant, op,
-//              Option.of(fsView), skipValidation).iterator();
-//        } catch (IOException ioe) {
-//          throw new HoodieIOException(ioe.getMessage(), ioe);
-//        } catch (CompactionValidationException ve) {
-//          throw new HoodieException(ve);
-//        }
-//      }).collect();
-//    }
     LOG.warn("No operations for compaction instant : " + compactionInstant);
     return new ArrayList<>();
   }
