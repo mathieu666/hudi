@@ -27,8 +27,6 @@ import org.apache.hudi.common.util.queue.BoundedInMemoryQueueConsumer;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.testutils.HoodieClientTestHarness;
 
-import org.apache.avro.generic.IndexedRecord;
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

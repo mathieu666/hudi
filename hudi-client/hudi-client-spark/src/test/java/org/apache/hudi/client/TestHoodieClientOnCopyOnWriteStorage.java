@@ -225,14 +225,14 @@ public class TestHoodieClientOnCopyOnWriteStorage extends HoodieClientTestBase {
     // Global dedup should be done based on recordKey only
     HoodieIndex index = mock(HoodieIndex.class);
     when(index.isGlobal()).thenReturn(true);
-    List<HoodieRecord<RawTripTestPayload>> dedupedRecs = ((JavaRDD<HoodieRecord<TestRawTripPayload>>)SparkWriteHelper.newInstance().deduplicateRecords(records, index, 1)).collect();
+    List<HoodieRecord<RawTripTestPayload>> dedupedRecs = ((JavaRDD<HoodieRecord<RawTripTestPayload>>)SparkWriteHelper.newInstance().deduplicateRecords(records, index, 1)).collect();
     assertEquals(1, dedupedRecs.size());
     assertNodupesWithinPartition(dedupedRecs);
 
     // non-Global dedup should be done based on both recordKey and partitionPath
     index = mock(HoodieIndex.class);
     when(index.isGlobal()).thenReturn(false);
-    dedupedRecs = ((JavaRDD<HoodieRecord<TestRawTripPayload>>)SparkWriteHelper.newInstance().deduplicateRecords(records, index, 1)).collect();
+    dedupedRecs = ((JavaRDD<HoodieRecord<RawTripTestPayload>>)SparkWriteHelper.newInstance().deduplicateRecords(records, index, 1)).collect();
     assertEquals(2, dedupedRecs.size());
     assertNodupesWithinPartition(dedupedRecs);
 

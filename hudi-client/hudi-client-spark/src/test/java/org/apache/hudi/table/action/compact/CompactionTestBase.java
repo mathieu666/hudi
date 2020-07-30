@@ -20,8 +20,8 @@ package org.apache.hudi.table.action.compact;
 
 import org.apache.hudi.avro.model.HoodieCompactionOperation;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
-import org.apache.hudi.client.HoodieReadClient;
-import org.apache.hudi.client.HoodieWriteClient;
+import org.apache.hudi.client.HoodieSparkReadClient;
+import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieBaseFile;
@@ -44,7 +44,7 @@ import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieStorageConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.HoodieIndex;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.testutils.HoodieClientTestBase;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
 
@@ -85,7 +85,7 @@ public class CompactionTestBase extends HoodieClientTestBase {
   protected void validateDeltaCommit(String latestDeltaCommit, final Map<HoodieFileGroupId, Pair<String, HoodieCompactionOperation>> fgIdToCompactionOperation,
                                      HoodieWriteConfig cfg) {
     HoodieTableMetaClient metaClient = new HoodieTableMetaClient(hadoopConf, cfg.getBasePath());
-    HoodieTable table = getHoodieTable(metaClient, cfg);
+    HoodieSparkTable table = getHoodieTable(metaClient, cfg);
     List<FileSlice> fileSliceList = getCurrentLatestFileSlices(table);
     fileSliceList.forEach(fileSlice -> {
       Pair<String, HoodieCompactionOperation> opPair = fgIdToCompactionOperation.get(fileSlice.getFileGroupId());
@@ -101,7 +101,7 @@ public class CompactionTestBase extends HoodieClientTestBase {
     });
   }
 
-  protected List<HoodieRecord> runNextDeltaCommits(HoodieWriteClient client, final HoodieReadClient readClient, List<String> deltaInstants,
+  protected List<HoodieRecord> runNextDeltaCommits(HoodieSparkWriteClient client, final HoodieSparkReadClient readClient, List<String> deltaInstants,
                                                    List<HoodieRecord> records, HoodieWriteConfig cfg, boolean insertFirst, List<String> expPendingCompactionInstants)
       throws Exception {
 
@@ -128,7 +128,7 @@ public class CompactionTestBase extends HoodieClientTestBase {
       }
       assertNoWriteErrors(statusList);
       metaClient = new HoodieTableMetaClient(hadoopConf, cfg.getBasePath());
-      HoodieTable hoodieTable = getHoodieTable(metaClient, cfg);
+      HoodieSparkTable hoodieTable = getHoodieTable(metaClient, cfg);
       List<HoodieBaseFile> dataFilesToRead = getCurrentLatestDataFiles(hoodieTable, cfg);
       assertTrue(dataFilesToRead.stream().findAny().isPresent(),
           "should list the parquet files we wrote in the delta commit");
@@ -154,20 +154,20 @@ public class CompactionTestBase extends HoodieClientTestBase {
     assertTrue(instant.isInflight(), "Instant must be marked inflight");
   }
 
-  protected void scheduleCompaction(String compactionInstantTime, HoodieWriteClient client, HoodieWriteConfig cfg) {
+  protected void scheduleCompaction(String compactionInstantTime, HoodieSparkWriteClient client, HoodieWriteConfig cfg) {
     client.scheduleCompactionAtInstant(compactionInstantTime, Option.empty());
     HoodieTableMetaClient metaClient = new HoodieTableMetaClient(hadoopConf, cfg.getBasePath());
     HoodieInstant instant = metaClient.getActiveTimeline().filterPendingCompactionTimeline().lastInstant().get();
     assertEquals(compactionInstantTime, instant.getTimestamp(), "Last compaction instant must be the one set");
   }
 
-  protected void scheduleAndExecuteCompaction(String compactionInstantTime, HoodieWriteClient client, HoodieTable table,
+  protected void scheduleAndExecuteCompaction(String compactionInstantTime, HoodieSparkWriteClient client, HoodieSparkTable table,
                                             HoodieWriteConfig cfg, int expectedNumRecs, boolean hasDeltaCommitAfterPendingCompaction) throws IOException {
     scheduleCompaction(compactionInstantTime, client, cfg);
     executeCompaction(compactionInstantTime, client, table, cfg, expectedNumRecs, hasDeltaCommitAfterPendingCompaction);
   }
 
-  protected void executeCompaction(String compactionInstantTime, HoodieWriteClient client, HoodieTable table,
+  protected void executeCompaction(String compactionInstantTime, HoodieSparkWriteClient client, HoodieSparkTable table,
                                  HoodieWriteConfig cfg, int expectedNumRecs, boolean hasDeltaCommitAfterPendingCompaction) throws IOException {
 
     client.compact(compactionInstantTime);
@@ -199,7 +199,7 @@ public class CompactionTestBase extends HoodieClientTestBase {
 
   }
 
-  protected List<WriteStatus> createNextDeltaCommit(String instantTime, List<HoodieRecord> records, HoodieWriteClient client,
+  protected List<WriteStatus> createNextDeltaCommit(String instantTime, List<HoodieRecord> records, HoodieSparkWriteClient client,
                                                     HoodieTableMetaClient metaClient, HoodieWriteConfig cfg, boolean skipCommit) {
     JavaRDD<HoodieRecord> writeRecords = jsc.parallelize(records, 1);
 
@@ -224,14 +224,14 @@ public class CompactionTestBase extends HoodieClientTestBase {
     return statusList;
   }
 
-  protected List<HoodieBaseFile> getCurrentLatestDataFiles(HoodieTable table, HoodieWriteConfig cfg) throws IOException {
+  protected List<HoodieBaseFile> getCurrentLatestDataFiles(HoodieSparkTable table, HoodieWriteConfig cfg) throws IOException {
     FileStatus[] allFiles = HoodieTestUtils.listAllDataFilesInPath(table.getMetaClient().getFs(), cfg.getBasePath());
     HoodieTableFileSystemView view =
         getHoodieTableFileSystemView(table.getMetaClient(), table.getCompletedCommitsTimeline(), allFiles);
     return view.getLatestBaseFiles().collect(Collectors.toList());
   }
 
-  protected List<FileSlice> getCurrentLatestFileSlices(HoodieTable table) {
+  protected List<FileSlice> getCurrentLatestFileSlices(HoodieSparkTable table) {
     HoodieTableFileSystemView view = new HoodieTableFileSystemView(table.getMetaClient(),
         table.getMetaClient().getActiveTimeline().reload().getCommitsAndCompactionTimeline());
     return Arrays.stream(HoodieTestDataGenerator.DEFAULT_PARTITION_PATHS)

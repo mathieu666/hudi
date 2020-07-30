@@ -34,7 +34,6 @@ import org.apache.hudi.exception.HoodieRollbackException;
 import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.testutils.HoodieClientTestBase;
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
 
 import org.apache.spark.api.java.JavaRDD;
 import org.junit.jupiter.api.Test;

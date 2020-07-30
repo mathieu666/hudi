@@ -38,11 +38,6 @@ import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.testutils.HoodieClientTestBase;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
-import org.apache.hudi.testutils.TestRawTripPayload;
-
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

@@ -27,9 +27,8 @@ import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.testutils.HoodieTestDataGenerator;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.MarkerFiles;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,12 +83,12 @@ public class TestMergeOnReadRollbackActionExecutor extends HoodieClientRollbackT
     assertEquals(1, firstPartitionCommit2LogFiles.size());
     secondPartitionCommit2FileSlices.get(0).getLogFiles().collect(Collectors.toList()).forEach(logFile -> secondPartitionCommit2LogFiles.add(logFile));
     assertEquals(1, secondPartitionCommit2LogFiles.size());
-    HoodieTable table = this.getHoodieTable(metaClient, cfg);
+    HoodieSparkTable table = this.getHoodieTable(metaClient, cfg);
 
     //2. rollback
     HoodieInstant rollBackInstant = new HoodieInstant(isUsingMarkers, HoodieTimeline.DELTA_COMMIT_ACTION, "002");
-    MergeOnReadRollbackActionExecutor mergeOnReadRollbackActionExecutor = new MergeOnReadRollbackActionExecutor(
-        jsc,
+    SparkMergeOnReadRollbackActionExecutor mergeOnReadRollbackActionExecutor = new SparkMergeOnReadRollbackActionExecutor(
+        context,
         cfg,
         table,
         "003",
@@ -144,8 +143,8 @@ public class TestMergeOnReadRollbackActionExecutor extends HoodieClientRollbackT
   public void testFailForCompletedInstants() {
     Assertions.assertThrows(IllegalArgumentException.class, () -> {
       HoodieInstant rollBackInstant = new HoodieInstant(false, HoodieTimeline.DELTA_COMMIT_ACTION, "002");
-      new MergeOnReadRollbackActionExecutor(
-              jsc,
+      new SparkMergeOnReadRollbackActionExecutor(
+              context,
               getConfigBuilder().build(),
               getHoodieTable(metaClient, getConfigBuilder().build()),
               "003",

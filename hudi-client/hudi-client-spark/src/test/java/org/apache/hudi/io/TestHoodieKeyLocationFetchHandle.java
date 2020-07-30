@@ -40,8 +40,6 @@ import org.apache.hudi.testutils.HoodieClientTestHarness;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
 import org.apache.hudi.testutils.MetadataMergeWriteStatus;
 
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
-import org.apache.hudi.testutils.TestRawTripPayload;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

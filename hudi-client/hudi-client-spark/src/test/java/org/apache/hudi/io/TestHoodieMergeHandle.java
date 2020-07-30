@@ -36,8 +36,6 @@ import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.testutils.HoodieClientTestHarness;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
 
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

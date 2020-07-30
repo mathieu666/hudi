@@ -72,7 +72,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
   /**
    * Stat for the current workload. Helps in determining inserts, upserts etc.
    */
-  private WorkloadProfile profile;
+  private BaseWorkloadProfile profile;
   /**
    * Helps decide which bucket an incoming update should go to.
    */

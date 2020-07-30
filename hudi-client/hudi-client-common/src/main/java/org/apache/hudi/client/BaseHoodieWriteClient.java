@@ -19,11 +19,8 @@
 package org.apache.hudi.client;
 
 import com.codahale.metrics.Timer;
-import org.apache.hudi.callback.HoodieWriteCommitCallback;
-import org.apache.hudi.callback.common.HoodieWriteCommitCallbackMessage;
-import org.apache.hudi.callback.util.HoodieCommitCallbackFactory;
-import org.apache.hudi.client.embedded.EmbeddedTimelineService;
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
+import org.apache.hudi.callback.HoodieWriteCommitCallback;
 import org.apache.hudi.client.embedded.AbstractEmbeddedTimelineService;
 import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieCommitMetadata;

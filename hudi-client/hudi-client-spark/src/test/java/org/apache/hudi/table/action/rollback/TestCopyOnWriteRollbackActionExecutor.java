@@ -28,9 +28,8 @@ import org.apache.hudi.common.testutils.HoodieTestDataGenerator;
 import org.apache.hudi.common.testutils.HoodieTestUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.MarkerFiles;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,11 +83,11 @@ public class TestCopyOnWriteRollbackActionExecutor extends HoodieClientRollbackT
     // Make commit2
     String file21 = HoodieTestUtils.createDataFile(basePath, "2015/03/16", commitTime2, "id21");
     String file22 = HoodieTestUtils.createDataFile(basePath, "2015/03/17", commitTime2, "id22");
-    HoodieTable table = this.getHoodieTable(metaClient, getConfig());
+    HoodieSparkTable table = this.getHoodieTable(metaClient, getConfig());
     HoodieInstant needRollBackInstant = new HoodieInstant(false, HoodieTimeline.COMMIT_ACTION, "002");
 
     // execute CopyOnWriteRollbackActionExecutor with filelisting mode
-    CopyOnWriteRollbackActionExecutor copyOnWriteRollbackActionExecutor = new CopyOnWriteRollbackActionExecutor(jsc, table.getConfig(), table, "003", needRollBackInstant, true);
+    SparkCopyOnWriteRollbackActionExecutor copyOnWriteRollbackActionExecutor = new SparkCopyOnWriteRollbackActionExecutor(context, table.getConfig(), table, "003", needRollBackInstant, true);
     assertFalse(copyOnWriteRollbackActionExecutor.getRollbackStrategy() instanceof MarkerBasedRollbackStrategy);
     List<HoodieRollbackStat> hoodieRollbackStats = copyOnWriteRollbackActionExecutor.executeRollback();
 
@@ -132,7 +131,7 @@ public class TestCopyOnWriteRollbackActionExecutor extends HoodieClientRollbackT
     List<FileSlice> secondPartitionCommit2FileSlices = new ArrayList<>();
     HoodieWriteConfig cfg = getConfigBuilder().withRollbackUsingMarkers(isUsingMarkers).withAutoCommit(false).build();
     this.twoUpsertCommitDataWithTwoPartitions(firstPartitionCommit2FileSlices, secondPartitionCommit2FileSlices, cfg, !isUsingMarkers);
-    HoodieTable<?> table = this.getHoodieTable(metaClient, cfg);
+    HoodieSparkTable<?> table = this.getHoodieTable(metaClient, cfg);
 
     //2. rollback
     HoodieInstant commitInstant;
@@ -142,7 +141,7 @@ public class TestCopyOnWriteRollbackActionExecutor extends HoodieClientRollbackT
       commitInstant = table.getCompletedCommitTimeline().lastInstant().get();
     }
 
-    CopyOnWriteRollbackActionExecutor copyOnWriteRollbackActionExecutor = new CopyOnWriteRollbackActionExecutor(jsc, cfg, table, "003", commitInstant, false);
+    SparkCopyOnWriteRollbackActionExecutor copyOnWriteRollbackActionExecutor = new SparkCopyOnWriteRollbackActionExecutor(context, cfg, table, "003", commitInstant, false);
     if (!isUsingMarkers) {
       assertFalse(copyOnWriteRollbackActionExecutor.getRollbackStrategy() instanceof MarkerBasedRollbackStrategy);
     } else {

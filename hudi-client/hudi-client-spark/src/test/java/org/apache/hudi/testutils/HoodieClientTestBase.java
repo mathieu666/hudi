@@ -44,10 +44,6 @@ import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieStorageConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.HoodieIndex;
-import org.apache.hudi.index.HoodieIndex.IndexType;
-
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.index.HoodieSparkIndexFactory;
 import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.testutils.TestRawTripPayload.MetadataMergeWriteStatus;

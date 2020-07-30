@@ -380,7 +380,7 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
 
       // Do an inline compaction if enabled
       if (config.isInlineCompaction()) {
-        runAnyPendingCompactions(table);
+        runAnyPendingCompactions((HoodieSparkTable<T>) table);
         metadata.addMetadata(HoodieCompactionConfig.INLINE_COMPACT_PROP, "true");
         inlineCompact(extraMetadata);
       } else {
@@ -395,7 +395,7 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
     }
   }
 
-  private void runAnyPendingCompactions(HoodieTable<?> table) {
+  private void runAnyPendingCompactions(HoodieSparkTable<T> table) {
     table.getActiveTimeline().getCommitsAndCompactionTimeline().filterPendingCompactionTimeline().getInstants()
         .forEach(instant -> {
           LOG.info("Running previously failed inflight compaction at instant " + instant);
@@ -599,6 +599,7 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends BaseH
    * configurations and CleaningPolicy used. (typically files that no longer can be used by a running query can be
    * cleaned)
    */
+  @Override
   public HoodieCleanMetadata clean(String cleanInstantTime) throws HoodieIOException {
     LOG.info("Cleaner started");
     final Timer.Context context = metrics.getCleanCtx();

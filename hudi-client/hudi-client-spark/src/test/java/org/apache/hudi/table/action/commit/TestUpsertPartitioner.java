@@ -38,7 +38,6 @@ import org.apache.hudi.table.SparkWorkloadProfile;
 import org.apache.hudi.testutils.HoodieClientTestBase;
 import org.apache.hudi.testutils.HoodieClientTestUtils;
 
-import org.apache.hudi.testutils.HoodieTestDataGenerator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.junit.jupiter.api.Test;
@@ -194,12 +193,12 @@ public class TestUpsertPartitioner extends HoodieClientTestBase {
 
     HoodieClientTestUtils.fakeCommit(basePath, "001");
     metaClient = HoodieTableMetaClient.reload(metaClient);
-    HoodieCopyOnWriteTable table = (HoodieCopyOnWriteTable) HoodieTable.create(metaClient, config, hadoopConf);
+    HoodieSparkCopyOnWriteTable table = (HoodieSparkCopyOnWriteTable) HoodieSparkTable.create(metaClient, config, hadoopConf);
     HoodieTestDataGenerator dataGenerator = new HoodieTestDataGenerator(new String[] {testPartitionPath});
     List<HoodieRecord> insertRecords = dataGenerator.generateInserts("001", totalInsertNum);
 
-    WorkloadProfile profile = new WorkloadProfile(jsc.parallelize(insertRecords));
-    UpsertPartitioner partitioner = new UpsertPartitioner(profile, jsc, table, config);
+    BaseWorkloadProfile profile = new SparkWorkloadProfile(jsc.parallelize(insertRecords));
+    UpsertPartitioner partitioner = new UpsertPartitioner(profile, context, table, config);
     List<InsertBucket> insertBuckets = partitioner.getInsertBuckets(testPartitionPath);
 
     float bucket0Weight = 0.2f;

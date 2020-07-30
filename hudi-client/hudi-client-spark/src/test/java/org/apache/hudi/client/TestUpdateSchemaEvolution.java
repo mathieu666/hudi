@@ -36,10 +36,6 @@ import org.apache.hudi.io.HoodieMergeHandle;
 import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.testutils.HoodieClientTestHarness;
 
-import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hudi.testutils.TestRawTripPayload;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

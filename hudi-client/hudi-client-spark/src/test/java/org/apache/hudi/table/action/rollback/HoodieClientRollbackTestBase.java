@@ -18,7 +18,7 @@
 
 package org.apache.hudi.table.action.rollback;
 
-import org.apache.hudi.client.HoodieWriteClient;
+import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieFileGroup;
@@ -27,10 +27,9 @@ import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.view.SyncableFileSystemView;
 import org.apache.hudi.common.testutils.HoodieTestDataGenerator;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.testutils.Assertions;
 import org.apache.hudi.testutils.HoodieClientTestBase;
-
 import org.apache.spark.api.java.JavaRDD;
 
 import java.io.IOException;
@@ -50,7 +49,7 @@ public class HoodieClientRollbackTestBase extends HoodieClientTestBase {
     dataGen = new HoodieTestDataGenerator(new String[]{DEFAULT_FIRST_PARTITION_PATH, DEFAULT_SECOND_PARTITION_PATH});
     //1. prepare data
     HoodieTestDataGenerator.writePartitionMetadata(fs, new String[]{DEFAULT_FIRST_PARTITION_PATH, DEFAULT_SECOND_PARTITION_PATH}, basePath);
-    HoodieWriteClient client = getHoodieWriteClient(cfg);
+    HoodieSparkWriteClient client = getHoodieWriteClient(cfg);
     /**
      * Write 1 (only inserts)
      */
@@ -76,7 +75,7 @@ public class HoodieClientRollbackTestBase extends HoodieClientTestBase {
 
 
     //2. assert filegroup and get the first partition fileslice
-    HoodieTable table = this.getHoodieTable(metaClient, cfg);
+    HoodieSparkTable table = this.getHoodieTable(metaClient, cfg);
     SyncableFileSystemView fsView = getFileSystemViewWithUnCommittedSlices(table.getMetaClient());
     List<HoodieFileGroup> firstPartitionCommit2FileGroups = fsView.getAllFileGroups(DEFAULT_FIRST_PARTITION_PATH).collect(Collectors.toList());
     assertEquals(1, firstPartitionCommit2FileGroups.size());

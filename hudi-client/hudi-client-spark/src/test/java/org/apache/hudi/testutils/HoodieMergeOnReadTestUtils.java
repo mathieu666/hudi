@@ -37,10 +37,6 @@ import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hudi.avro.HoodieAvroUtils;
-import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.common.testutils.HoodieTestUtils;
-import org.apache.hudi.hadoop.utils.HoodieInputFormatUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
