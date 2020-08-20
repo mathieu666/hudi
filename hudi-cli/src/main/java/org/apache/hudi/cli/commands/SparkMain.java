@@ -21,7 +21,6 @@ package org.apache.hudi.cli.commands;
 import org.apache.hudi.DataSourceWriteOptions;
 import org.apache.hudi.cli.DedupeSparkJob;
 import org.apache.hudi.cli.utils.SparkUtil;
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.client.utils.ClientUtils;
 import org.apache.hudi.common.fs.FSUtils;

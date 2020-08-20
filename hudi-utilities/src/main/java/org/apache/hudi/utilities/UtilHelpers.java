@@ -20,7 +20,6 @@ package org.apache.hudi.utilities;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.AvroConversionUtils;
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.config.DFSPropertiesConfiguration;
 import org.apache.hudi.common.config.TypedProperties;

@@ -18,7 +18,6 @@
 
 package org.apache.hudi.async;
 
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.spark.api.java.JavaSparkContext;
 
 /**

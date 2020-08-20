@@ -19,7 +19,6 @@
 
 package org.apache.hudi.testutils.providers;
 
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.config.HoodieWriteConfig;
 
 import java.io.IOException;

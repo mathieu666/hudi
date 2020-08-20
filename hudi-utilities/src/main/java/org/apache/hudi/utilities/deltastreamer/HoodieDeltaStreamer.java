@@ -20,7 +20,6 @@ package org.apache.hudi.utilities.deltastreamer;
 
 import org.apache.hudi.async.AbstractAsyncService;
 import org.apache.hudi.async.AsyncCompactService;
-import org.apache.hudi.client.HoodieWriteClient;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.bootstrap.index.HFileBootstrapIndex;
 import org.apache.hudi.common.config.TypedProperties;
