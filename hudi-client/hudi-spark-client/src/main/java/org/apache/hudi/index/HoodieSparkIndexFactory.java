@@ -22,11 +22,9 @@ import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.common.util.StringUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIndexException;
-import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.index.bloom.HoodieSparkBloomIndex;
 import org.apache.hudi.index.bloom.HoodieSparkGlobalBloomIndex;
 import org.apache.hudi.index.hbase.HoodieSparkHBaseIndex;
-import org.apache.hudi.index.hbase.SparkHBaseIndex;
 import org.apache.hudi.index.simple.HoodieSparkGlobalSimpleIndex;
 import org.apache.hudi.index.simple.HoodieSparkSimpleIndex;
 

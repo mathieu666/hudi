@@ -12,6 +12,8 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.HoodieIndex;
+import org.apache.hudi.index.HoodieSparkIndexFactory;
+import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.hudi.table.action.bootstrap.HoodieBootstrapWriteMetadata;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -64,7 +66,7 @@ public class HoodieSparkCopyOnWriteTable <T extends HoodieRecordPayload> extends
 
   @Override
   public HoodieIndex<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> getIndex(HoodieWriteConfig config) {
-    return null;
+    return HoodieSparkIndexFactory.createIndex(config);
   }
 
   @Override

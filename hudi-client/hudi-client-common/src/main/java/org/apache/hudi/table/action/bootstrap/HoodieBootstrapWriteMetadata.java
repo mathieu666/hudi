@@ -19,7 +19,7 @@
 package org.apache.hudi.table.action.bootstrap;
 
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.table.HoodieWriteMetadata;
+import org.apache.hudi.table.action.HoodieWriteMetadata;
 
 /**
  * Write Result for a bootstrap operation.

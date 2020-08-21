@@ -19,10 +19,13 @@
 package org.apache.hudi.table.upgrade;
 
 import org.apache.hudi.common.HoodieEngineContext;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.BaseMarkerFiles;
+import org.apache.hudi.table.HoodieSparkTable;
+import org.apache.hudi.table.SparkMarkerFiles;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,13 +38,13 @@ public class OneToZeroDowngradeHandler implements DowngradeHandler {
   @Override
   public void downgrade(HoodieWriteConfig config, HoodieEngineContext context, String instantTime) {
     // fetch pending commit info
-    HoodieTable table = createTable(config, jsc.hadoopConfiguration());
+    HoodieSparkTable table = HoodieSparkTable.create(config, (HoodieSparkEngineContext) context);
     HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
     List<HoodieInstant> commits = inflightTimeline.getReverseOrderedInstants().collect(Collectors.toList());
     for (HoodieInstant commitInstant : commits) {
-      // delete existing marker files
-      MarkerFiles markerFiles = new MarkerFiles(table, commitInstant.getTimestamp());
-      markerFiles.quietDeleteMarkerDir(jsc, config.getMarkersDeleteParallelism());
+      // delete existing marker
+      BaseMarkerFiles markerFiles = new SparkMarkerFiles(table, commitInstant.getTimestamp());
+      markerFiles.quietDeleteMarkerDir(context, config.getMarkersDeleteParallelism());
     }
   }
 }

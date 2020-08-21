@@ -18,7 +18,9 @@
 
 package org.apache.hudi.table.upgrade;
 
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.HoodieRollbackStat;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.IOType;
@@ -28,14 +30,17 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieRollbackException;
+import org.apache.hudi.io.IOType;
+import org.apache.hudi.table.BaseMarkerFiles;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.MarkerFiles;
+import org.apache.hudi.table.SparkMarkerFiles;
 import org.apache.hudi.table.action.rollback.ListingBasedRollbackHelper;
 import org.apache.hudi.table.action.rollback.ListingBasedRollbackRequest;
-import org.apache.hudi.table.action.rollback.RollbackUtils;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hudi.table.action.rollback.SparkRollbackUtils;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.util.List;
@@ -47,9 +52,9 @@ import java.util.stream.Collectors;
 public class ZeroToOneUpgradeHandler implements UpgradeHandler {
 
   @Override
-  public void upgrade(HoodieWriteConfig config, JavaSparkContext jsc, String instantTime) {
+  public void upgrade(HoodieWriteConfig config, HoodieEngineContext context, String instantTime) {
     // fetch pending commit info
-    HoodieTable table = HoodieTable.create(config, jsc.hadoopConfiguration());
+    HoodieSparkTable table = HoodieSparkTable.create(config, (HoodieSparkEngineContext) context);
     HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
     List<String> commits = inflightTimeline.getReverseOrderedInstants().map(HoodieInstant::getTimestamp)
         .collect(Collectors.toList());
@@ -59,7 +64,7 @@ public class ZeroToOneUpgradeHandler implements UpgradeHandler {
     }
     for (String commit : commits) {
       // for every pending commit, delete old marker files and re-create marker files in new format
-      recreateMarkerFiles(commit, table, jsc, config.getMarkersDeleteParallelism());
+      recreateMarkerFiles(commit, table, (HoodieSparkEngineContext) context, config.getMarkersDeleteParallelism());
     }
   }
 
@@ -71,10 +76,11 @@ public class ZeroToOneUpgradeHandler implements UpgradeHandler {
    *
    * @param commitInstantTime instant of interest for which marker files need to be recreated.
    * @param table instance of {@link HoodieTable} to use
-   * @param jsc instance of {@link JavaSparkContext} to use
+   * @param context instance of {@link HoodieSparkEngineContext} to use
    * @throws HoodieRollbackException on any exception during upgrade.
    */
-  private static void recreateMarkerFiles(final String commitInstantTime, HoodieTable table, JavaSparkContext jsc, int parallelism) throws HoodieRollbackException {
+  private static void recreateMarkerFiles(final String commitInstantTime, HoodieSparkTable table, HoodieSparkEngineContext context, int parallelism) throws HoodieRollbackException {
+    JavaSparkContext jsc = context.getJavaSparkContext();
     try {
       // fetch hoodie instant
       Option<HoodieInstant> commitInstantOpt = Option.fromJavaOptional(table.getActiveTimeline().getCommitsTimeline().getInstants()
@@ -82,16 +88,16 @@ public class ZeroToOneUpgradeHandler implements UpgradeHandler {
           .findFirst());
       if (commitInstantOpt.isPresent()) {
         // delete existing marker files
-        MarkerFiles markerFiles = new MarkerFiles(table, commitInstantTime);
-        markerFiles.quietDeleteMarkerDir(jsc, parallelism);
+        BaseMarkerFiles markerFiles = new SparkMarkerFiles(table, commitInstantTime);
+        markerFiles.quietDeleteMarkerDir(context, parallelism);
 
         // generate rollback stats
         List<ListingBasedRollbackRequest> rollbackRequests;
         if (table.getMetaClient().getTableType() == HoodieTableType.COPY_ON_WRITE) {
-          rollbackRequests = RollbackUtils.generateRollbackRequestsByListingCOW(table.getMetaClient().getFs(), table.getMetaClient().getBasePath(),
+          rollbackRequests = SparkRollbackUtils.generateRollbackRequestsByListingCOW(table.getMetaClient().getFs(), table.getMetaClient().getBasePath(),
               table.getConfig().shouldAssumeDatePartitioning());
         } else {
-          rollbackRequests = RollbackUtils.generateRollbackRequestsUsingFileListingMOR(commitInstantOpt.get(), table, jsc);
+          rollbackRequests = SparkRollbackUtils.generateRollbackRequestsUsingFileListingMOR(commitInstantOpt.get(), table, jsc);
         }
         List<HoodieRollbackStat> rollbackStats = new ListingBasedRollbackHelper(table.getMetaClient(), table.getConfig())
             .collectRollbackStats(jsc, commitInstantOpt.get(), rollbackRequests);

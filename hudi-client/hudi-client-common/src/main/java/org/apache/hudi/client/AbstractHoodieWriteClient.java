@@ -52,7 +52,7 @@ import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.metrics.HoodieMetrics;
 import org.apache.hudi.table.BulkInsertPartitioner;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.HoodieWriteMetadata;
+import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.hudi.table.action.savepoint.SavepointHelpers;
 import org.apache.hudi.table.upgrade.UpgradeDowngrade;
 import org.apache.log4j.LogManager;

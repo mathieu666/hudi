@@ -36,7 +36,6 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.hadoop.HoodieParquetInputFormat;
 import org.apache.hudi.hadoop.utils.HoodieHiveUtils;
 import org.apache.hudi.io.HoodieCreateHandle;
-import org.apache.hudi.table.HoodieCopyOnWriteTable;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.testutils.HoodieClientTestBase;
 import org.apache.hudi.testutils.MetadataMergeWriteStatus;

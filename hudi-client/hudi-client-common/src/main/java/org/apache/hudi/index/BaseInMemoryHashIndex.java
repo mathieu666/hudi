@@ -16,56 +16,68 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.index.bloom;
+package org.apache.hudi.index;
 
 import org.apache.hudi.common.HoodieEngineContext;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodieRecordLocation;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.exception.HoodieIndexException;
-import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.table.HoodieTable;
 
-/**
- * Indexing mechanism based on bloom filter. Each parquet file includes its row_key bloom filter in its metadata.
- */
-public abstract class BaseHoodieBloomIndex<T extends HoodieRecordPayload, I, K, O, P> extends HoodieIndex<T, I, K, O, P> {
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-  public BaseHoodieBloomIndex(HoodieWriteConfig config) {
+/**
+ * Hoodie Index implementation backed by an in-memory Hash map.
+ * <p>
+ * ONLY USE FOR LOCAL TESTING
+ */
+public abstract class BaseInMemoryHashIndex<T extends HoodieRecordPayload, I, K, O, P> extends HoodieIndex<T, I, K, O, P> {
+
+  protected static ConcurrentMap<HoodieKey, HoodieRecordLocation> recordLocationMap;
+
+  public BaseInMemoryHashIndex(HoodieWriteConfig config) {
     super(config);
+    synchronized (BaseInMemoryHashIndex.class) {
+      if (recordLocationMap == null) {
+        recordLocationMap = new ConcurrentHashMap<>();
+      }
+    }
+  }
+
+  @Override
+  public P fetchRecordLocation(K hoodieKeys,
+                               HoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable) {
+    throw new UnsupportedOperationException("InMemory index does not implement check exist yet");
   }
 
   @Override
   public boolean rollbackCommit(String instantTime) {
-    // Nope, don't need to do anything.
     return true;
   }
 
   /**
-   * This is not global, since we depend on the partitionPath to do the lookup.
+   * Only looks up by recordKey.
    */
   @Override
   public boolean isGlobal() {
-    return false;
-  }
-
-  /**
-   * No indexes into log files yet.
-   */
-  @Override
-  public boolean canIndexLogFiles() {
-    return false;
-  }
-
-  /**
-   * Bloom filters are stored, into the same data files.
-   */
-  @Override
-  public boolean isImplicitWithStorage() {
     return true;
   }
 
+  /**
+   * Mapping is available in HBase already.
+   */
   @Override
-  public O updateLocation(O writeStatusRDD, HoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable) throws HoodieIndexException {
-    return writeStatusRDD;
+  public boolean canIndexLogFiles() {
+    return true;
+  }
+
+  /**
+   * Index needs to be explicitly updated after storage write.
+   */
+  @Override
+  public boolean isImplicitWithStorage() {
+    return false;
   }
 }

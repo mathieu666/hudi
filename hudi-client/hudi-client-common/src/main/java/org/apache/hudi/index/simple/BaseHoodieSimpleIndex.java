@@ -16,56 +16,50 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.index.bloom;
+package org.apache.hudi.index.simple;
 
 import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.exception.HoodieIndexException;
 import org.apache.hudi.index.HoodieIndex;
 import org.apache.hudi.table.HoodieTable;
 
 /**
- * Indexing mechanism based on bloom filter. Each parquet file includes its row_key bloom filter in its metadata.
+ * A simple index which reads interested fields(record key and partition path) from base files and
+ * joins with incoming records to find the tagged location.
+ *
+ * @param <T>
  */
-public abstract class BaseHoodieBloomIndex<T extends HoodieRecordPayload, I, K, O, P> extends HoodieIndex<T, I, K, O, P> {
+public abstract class BaseHoodieSimpleIndex<T extends HoodieRecordPayload, I, K, O, P> extends HoodieIndex<T, I, K, O, P> {
 
-  public BaseHoodieBloomIndex(HoodieWriteConfig config) {
+  public BaseHoodieSimpleIndex(HoodieWriteConfig config) {
     super(config);
   }
 
   @Override
-  public boolean rollbackCommit(String instantTime) {
-    // Nope, don't need to do anything.
+  public O updateLocation(O writeStatusRDD, HoodieEngineContext context,
+                          HoodieTable<T, I, K, O, P> hoodieTable) {
+    return writeStatusRDD;
+  }
+
+  @Override
+  public boolean rollbackCommit(String commitTime) {
     return true;
   }
 
-  /**
-   * This is not global, since we depend on the partitionPath to do the lookup.
-   */
   @Override
   public boolean isGlobal() {
     return false;
   }
 
-  /**
-   * No indexes into log files yet.
-   */
   @Override
   public boolean canIndexLogFiles() {
     return false;
   }
 
-  /**
-   * Bloom filters are stored, into the same data files.
-   */
   @Override
   public boolean isImplicitWithStorage() {
     return true;
   }
 
-  @Override
-  public O updateLocation(O writeStatusRDD, HoodieEngineContext context, HoodieTable<T, I, K, O, P> hoodieTable) throws HoodieIndexException {
-    return writeStatusRDD;
-  }
 }

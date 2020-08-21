@@ -18,7 +18,6 @@
 
 package org.apache.hudi.table;
 
-import org.apache.hudi.common.model.HoodieRecordPayload;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Set;
@@ -28,7 +27,7 @@ import java.util.Set;
  * <p>
  * TODO(vc): Think about obtaining this directly from index.tagLocation
  */
-public abstract class BaseWorkloadProfile<T extends HoodieRecordPayload,I> implements Serializable {
+public abstract class BaseWorkloadProfile<I> implements Serializable {
 
   /**
    * Input workload.

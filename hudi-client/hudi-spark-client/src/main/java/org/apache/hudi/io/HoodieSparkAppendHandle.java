@@ -25,7 +25,15 @@ import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.client.SparkTaskContextSupplier;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.FileSlice;
+import org.apache.hudi.common.model.HoodieDeltaWriteStat;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodieLogFile;
+import org.apache.hudi.common.model.HoodiePartitionMetadata;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieRecordLocation;
+import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.common.model.HoodieWriteStat;
 import org.apache.hudi.common.model.HoodieWriteStat.RuntimeStats;
 import org.apache.hudi.common.table.log.HoodieLogFormat;
 import org.apache.hudi.common.table.log.HoodieLogFormat.Writer;
@@ -35,15 +43,12 @@ import org.apache.hudi.common.table.log.block.HoodieLogBlock;
 import org.apache.hudi.common.table.log.block.HoodieLogBlock.HeaderMetadataType;
 import org.apache.hudi.common.table.view.TableFileSystemView.SliceView;
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieAppendException;
 import org.apache.hudi.exception.HoodieUpsertException;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.util.SizeEstimator;
 
 import java.io.IOException;
@@ -57,7 +62,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * IO Operation to append data onto an existing file.
  */
-public class HoodieSparkAppendHandle<T extends HoodieRecordPayload> extends HoodieWriteHandle<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>,JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
+public class HoodieSparkAppendHandle<T extends HoodieRecordPayload>  extends BaseHoodieSparkWriteHandle<T> {
 
   private static final Logger LOG = LogManager.getLogger(HoodieSparkAppendHandle.class);
   // This acts as the sequenceID for records written
@@ -159,7 +164,7 @@ public class HoodieSparkAppendHandle<T extends HoodieRecordPayload> extends Hood
   private Option<IndexedRecord> getIndexedRecord(HoodieRecord<T> hoodieRecord) {
     Option recordMetadata = hoodieRecord.getData().getMetadata();
     try {
-      Option<IndexedRecord> avroRecord = hoodieRecord.getData().getInsertValue(originalSchema);
+      Option<IndexedRecord> avroRecord = hoodieRecord.getData().getInsertValue(writerSchema);
       if (avroRecord.isPresent()) {
         // Convert GenericRecord to GenericRecord with hoodie commit metadata in schema
         avroRecord = Option.of(rewriteRecord((GenericRecord) avroRecord.get()));
@@ -218,11 +223,6 @@ public class HoodieSparkAppendHandle<T extends HoodieRecordPayload> extends Hood
     } catch (Exception e) {
       throw new HoodieAppendException("Failed while appending records to " + currentLogFile.getPath(), e);
     }
-  }
-
-  @Override
-  protected void createMarkerFile(String partitionPath, String dataFileName) {
-
   }
 
   @Override

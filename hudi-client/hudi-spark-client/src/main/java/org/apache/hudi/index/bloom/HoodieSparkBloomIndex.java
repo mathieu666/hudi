@@ -32,6 +32,10 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIndexException;
 import org.apache.hudi.exception.MetadataNotFoundException;
 
+import org.apache.hudi.index.HoodieIndexUtils;
+import org.apache.hudi.io.HoodieRangeInfoHandle;
+import org.apache.hudi.table.HoodieSparkTable;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.Partitioner;
@@ -63,7 +67,7 @@ public class HoodieSparkBloomIndex<T extends HoodieRecordPayload> extends BaseHo
   @Override
   public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(JavaRDD<HoodieKey> hoodieKeys,
                                                                                   HoodieEngineContext context,
-                                                                                  BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) {
+                                                                                  HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) {
     JavaPairRDD<String, String> partitionRecordKeyPairRDD =
         hoodieKeys.mapToPair(key -> new Tuple2<>(key.getPartitionPath(), key.getRecordKey()));
 
@@ -84,7 +88,7 @@ public class HoodieSparkBloomIndex<T extends HoodieRecordPayload> extends BaseHo
   }
 
   @Override
-  public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, HoodieEngineContext context, BaseHoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) throws HoodieIndexException {
+  public JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, HoodieEngineContext context, HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable) throws HoodieIndexException {
     JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
     // Step 0: cache the input record RDD
     if (config.getBloomIndexUseCaching()) {
@@ -291,7 +295,6 @@ public class HoodieSparkBloomIndex<T extends HoodieRecordPayload> extends BaseHo
                 new HoodieRecordLocation(lookupResult.getBaseInstantTime(), lookupResult.getFileId())))
             .collect(Collectors.toList()).iterator());
   }
-
 
   /**
    * Tag the <rowKey, filename> back to the original HoodieRecord RDD.

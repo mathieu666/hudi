@@ -117,25 +117,25 @@ public abstract class HoodieSparkTable<T extends HoodieRecordPayload>
     }
   }
 
-  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config, Configuration hadoopConf) {
+  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config, HoodieSparkEngineContext context) {
     HoodieTableMetaClient metaClient = new HoodieTableMetaClient(
-        hadoopConf,
+        context.getHadoopConf().get(),
         config.getBasePath(),
         true,
         config.getConsistencyGuardConfig(),
         Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion()))
     );
-    return HoodieSparkTable.create(metaClient, config, hadoopConf);
+    return HoodieSparkTable.create(config, context, metaClient);
   }
 
-  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieTableMetaClient metaClient,
-                                                                           HoodieWriteConfig config,
-                                                                           Configuration hadoopConf) {
+  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config,
+                                                                           HoodieSparkEngineContext context,
+                                                                           HoodieTableMetaClient metaClient) {
     switch (metaClient.getTableType()) {
       case COPY_ON_WRITE:
-        return new HoodieSparkCopyOnWriteTable<T>(config, hadoopConf, metaClient);
+        return new HoodieSparkCopyOnWriteTable<T>(config, context, metaClient);
       case MERGE_ON_READ:
-        return new HoodieSparkMergeOnReadTable<>(config, hadoopConf, metaClient);
+        return new HoodieSparkMergeOnReadTable<>(config, context, metaClient);
       default:
         throw new HoodieException("Unsupported table type :" + metaClient.getTableType());
     }
