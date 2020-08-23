@@ -31,7 +31,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 public class BootstrapDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends BootstrapCommitActionExecutor<T> {
+    extends SparkBootstrapCommitActionExecutor<T> {
 
   public BootstrapDeltaCommitActionExecutor(JavaSparkContext jsc,
       HoodieWriteConfig config, HoodieTable<?> table,

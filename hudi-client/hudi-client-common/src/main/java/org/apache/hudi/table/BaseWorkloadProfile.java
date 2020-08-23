@@ -32,17 +32,17 @@ public abstract class BaseWorkloadProfile<I> implements Serializable {
   /**
    * Input workload.
    */
-  private final I taggedRecords;
+  protected final I taggedRecords;
 
   /**
    * Computed workload profile.
    */
-  private final HashMap<String, WorkloadStat> partitionPathStatMap;
+  protected final HashMap<String, WorkloadStat> partitionPathStatMap;
 
   /**
    * Global workloadStat.
    */
-  private final WorkloadStat globalStat;
+  protected final WorkloadStat globalStat;
 
   public BaseWorkloadProfile(I taggedRecords) {
     this.taggedRecords = taggedRecords;

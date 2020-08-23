@@ -50,13 +50,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>, I, K, O, P>
+public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload, I, K, O, P>
     extends BaseActionExecutor<HoodieWriteMetadata<O>, T, I, K, O, P> {
 
   private static final Logger LOG = LogManager.getLogger(BaseCommitActionExecutor.class);
 
   protected final Option<Map<String, String>> extraMetadata;
-  private final WriteOperationType operationType;
+  protected final WriteOperationType operationType;
   protected final TaskContextSupplier taskContextSupplier;
 
   public BaseCommitActionExecutor(HoodieEngineContext context, HoodieWriteConfig config,

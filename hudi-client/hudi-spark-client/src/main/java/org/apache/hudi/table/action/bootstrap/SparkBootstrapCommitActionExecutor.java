@@ -19,15 +19,14 @@
 package org.apache.hudi.table.action.bootstrap;
 
 import org.apache.hudi.avro.HoodieAvroUtils;
-import org.apache.hudi.avro.model.HoodieFileStatus;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.client.bootstrap.BootstrapMode;
 import org.apache.hudi.client.bootstrap.BootstrapRecordPayload;
-import org.apache.hudi.client.bootstrap.BootstrapSchemaProvider;
 import org.apache.hudi.client.bootstrap.BootstrapWriteStatus;
 import org.apache.hudi.client.bootstrap.FullRecordBootstrapDataProvider;
 import org.apache.hudi.client.bootstrap.selector.BootstrapModeSelector;
 import org.apache.hudi.client.bootstrap.translator.BootstrapPartitionPathTranslator;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.bootstrap.FileStatusUtils;
 import org.apache.hudi.common.bootstrap.index.BootstrapIndex;
 import org.apache.hudi.common.config.TypedProperties;
@@ -52,13 +51,9 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.execution.SparkBoundedInMemoryExecutor;
-import org.apache.hudi.io.HoodieBootstrapHandle;
 import org.apache.hudi.keygen.KeyGeneratorInterface;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.WorkloadProfile;
 import org.apache.hudi.table.action.HoodieWriteMetadata;
-import org.apache.hudi.table.action.commit.BaseCommitActionExecutor;
-import org.apache.hudi.table.action.commit.BulkInsertCommitActionExecutor;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -66,7 +61,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hudi.table.action.commit.CommitActionExecutor;
+import org.apache.hudi.table.action.commit.BaseCommitActionExecutor;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetReader;
@@ -78,8 +73,8 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.spark.Partitioner;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -88,16 +83,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class BootstrapCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends BaseCommitActionExecutor<T, HoodieBootstrapWriteMetadata> {
+public class SparkBootstrapCommitActionExecutor<T extends HoodieRecordPayload,I,K,O,P>
+    extends BaseCommitActionExecutor<T,JavaRDD<HoodieRecord>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
 
-  private static final Logger LOG = LogManager.getLogger(BootstrapCommitActionExecutor.class);
+  private static final Logger LOG = LogManager.getLogger(SparkBootstrapCommitActionExecutor.class);
   protected String bootstrapSchema = null;
   private transient FileSystem bootstrapSourceFileSystem;
 
-  public BootstrapCommitActionExecutor(JavaSparkContext jsc, HoodieWriteConfig config, HoodieTable<?> table,
-      Option<Map<String, String>> extraMetadata) {
-    super(jsc, new HoodieWriteConfig.Builder().withProps(config.getProps())
+  public SparkBootstrapCommitActionExecutor(HoodieSparkEngineContext context, HoodieWriteConfig config, HoodieTable<?> table,
+                                            Option<Map<String, String>> extraMetadata) {
+    super(context, new HoodieWriteConfig.Builder().withProps(config.getProps())
         .withAutoCommit(true).withWriteStatusClass(BootstrapWriteStatus.class)
         .withBulkInsertParallelism(config.getBootstrapParallelism())
         .build(), table, HoodieTimeline.METADATA_BOOTSTRAP_INSTANT_TS, WriteOperationType.BOOTSTRAP,
@@ -115,7 +110,7 @@ public class BootstrapCommitActionExecutor<T extends HoodieRecordPayload<T>>
   }
 
   @Override
-  public HoodieBootstrapWriteMetadata execute() {
+  public HoodieWriteMetadata<JavaRDD<WriteStatus>> execute(JavaRDD<HoodieRecord> inputRecordsRDD) {
     validate();
     try {
       HoodieTableMetaClient metaClient = table.getMetaClient();
@@ -134,6 +129,34 @@ public class BootstrapCommitActionExecutor<T extends HoodieRecordPayload<T>>
     } catch (IOException ioe) {
       throw new HoodieIOException(ioe.getMessage(), ioe);
     }
+  }
+
+  @Override
+  protected void commit(Option<Map<String, String>> extraMetadata, HoodieWriteMetadata<JavaRDD<WriteStatus>> result) {
+    // Perform bootstrap index write and then commit. Make sure both record-key and bootstrap-index
+    // is all done in a single job DAG.
+    Map<String, List<Pair<BootstrapFileMapping, HoodieWriteStat>>> bootstrapSourceAndStats =
+        result.getWriteStatuses().collect().stream()
+            .map(w -> {
+              BootstrapWriteStatus ws = (BootstrapWriteStatus) w;
+              return Pair.of(ws.getBootstrapSourceFileMapping(), ws.getStat());
+            }).collect(Collectors.groupingBy(w -> w.getKey().getPartitionPath()));
+    HoodieTableMetaClient metaClient = table.getMetaClient();
+    try (BootstrapIndex.IndexWriter indexWriter = BootstrapIndex.getBootstrapIndex(metaClient)
+        .createWriter(metaClient.getTableConfig().getBootstrapBasePath().get())) {
+      LOG.info("Starting to write bootstrap index for source " + config.getBootstrapSourceBasePath() + " in table "
+          + config.getBasePath());
+      indexWriter.begin();
+      bootstrapSourceAndStats.forEach((key, value) -> indexWriter.appendNextPartition(key,
+          value.stream().map(Pair::getKey).collect(Collectors.toList())));
+      indexWriter.finish();
+      LOG.info("Finished writing bootstrap index for source " + config.getBootstrapSourceBasePath() + " in table "
+          + config.getBasePath());
+    }
+
+    super.commit(extraMetadata, result, bootstrapSourceAndStats.values().stream()
+        .flatMap(f -> f.stream().map(Pair::getValue)).collect(Collectors.toList()));
+    LOG.info("Committing metadata bootstrap !!");
   }
 
   @Override
@@ -163,34 +186,6 @@ public class BootstrapCommitActionExecutor<T extends HoodieRecordPayload<T>>
     HoodieWriteMetadata result = new HoodieWriteMetadata();
     updateIndexAndCommitIfNeeded(bootstrapWriteStatuses.map(w -> w), result);
     return Option.of(result);
-  }
-
-  @Override
-  protected void commit(Option<Map<String, String>> extraMetadata, HoodieWriteMetadata result) {
-    // Perform bootstrap index write and then commit. Make sure both record-key and bootstrap-index
-    // is all done in a single job DAG.
-    Map<String, List<Pair<BootstrapFileMapping, HoodieWriteStat>>> bootstrapSourceAndStats =
-        result.getWriteStatuses().collect().stream()
-            .map(w -> {
-              BootstrapWriteStatus ws = (BootstrapWriteStatus) w;
-              return Pair.of(ws.getBootstrapSourceFileMapping(), ws.getStat());
-            }).collect(Collectors.groupingBy(w -> w.getKey().getPartitionPath()));
-    HoodieTableMetaClient metaClient = table.getMetaClient();
-    try (BootstrapIndex.IndexWriter indexWriter = BootstrapIndex.getBootstrapIndex(metaClient)
-        .createWriter(metaClient.getTableConfig().getBootstrapBasePath().get())) {
-      LOG.info("Starting to write bootstrap index for source " + config.getBootstrapSourceBasePath() + " in table "
-          + config.getBasePath());
-      indexWriter.begin();
-      bootstrapSourceAndStats.forEach((key, value) -> indexWriter.appendNextPartition(key,
-          value.stream().map(Pair::getKey).collect(Collectors.toList())));
-      indexWriter.finish();
-      LOG.info("Finished writing bootstrap index for source " + config.getBootstrapSourceBasePath() + " in table "
-          + config.getBasePath());
-    }
-
-    super.commit(extraMetadata, result, bootstrapSourceAndStats.values().stream()
-        .flatMap(f -> f.stream().map(Pair::getValue)).collect(Collectors.toList()));
-    LOG.info("Committing metadata bootstrap !!");
   }
 
   /**
@@ -347,5 +342,10 @@ public class BootstrapCommitActionExecutor<T extends HoodieRecordPayload<T>>
   @Override
   protected Iterator<List<WriteStatus>> handleUpdate(String partitionPath, String fileId, Iterator<HoodieRecord<T>> recordItr) {
     throw new UnsupportedOperationException("Should not called in bootstrap code path");
+  }
+
+  @Override
+  public HoodieWriteMetadata<JavaRDD<WriteStatus>> execute() {
+    return null;
   }
 }
