@@ -80,16 +80,16 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   private static final long serialVersionUID = 1L;
   private static final Logger LOG = LogManager.getLogger(AbstractHoodieWriteClient.class);
 
-  private final transient HoodieMetrics metrics;
+  protected final transient HoodieMetrics metrics;
   private final transient HoodieIndex<T, I, K, O, P> index;
 
-  private transient Timer.Context writeContext = null;
+  protected transient Timer.Context writeContext = null;
   private transient WriteOperationType operationType;
   private transient HoodieWriteCommitCallback commitCallback;
 
-  private static final String LOOKUP_STR = "lookup";
+  protected static final String LOOKUP_STR = "lookup";
   private final boolean rollbackPending;
-  private transient Timer.Context compactionTimer;
+  protected transient Timer.Context compactionTimer;
   private transient AsyncCleanerService asyncCleanerService;
 
   public void setOperationType(WriteOperationType operationType) {
@@ -444,7 +444,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
    */
   protected abstract void postCommit(HoodieTable<T, I, K, O, P> table, HoodieCommitMetadata metadata, String instantTime, Option<Map<String, String>> extraMetadata);
 
-  private void runAnyPendingCompactions(HoodieTable<T, I, K, O, P> table) {
+  protected void runAnyPendingCompactions(HoodieTable<T, I, K, O, P> table) {
     table.getActiveTimeline().getCommitsAndCompactionTimeline().filterPendingCompactionTimeline().getInstants()
         .forEach(instant -> {
           LOG.info("Running previously failed inflight compaction at instant " + instant);
@@ -457,7 +457,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
    *
    * @param instantTime
    */
-  private void autoCleanOnCommit(String instantTime) {
+  protected void autoCleanOnCommit(String instantTime) {
     if (config.isAutoClean()) {
       // Call clean to cleanup if there is anything to cleanup after the commit,
       if (config.isAsyncClean()) {
@@ -766,7 +766,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   /**
    * Performs a compaction operation on a table, serially before or after an insert/upsert action.
    */
-  private Option<String> inlineCompact(Option<Map<String, String>> extraMetadata) {
+  protected Option<String> inlineCompact(Option<Map<String, String>> extraMetadata) {
     Option<String> compactionInstantTimeOpt = scheduleCompaction(extraMetadata);
     compactionInstantTimeOpt.ifPresent(compactionInstantTime -> {
       // inline compaction should auto commit as the user is never given control
@@ -824,7 +824,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   /**
    * Sets write schema from last instant since deletes may not have schema set in the config.
    */
-  private void setWriteSchemaForDeletes(HoodieTableMetaClient metaClient) {
+  protected void setWriteSchemaForDeletes(HoodieTableMetaClient metaClient) {
     try {
       HoodieActiveTimeline activeTimeline = metaClient.getActiveTimeline();
       Option<HoodieInstant> lastInstant =

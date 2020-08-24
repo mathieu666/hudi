@@ -39,14 +39,14 @@ public abstract class BaseEmbeddedTimelineService {
   private static final Logger LOG = LogManager.getLogger(BaseEmbeddedTimelineService.class);
 
   private int serverPort;
-  private String hostAddr;
+  protected String hostAddr;
   private final SerializableConfiguration hadoopConf;
   private final FileSystemViewStorageConfig config;
   private transient FileSystemViewManager viewManager;
   private transient TimelineService server;
 
   public BaseEmbeddedTimelineService(HoodieEngineContext context, FileSystemViewStorageConfig config) {
-    setHostAddrFromSparkConf(context);
+    setHostAddrFromContext(context);
     if (hostAddr == null) {
       this.hostAddr = NetworkUtils.getHostname();
     }
@@ -74,7 +74,7 @@ public abstract class BaseEmbeddedTimelineService {
     LOG.info("Started embedded timeline server at " + hostAddr + ":" + serverPort);
   }
 
-  public abstract void setHostAddrFromSparkConf(HoodieEngineContext context);
+  public abstract void setHostAddrFromContext(HoodieEngineContext context);
 
   /**
    * Retrieves proper view storage configs for remote clients to access this service.

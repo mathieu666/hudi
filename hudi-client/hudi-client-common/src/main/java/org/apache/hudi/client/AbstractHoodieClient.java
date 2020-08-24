@@ -52,8 +52,8 @@ public abstract class AbstractHoodieClient implements Serializable, AutoCloseabl
    * able to take advantage of the cached file-system view. New completed actions will be synced automatically in an
    * incremental fashion.
    */
-  private transient Option<BaseEmbeddedTimelineService> timelineServer;
-  private final boolean shouldStopTimelineServer;
+  protected transient Option<BaseEmbeddedTimelineService> timelineServer;
+  protected final boolean shouldStopTimelineServer;
 
   protected AbstractHoodieClient(HoodieEngineContext context, HoodieWriteConfig clientConfig) {
     this(context, clientConfig, Option.empty());
@@ -79,7 +79,7 @@ public abstract class AbstractHoodieClient implements Serializable, AutoCloseabl
     stopEmbeddedServerView(true);
   }
 
-  private synchronized void stopEmbeddedServerView(boolean resetViewStorageConfig) {
+  protected synchronized void stopEmbeddedServerView(boolean resetViewStorageConfig) {
     if (timelineServer.isPresent() && shouldStopTimelineServer) {
       // Stop only if owner
       LOG.info("Stopping Timeline service !!");

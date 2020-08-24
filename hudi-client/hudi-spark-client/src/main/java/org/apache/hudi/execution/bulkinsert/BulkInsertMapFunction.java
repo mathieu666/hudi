@@ -23,7 +23,7 @@ import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.execution.LazyInsertIterable;
-import org.apache.hudi.table.HoodieSparkTable;
+import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.api.java.function.Function2;
 
@@ -39,11 +39,11 @@ public class BulkInsertMapFunction<T extends HoodieRecordPayload>
   private String instantTime;
   private boolean areRecordsSorted;
   private HoodieWriteConfig config;
-  private HoodieSparkTable<T> hoodieTable;
+  private HoodieTable hoodieTable;
   private List<String> fileIDPrefixes;
 
   public BulkInsertMapFunction(String instantTime, boolean areRecordsSorted,
-                               HoodieWriteConfig config, HoodieSparkTable<T> hoodieTable,
+                               HoodieWriteConfig config, HoodieTable hoodieTable,
                                List<String> fileIDPrefixes) {
     this.instantTime = instantTime;
     this.areRecordsSorted = areRecordsSorted;

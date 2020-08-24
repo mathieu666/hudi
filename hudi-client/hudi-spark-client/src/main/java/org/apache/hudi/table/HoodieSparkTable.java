@@ -117,7 +117,7 @@ public abstract class HoodieSparkTable<T extends HoodieRecordPayload>
     }
   }
 
-  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config, HoodieSparkEngineContext context) {
+  public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config, HoodieEngineContext context) {
     HoodieTableMetaClient metaClient = new HoodieTableMetaClient(
         context.getHadoopConf().get(),
         config.getBasePath(),
@@ -125,7 +125,7 @@ public abstract class HoodieSparkTable<T extends HoodieRecordPayload>
         config.getConsistencyGuardConfig(),
         Option.of(new TimelineLayoutVersion(config.getTimelineLayoutVersion()))
     );
-    return HoodieSparkTable.create(config, context, metaClient);
+    return HoodieSparkTable.create(config, (HoodieSparkEngineContext) context, metaClient);
   }
 
   public static <T extends HoodieRecordPayload> HoodieSparkTable<T> create(HoodieWriteConfig config,

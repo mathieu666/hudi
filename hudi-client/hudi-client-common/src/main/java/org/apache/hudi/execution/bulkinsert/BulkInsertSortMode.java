@@ -16,25 +16,13 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.table.action.compact.stragy;
-
-import org.apache.hudi.avro.model.HoodieCompactionOperation;
-import org.apache.hudi.avro.model.HoodieCompactionPlan;
-import org.apache.hudi.config.HoodieWriteConfig;
-
-import java.util.List;
+package org.apache.hudi.execution.bulkinsert;
 
 /**
- * UnBoundedCompactionStrategy will not change ordering or filter any compaction. It is a pass-through and will compact
- * all the base files which has a log file. This usually means no-intelligence on compaction.
- *
- * @see CompactionStrategy
+ * Bulk insert sort mode. Support NONE, GLOBAL_SORT and PARTITION_SORT.
  */
-public class UnBoundedCompactionStrategy extends CompactionStrategy {
-
-  @Override
-  public List<HoodieCompactionOperation> orderAndFilter(HoodieWriteConfig config,
-      List<HoodieCompactionOperation> operations, List<HoodieCompactionPlan> pendingCompactionWorkloads) {
-    return operations;
-  }
+public enum BulkInsertSortMode {
+  NONE,
+  GLOBAL_SORT,
+  PARTITION_SORT
 }

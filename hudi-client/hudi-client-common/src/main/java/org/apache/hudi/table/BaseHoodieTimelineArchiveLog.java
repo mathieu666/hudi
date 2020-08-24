@@ -18,7 +18,6 @@
 
 package org.apache.hudi.table;
 
-import org.apache.hadoop.conf.Configuration;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
@@ -79,23 +78,23 @@ public abstract class BaseHoodieTimelineArchiveLog {
   private static final Logger LOG = LogManager.getLogger(BaseHoodieTimelineArchiveLog.class);
 
   private final Path archiveFilePath;
-  private final HoodieWriteConfig config;
+  protected final HoodieWriteConfig config;
   private Writer writer;
   private final int maxInstantsToKeep;
   private final int minInstantsToKeep;
-  private final HoodieTable table;
+  protected final HoodieTable table;
   private final HoodieTableMetaClient metaClient;
 
-  public BaseHoodieTimelineArchiveLog(HoodieWriteConfig config, Configuration configuration) {
+  public BaseHoodieTimelineArchiveLog(HoodieWriteConfig config, HoodieEngineContext context) {
     this.config = config;
-    this.table = createTable(config, configuration);
+    this.table = createTable(config, context);
     this.metaClient = table.getMetaClient();
     this.archiveFilePath = HoodieArchivedTimeline.getArchiveLogPath(metaClient.getArchivePath());
     this.maxInstantsToKeep = config.getMaxCommitsToKeep();
     this.minInstantsToKeep = config.getMinCommitsToKeep();
   }
 
-  protected abstract HoodieTable createTable(HoodieWriteConfig config, Configuration configuration);
+  protected abstract HoodieTable createTable(HoodieWriteConfig config, HoodieEngineContext context);
 
   private Writer openWriter() {
     try {

@@ -44,7 +44,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieSparkCopyOnWriteTable;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.action.compact.stragy.CompactionStrategy;
+import org.apache.hudi.table.action.compact.strategy.CompactionStrategy;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;

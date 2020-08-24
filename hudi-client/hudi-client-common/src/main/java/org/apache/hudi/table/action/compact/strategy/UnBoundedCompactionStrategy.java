@@ -16,27 +16,25 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.execution.bulkinsert;
+package org.apache.hudi.table.action.compact.strategy;
 
-import org.apache.hudi.exception.HoodieException;
-import org.apache.hudi.table.BulkInsertPartitioner;
+import org.apache.hudi.avro.model.HoodieCompactionOperation;
+import org.apache.hudi.avro.model.HoodieCompactionPlan;
+import org.apache.hudi.config.HoodieWriteConfig;
+
+import java.util.List;
 
 /**
- * A factory to generate built-in partitioner to repartition input records into at least
- * expected number of output spark partitions for bulk insert operation.
+ * UnBoundedCompactionStrategy will not change ordering or filter any compaction. It is a pass-through and will compact
+ * all the base files which has a log file. This usually means no-intelligence on compaction.
+ *
+ * @see CompactionStrategy
  */
-public abstract class BulkInsertInternalPartitionerFactory {
+public class UnBoundedCompactionStrategy extends CompactionStrategy {
 
-  public static BulkInsertPartitioner get(BulkInsertSortMode sortMode) {
-    switch (sortMode) {
-      case NONE:
-        return new NonSortPartitioner();
-      case GLOBAL_SORT:
-        return new GlobalSortPartitioner();
-      case PARTITION_SORT:
-        return new RDDPartitionSortPartitioner();
-      default:
-        throw new HoodieException("The bulk insert mode \"" + sortMode.name() + "\" is not supported.");
-    }
+  @Override
+  public List<HoodieCompactionOperation> orderAndFilter(HoodieWriteConfig config,
+      List<HoodieCompactionOperation> operations, List<HoodieCompactionPlan> pendingCompactionWorkloads) {
+    return operations;
   }
 }
