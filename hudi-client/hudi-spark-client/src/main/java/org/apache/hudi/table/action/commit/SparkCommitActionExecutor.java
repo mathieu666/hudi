@@ -75,6 +75,11 @@ public abstract class SparkCommitActionExecutor<T extends HoodieRecordPayload>
 
   private static final Logger LOG = LogManager.getLogger(SparkCommitActionExecutor.class);
 
+  public SparkCommitActionExecutor(HoodieEngineContext context, HoodieWriteConfig config, HoodieTable table,
+                              String instantTime, WriteOperationType operationType) {
+    this(context, config, table, instantTime, operationType, Option.empty());
+  }
+
   public SparkCommitActionExecutor(HoodieEngineContext context, HoodieWriteConfig config, HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> table, String instantTime, WriteOperationType operationType, Option<Map<String, String>> extraMetadata) {
     super(context, config, table, instantTime, operationType, extraMetadata);
   }

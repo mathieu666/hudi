@@ -18,6 +18,7 @@
 
 package org.apache.hudi.table.action.commit;
 
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
@@ -29,19 +30,18 @@ import org.apache.hudi.table.BulkInsertPartitioner;
 
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
-public class BulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends CommitActionExecutor<T> {
+public class SparkBulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayload<T>>
+    extends SparkCommitActionExecutor<T> {
 
   private final JavaRDD<HoodieRecord<T>> preppedInputRecordRdd;
   private final Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner;
 
-  public BulkInsertPreppedCommitActionExecutor(JavaSparkContext jsc,
-      HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieRecord<T>> preppedInputRecordRdd,
-      Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner) {
-    super(jsc, config, table, instantTime, WriteOperationType.BULK_INSERT);
+  public SparkBulkInsertPreppedCommitActionExecutor(HoodieEngineContext context,
+                                                    HoodieWriteConfig config, HoodieTable table,
+                                                    String instantTime, JavaRDD<HoodieRecord<T>> preppedInputRecordRdd,
+                                                    Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner) {
+    super(context, config, table, instantTime, WriteOperationType.BULK_INSERT);
     this.preppedInputRecordRdd = preppedInputRecordRdd;
     this.userDefinedBulkInsertPartitioner = userDefinedBulkInsertPartitioner;
   }
@@ -49,7 +49,7 @@ public class BulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayload
   @Override
   public HoodieWriteMetadata execute() {
     try {
-      return BulkInsertHelper.bulkInsert(preppedInputRecordRdd, instantTime, (HoodieTable<T>) table, config,
+      return SparkBulkInsertHelper.newInstance().bulkInsert(preppedInputRecordRdd, instantTime, table, config,
           this, false, userDefinedBulkInsertPartitioner);
     } catch (Throwable e) {
       if (e instanceof HoodieInsertException) {

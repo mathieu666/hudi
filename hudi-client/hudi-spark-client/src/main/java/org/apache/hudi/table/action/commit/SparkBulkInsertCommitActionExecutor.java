@@ -19,6 +19,8 @@
 package org.apache.hudi.table.action.commit;
 
 import java.util.Map;
+
+import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
@@ -30,24 +32,23 @@ import org.apache.hudi.table.BulkInsertPartitioner;
 
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
-public class BulkInsertCommitActionExecutor<T extends HoodieRecordPayload<T>> extends CommitActionExecutor<T> {
+public class SparkBulkInsertCommitActionExecutor<T extends HoodieRecordPayload<T>> extends SparkCommitActionExecutor<T> {
 
   private final JavaRDD<HoodieRecord<T>> inputRecordsRDD;
   private final Option<BulkInsertPartitioner<T>> bulkInsertPartitioner;
 
-  public BulkInsertCommitActionExecutor(JavaSparkContext jsc, HoodieWriteConfig config, HoodieTable table,
-                                        String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD,
-                                        Option<BulkInsertPartitioner<T>> bulkInsertPartitioner) {
-    this(jsc, config, table, instantTime, inputRecordsRDD, bulkInsertPartitioner, Option.empty());
+  public SparkBulkInsertCommitActionExecutor(HoodieEngineContext context, HoodieWriteConfig config, HoodieTable table,
+                                             String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD,
+                                             Option<BulkInsertPartitioner<T>> bulkInsertPartitioner) {
+    this(context, config, table, instantTime, inputRecordsRDD, bulkInsertPartitioner, Option.empty());
   }
 
-  public BulkInsertCommitActionExecutor(JavaSparkContext jsc, HoodieWriteConfig config, HoodieTable table,
-                                        String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD,
-                                        Option<BulkInsertPartitioner<T>> bulkInsertPartitioner,
-                                        Option<Map<String, String>> extraMetadata) {
-    super(jsc, config, table, instantTime, WriteOperationType.BULK_INSERT, extraMetadata);
+  public SparkBulkInsertCommitActionExecutor(HoodieEngineContext context, HoodieWriteConfig config, HoodieTable table,
+                                             String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD,
+                                             Option<BulkInsertPartitioner<T>> bulkInsertPartitioner,
+                                             Option<Map<String, String>> extraMetadata) {
+    super(context, config, table, instantTime, WriteOperationType.BULK_INSERT, extraMetadata);
     this.inputRecordsRDD = inputRecordsRDD;
     this.bulkInsertPartitioner = bulkInsertPartitioner;
   }
@@ -55,7 +56,7 @@ public class BulkInsertCommitActionExecutor<T extends HoodieRecordPayload<T>> ex
   @Override
   public HoodieWriteMetadata execute() {
     try {
-      return BulkInsertHelper.bulkInsert(inputRecordsRDD, instantTime, (HoodieTable<T>) table, config,
+      return SparkBulkInsertHelper.newInstance().bulkInsert(inputRecordsRDD, instantTime, table, config,
           this, true, bulkInsertPartitioner);
     } catch (HoodieInsertException ie) {
       throw ie;
