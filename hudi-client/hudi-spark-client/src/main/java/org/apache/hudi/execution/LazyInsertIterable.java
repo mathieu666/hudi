@@ -27,6 +27,7 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.queue.BoundedInMemoryExecutor;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
+import org.apache.hudi.io.SparkCreateHandleFactory;
 import org.apache.hudi.io.WriteHandleFactory;
 import org.apache.hudi.table.HoodieTable;
 
@@ -61,7 +62,7 @@ public class LazyInsertIterable<T extends HoodieRecordPayload,I,K,O,P>
                             HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O,P> hoodieTable,
                             String idPrefix, TaskContextSupplier taskContextSupplier) {
     this(recordItr, areRecordsSorted, config, instantTime, hoodieTable, idPrefix, taskContextSupplier,
-        new CreateHandleFactory<>());
+        new SparkCreateHandleFactory<>());
   }
 
   public LazyInsertIterable(Iterator<HoodieRecord<T>> recordItr, boolean areRecordsSorted,

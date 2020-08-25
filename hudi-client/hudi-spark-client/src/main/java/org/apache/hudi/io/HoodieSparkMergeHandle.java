@@ -89,15 +89,6 @@ public class HoodieSparkMergeHandle<T extends HoodieRecordPayload> extends BaseH
     init(fileId, this.partitionPath, dataFileToBeMerged);
   }
 
-  @Override
-  public Schema getWriterSchemaWithMetafields() {
-    return writerSchemaWithMetafields;
-  }
-
-  public Schema getWriterSchema() {
-    return writerSchema;
-  }
-
   /**
    * Extract old file path, initialize StorageWriter and WriteStatus.
    */

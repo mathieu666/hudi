@@ -38,7 +38,7 @@ import org.apache.spark.api.java.JavaRDD;
 public class SparkAppendHandleFactory<T extends HoodieRecordPayload> extends WriteHandleFactory<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
 
   @Override
-  public HoodieWriteHandle create(HoodieWriteConfig config, String commitTime, HoodieTable hoodieTable, String partitionPath, String fileIdPrefix, TaskContextSupplier taskContextSupplier) {
+  public HoodieWriteHandle<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> create(HoodieWriteConfig config, String commitTime, HoodieTable hoodieTable, String partitionPath, String fileIdPrefix, TaskContextSupplier taskContextSupplier) {
     return new HoodieSparkAppendHandle(config, commitTime, hoodieTable, partitionPath,
         getNextFileId(fileIdPrefix), (SparkTaskContextSupplier) taskContextSupplier);
   }

@@ -41,9 +41,9 @@ import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFunction;
-import scala.Tuple2;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -52,10 +52,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import scala.Tuple2;
+
 /**
  * Packs incoming records to be upserted, into buckets (1 bucket = 1 RDD partition).
  */
-public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitioner {
+public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partitioner {
 
   private static final Logger LOG = LogManager.getLogger(UpsertPartitioner.class);
 
@@ -78,7 +80,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
   /**
    * Helps us pack inserts into 1 or more buckets depending on number of incoming records.
    */
-  private HashMap<String, List<InsertBucket>> partitionPathToInsertBuckets;
+  private HashMap<String, List<InsertBucketCumulativeWeightPair>> partitionPathToInsertBucketInfos;
   /**
    * Remembers what type each bucket is for later.
    */
@@ -91,7 +93,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
   public UpsertPartitioner(BaseWorkloadProfile profile, HoodieEngineContext context, HoodieTable table,
                            HoodieWriteConfig config) {
     updateLocationToBucket = new HashMap<>();
-    partitionPathToInsertBuckets = new HashMap<>();
+    partitionPathToInsertBucketInfos = new HashMap<>();
     bucketInfoMap = new HashMap<>();
     this.profile = profile;
     this.table = table;
@@ -100,15 +102,15 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
     assignInserts(profile, context);
 
     LOG.info("Total Buckets :" + totalBuckets + ", buckets info => " + bucketInfoMap + ", \n"
-        + "Partition to insert buckets => " + partitionPathToInsertBuckets + ", \n"
+        + "Partition to insert buckets => " + partitionPathToInsertBucketInfos + ", \n"
         + "UpdateLocations mapped to buckets =>" + updateLocationToBucket);
   }
 
   private void assignUpdates(BaseWorkloadProfile profile) {
     // each update location gets a partition
     Set<Entry<String, WorkloadStat>> partitionStatEntries = profile.getPartitionPathStatMap().entrySet();
-    for (Entry<String, WorkloadStat> partitionStat : partitionStatEntries) {
-      for (Entry<String, Pair<String, Long>> updateLocEntry :
+    for (Map.Entry<String, WorkloadStat> partitionStat : partitionStatEntries) {
+      for (Map.Entry<String, Pair<String, Long>> updateLocEntry :
           partitionStat.getValue().getUpdateLocationToCount().entrySet()) {
         addUpdateBucket(partitionStat.getKey(), updateLocEntry.getKey());
       }
@@ -195,15 +197,17 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
         }
 
         // Go over all such buckets, and assign weights as per amount of incoming inserts.
-        List<InsertBucket> insertBuckets = new ArrayList<>();
+        List<InsertBucketCumulativeWeightPair> insertBuckets = new ArrayList<>();
+        double curentCumulativeWeight = 0;
         for (int i = 0; i < bucketNumbers.size(); i++) {
           InsertBucket bkt = new InsertBucket();
           bkt.bucketNumber = bucketNumbers.get(i);
           bkt.weight = (1.0 * recordsPerBucket.get(i)) / pStat.getNumInserts();
-          insertBuckets.add(bkt);
+          curentCumulativeWeight += bkt.weight;
+          insertBuckets.add(new InsertBucketCumulativeWeightPair(bkt, curentCumulativeWeight));
         }
         LOG.info("Total insert buckets for partition path " + partitionPath + " => " + insertBuckets);
-        partitionPathToInsertBuckets.put(partitionPath, insertBuckets);
+        partitionPathToInsertBucketInfos.put(partitionPath, insertBuckets);
       }
     }
   }
@@ -254,8 +258,8 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
     return bucketInfoMap.get(bucketNumber);
   }
 
-  public List<InsertBucket> getInsertBuckets(String partitionPath) {
-    return partitionPathToInsertBuckets.get(partitionPath);
+  public List<InsertBucketCumulativeWeightPair> getInsertBuckets(String partitionPath) {
+    return partitionPathToInsertBucketInfos.get(partitionPath);
   }
 
   @Override
@@ -272,20 +276,24 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
       return updateLocationToBucket.get(location.getFileId());
     } else {
       String partitionPath = keyLocation._1().getPartitionPath();
-      List<InsertBucket> targetBuckets = partitionPathToInsertBuckets.get(partitionPath);
+      List<InsertBucketCumulativeWeightPair> targetBuckets = partitionPathToInsertBucketInfos.get(partitionPath);
       // pick the target bucket to use based on the weights.
-      double totalWeight = 0.0;
       final long totalInserts = Math.max(1, profile.getWorkloadStat(partitionPath).getNumInserts());
       final long hashOfKey = NumericUtils.getMessageDigestHash("MD5", keyLocation._1().getRecordKey());
       final double r = 1.0 * Math.floorMod(hashOfKey, totalInserts) / totalInserts;
-      for (InsertBucket insertBucket : targetBuckets) {
-        totalWeight += insertBucket.weight;
-        if (r <= totalWeight) {
-          return insertBucket.bucketNumber;
-        }
+
+      int index = Collections.binarySearch(targetBuckets, new InsertBucketCumulativeWeightPair(new InsertBucket(), r));
+
+      if (index >= 0) {
+        return targetBuckets.get(index).getKey().bucketNumber;
       }
+
+      if ((-1 * index - 1) < targetBuckets.size()) {
+        return targetBuckets.get((-1 * index - 1)).getKey().bucketNumber;
+      }
+
       // return first one, by default
-      return targetBuckets.get(0).bucketNumber;
+      return targetBuckets.get(0).getKey().bucketNumber;
     }
   }
 
@@ -318,5 +326,4 @@ public class UpsertPartitioner<T extends HoodieRecordPayload> extends Partitione
     }
     return avgSize;
   }
-
 }

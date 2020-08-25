@@ -34,7 +34,6 @@ import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.io.storage.HoodieFileWriter;
 import org.apache.hudi.io.storage.HoodieFileWriterFactory;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.MarkerFiles;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -124,6 +123,10 @@ public abstract class HoodieWriteHandle<T extends HoodieRecordPayload, I, K, O, 
 
   public Schema getWriterSchemaWithMetafields() {
     return writerSchemaWithMetafields;
+  }
+
+  public Schema getWriterSchema() {
+    return writerSchema;
   }
 
   /**

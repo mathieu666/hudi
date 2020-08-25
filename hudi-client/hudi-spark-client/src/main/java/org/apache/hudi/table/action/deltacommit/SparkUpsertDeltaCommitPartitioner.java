@@ -18,6 +18,7 @@
 
 package org.apache.hudi.table.action.deltacommit;
 
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieLogFile;
@@ -28,11 +29,10 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
-import org.apache.hudi.table.WorkloadProfile;
+import org.apache.hudi.table.SparkWorkloadProfile;
 
 import org.apache.hudi.table.action.commit.SmallFile;
 import org.apache.hudi.table.action.commit.UpsertPartitioner;
-import org.apache.spark.api.java.JavaSparkContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +42,11 @@ import java.util.stream.Collectors;
  * UpsertPartitioner for MergeOnRead table type, this allows auto correction of small parquet files to larger ones
  * without the need for an index in the logFile.
  */
-public class UpsertDeltaCommitPartitioner<T extends HoodieRecordPayload<T>> extends UpsertPartitioner<T> {
+public class SparkUpsertDeltaCommitPartitioner<T extends HoodieRecordPayload<T>> extends UpsertPartitioner<T> {
 
-  UpsertDeltaCommitPartitioner(WorkloadProfile profile, JavaSparkContext jsc, HoodieTable<T> table,
-      HoodieWriteConfig config) {
-    super(profile, jsc, table, config);
+  SparkUpsertDeltaCommitPartitioner(SparkWorkloadProfile profile, HoodieSparkEngineContext context, HoodieTable table,
+                                    HoodieWriteConfig config) {
+    super(profile, context, table, config);
   }
 
   @Override
