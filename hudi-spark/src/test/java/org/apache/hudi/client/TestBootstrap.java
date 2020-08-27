@@ -25,6 +25,7 @@ import org.apache.hudi.client.bootstrap.FullRecordBootstrapDataProvider;
 import org.apache.hudi.client.bootstrap.selector.BootstrapModeSelector;
 import org.apache.hudi.client.bootstrap.selector.FullRecordBootstrapModeSelector;
 import org.apache.hudi.client.bootstrap.selector.MetadataOnlyBootstrapModeSelector;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.bootstrap.FileStatusUtils;
 import org.apache.hudi.common.bootstrap.index.BootstrapIndex;
 import org.apache.hudi.common.config.TypedProperties;
@@ -466,18 +467,19 @@ public class TestBootstrap extends HoodieClientTestBase {
     assertEquals(totalRecords, seenKeys.size());
   }
 
-  public static class TestFullBootstrapDataProvider extends FullRecordBootstrapDataProvider {
+  public static class TestFullBootstrapDataProvider extends FullRecordBootstrapDataProvider<JavaRDD<HoodieRecord>> {
 
     public TestFullBootstrapDataProvider(TypedProperties props, JavaSparkContext jsc) {
-      super(props, jsc);
+      super(props, new HoodieSparkEngineContext(jsc));
     }
 
     @Override
-    public JavaRDD<HoodieRecord> generateInputRecordRDD(String tableName, String sourceBasePath,
+    public JavaRDD<HoodieRecord> generateInputRecord(String tableName, String sourceBasePath,
         List<Pair<String, List<HoodieFileStatus>>> partitionPaths) {
       String filePath = FileStatusUtils.toPath(partitionPaths.stream().flatMap(p -> p.getValue().stream())
           .findAny().get().getPath()).toString();
       ParquetFileReader reader = null;
+      JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
       try {
         reader = ParquetFileReader.open(jsc.hadoopConfiguration(), new Path(filePath));
       } catch (IOException e) {

@@ -26,7 +26,7 @@ import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
 
-public abstract class BaseActionExecutor<R, T extends HoodieRecordPayload, I, K, O, P> implements Serializable {
+public abstract class BaseActionExecutor<T extends HoodieRecordPayload, I, K, O, P, R> implements Serializable {
 
   protected final transient HoodieEngineContext context;
   protected final transient Configuration hadoopConf;

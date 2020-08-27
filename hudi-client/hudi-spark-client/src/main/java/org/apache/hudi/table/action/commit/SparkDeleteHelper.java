@@ -44,8 +44,8 @@ import java.time.Instant;
  *
  * @param <T>
  */
-public class SparkDeleteHelper<T extends HoodieRecordPayload> extends BaseDeleteHelper<T, JavaRDD<HoodieRecord<T>>,
-    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
+public class SparkDeleteHelper<T extends HoodieRecordPayload,R> extends BaseDeleteHelper<T, JavaRDD<HoodieRecord<T>>,
+    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>,R> {
   private SparkDeleteHelper() {
   }
 
@@ -88,7 +88,7 @@ public class SparkDeleteHelper<T extends HoodieRecordPayload> extends BaseDelete
                                                                JavaRDD<HoodieKey>,
                                                                JavaRDD<WriteStatus>,
                                                                JavaPairRDD<HoodieKey,
-                                                                   Option<Pair<String, String>>>> deleteExecutor) {
+                                                                   Option<Pair<String, String>>>,R> deleteExecutor) {
     try {
       HoodieWriteMetadata result = null;
       // De-dupe/merge if needed

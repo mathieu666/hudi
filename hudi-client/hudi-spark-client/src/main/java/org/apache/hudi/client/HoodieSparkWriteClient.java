@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.hudi.client;
 
 import com.codahale.metrics.Timer;
@@ -29,8 +47,11 @@ import org.apache.hudi.table.HoodieSparkTimelineArchiveLog;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.SparkMarkerFiles;
 import org.apache.hudi.table.action.compact.SparkCompactHelpers;
+import org.apache.hudi.table.upgrade.BaseUpgradeDowngrade;
+import org.apache.hudi.table.upgrade.SparkUpgradeDowngrade;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
@@ -54,6 +75,17 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends Abstr
 
   public HoodieSparkWriteClient(HoodieEngineContext context, HoodieWriteConfig writeConfig, boolean rollbackPending, Option<BaseEmbeddedTimelineService> timelineService) {
     super(context, writeConfig, rollbackPending, timelineService);
+  }
+
+  /**
+   * Register hudi classes for Kryo serialization.
+   *
+   * @param conf instance of SparkConf
+   * @return SparkConf
+   */
+  public static SparkConf registerClasses(SparkConf conf) {
+    conf.registerKryoClasses(new Class[]{HoodieWriteConfig.class, HoodieRecord.class, HoodieKey.class});
+    return conf;
   }
 
   @Override
@@ -80,6 +112,18 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends Abstr
     JavaRDD<HoodieRecord<T>> recordsWithLocation = getIndex().tagLocation(hoodieRecords, context, table);
     metrics.updateIndexMetrics(LOOKUP_STR, metrics.getDurationInMs(indexTimer == null ? 0L : indexTimer.stop()));
     return recordsWithLocation.filter(v1 -> !v1.isCurrentLocationKnown());
+  }
+
+  /**
+   * Main API to run bootstrap to hudi.
+   */
+  @Override
+  public void bootstrap(Option<Map<String, String>> extraMetadata) {
+    if (rollbackPending) {
+      rollBackInflightBootstrap();
+    }
+    HoodieSparkTable table = (HoodieSparkTable) getTableAndInitCtx(WriteOperationType.UPSERT, HoodieTimeline.METADATA_BOOTSTRAP_INSTANT_TS);
+    table.bootstrap(context, extraMetadata);
   }
 
   @Override
@@ -133,6 +177,11 @@ public class HoodieSparkWriteClient<T extends HoodieRecordPayload> extends Abstr
       }
     }
     LOG.info("Compacted successfully on commit " + compactionCommitTime);
+  }
+
+  @Override
+  protected BaseUpgradeDowngrade getUpgradeDowngrade(HoodieTableMetaClient metaClient) {
+    return new SparkUpgradeDowngrade(metaClient, config, context);
   }
 
   @Override

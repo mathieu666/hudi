@@ -20,7 +20,9 @@ package org.apache.hudi.utilities.deltastreamer;
 
 import org.apache.hudi.AvroConversionUtils;
 import org.apache.hudi.DataSourceUtils;
+import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
@@ -158,7 +160,7 @@ public class DeltaSync implements Serializable {
   /**
    * Callback when write client is instantiated.
    */
-  private transient Function<HoodieWriteClient, Boolean> onInitializingHoodieWriteClient;
+  private transient Function<HoodieSparkWriteClient, Boolean> onInitializingHoodieWriteClient;
 
   /**
    * Timeline with completed commits.
@@ -168,11 +170,11 @@ public class DeltaSync implements Serializable {
   /**
    * Write Client.
    */
-  private transient HoodieWriteClient writeClient;
+  private transient HoodieSparkWriteClient writeClient;
 
   public DeltaSync(HoodieDeltaStreamer.Config cfg, SparkSession sparkSession, SchemaProvider schemaProvider,
                    TypedProperties props, JavaSparkContext jssc, FileSystem fs, Configuration conf,
-                   Function<HoodieWriteClient, Boolean> onInitializingHoodieWriteClient) throws IOException {
+                   Function<HoodieSparkWriteClient, Boolean> onInitializingHoodieWriteClient) throws IOException {
 
     this.cfg = cfg;
     this.jssc = jssc;
@@ -384,13 +386,13 @@ public class DeltaSync implements Serializable {
     JavaRDD<WriteStatus> writeStatusRDD;
     switch (cfg.operation) {
       case INSERT:
-        writeStatusRDD = writeClient.insert(records, instantTime);
+        writeStatusRDD = (JavaRDD<WriteStatus>) writeClient.insert(records, instantTime);
         break;
       case UPSERT:
-        writeStatusRDD = writeClient.upsert(records, instantTime);
+        writeStatusRDD = (JavaRDD<WriteStatus>) writeClient.upsert(records, instantTime);
         break;
       case BULK_INSERT:
-        writeStatusRDD = writeClient.bulkInsert(records, instantTime);
+        writeStatusRDD = (JavaRDD<WriteStatus>) writeClient.bulkInsert(records, instantTime);
         break;
       default:
         throw new HoodieDeltaStreamerException("Unknown operation : " + cfg.operation);
@@ -540,7 +542,7 @@ public class DeltaSync implements Serializable {
     if ((null != schemaProvider) && (null == writeClient)) {
       registerAvroSchemas(schemaProvider);
       HoodieWriteConfig hoodieCfg = getHoodieClientConfig(schemaProvider);
-      writeClient = new HoodieWriteClient<>(jssc, hoodieCfg, true);
+      writeClient = new HoodieSparkWriteClient<>(new HoodieSparkEngineContext(jssc), hoodieCfg, true);
       onInitializingHoodieWriteClient.apply(writeClient);
     }
   }

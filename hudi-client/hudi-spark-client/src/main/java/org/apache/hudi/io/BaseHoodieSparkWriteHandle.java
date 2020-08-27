@@ -34,12 +34,24 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
 public abstract class BaseHoodieSparkWriteHandle<T extends HoodieRecordPayload> extends HoodieWriteHandle<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
-  public BaseHoodieSparkWriteHandle(HoodieWriteConfig config, String instantTime, String partitionPath, String fileId, HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable, TaskContextSupplier taskContextSupplier) {
+  public BaseHoodieSparkWriteHandle(HoodieWriteConfig config,
+                                    String instantTime,
+                                    String partitionPath,
+                                    String fileId,
+                                    HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable,
+                                    TaskContextSupplier taskContextSupplier) {
     super(config, instantTime, partitionPath, fileId, hoodieTable, taskContextSupplier);
   }
 
-  public BaseHoodieSparkWriteHandle(HoodieWriteConfig config, String instantTime, String partitionPath, String fileId, HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable, Pair<Schema, Schema> writerSchemaIncludingAndExcludingMetadataPair, TaskContextSupplier taskContextSupplier) {
-    super(config, instantTime, partitionPath, fileId, hoodieTable, writerSchemaIncludingAndExcludingMetadataPair, taskContextSupplier);
+  public BaseHoodieSparkWriteHandle(HoodieWriteConfig config,
+                                    String instantTime,
+                                    String partitionPath,
+                                    String fileId,
+                                    HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable,
+                                    Pair<Schema, Schema> writerSchemaIncludingAndExcludingMetadataPair,
+                                    TaskContextSupplier taskContextSupplier) {
+    super(config, instantTime, partitionPath, fileId, hoodieTable,
+        writerSchemaIncludingAndExcludingMetadataPair, taskContextSupplier);
   }
 
   @Override

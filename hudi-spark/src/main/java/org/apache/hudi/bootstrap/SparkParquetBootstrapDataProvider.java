@@ -23,6 +23,7 @@ import org.apache.hudi.DataSourceUtils;
 import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.avro.model.HoodieFileStatus;
 import org.apache.hudi.client.bootstrap.FullRecordBootstrapDataProvider;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.bootstrap.FileStatusUtils;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -43,18 +44,18 @@ import java.util.List;
 /**
  * Spark Data frame based bootstrap input provider.
  */
-public class SparkParquetBootstrapDataProvider extends FullRecordBootstrapDataProvider {
+public class SparkParquetBootstrapDataProvider extends FullRecordBootstrapDataProvider<JavaRDD<HoodieRecord>> {
 
   private final transient SparkSession sparkSession;
 
   public SparkParquetBootstrapDataProvider(TypedProperties props,
                                            JavaSparkContext jsc) {
-    super(props, jsc);
+    super(props, new HoodieSparkEngineContext(jsc));
     this.sparkSession = SparkSession.builder().config(jsc.getConf()).getOrCreate();
   }
 
   @Override
-  public JavaRDD<HoodieRecord> generateInputRecordRDD(String tableName, String sourceBasePath,
+  public JavaRDD<HoodieRecord> generateInputRecord(String tableName, String sourceBasePath,
       List<Pair<String, List<HoodieFileStatus>>> partitionPathsWithFiles) {
     String[] filePaths = partitionPathsWithFiles.stream().map(Pair::getValue)
         .flatMap(f -> f.stream().map(fs -> FileStatusUtils.toPath(fs.getPath()).toString()))

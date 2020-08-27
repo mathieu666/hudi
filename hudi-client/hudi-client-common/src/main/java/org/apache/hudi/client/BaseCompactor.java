@@ -21,9 +21,6 @@ package org.apache.hudi.client;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -33,9 +30,8 @@ import java.io.Serializable;
 public abstract class BaseCompactor<T extends HoodieRecordPayload, I, K, O, P> implements Serializable {
 
   private static final long serialVersionUID = 1L;
-  private static final Logger LOG = LogManager.getLogger(BaseCompactor.class);
 
-  private transient AbstractHoodieWriteClient<T, I, K, O, P> compactionClient;
+  protected transient AbstractHoodieWriteClient<T, I, K, O, P> compactionClient;
 
   public BaseCompactor(AbstractHoodieWriteClient<T, I, K, O, P> compactionClient) {
     this.compactionClient = compactionClient;

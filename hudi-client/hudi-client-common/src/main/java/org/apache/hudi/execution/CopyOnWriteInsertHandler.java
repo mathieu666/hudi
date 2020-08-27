@@ -18,12 +18,13 @@
 
 package org.apache.hudi.execution;
 
+import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.queue.BoundedInMemoryQueueConsumer;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.execution.LazyInsertIterable.HoodieInsertValueGenResult;
+import org.apache.hudi.execution.BaseLazyInsertIterable.HoodieInsertValueGenResult;
 import org.apache.hudi.io.HoodieWriteHandle;
 import org.apache.hudi.io.WriteHandleFactory;
 import org.apache.hudi.table.HoodieTable;
@@ -36,16 +37,16 @@ import java.util.Map;
 /**
  * Consumes stream of hoodie records from in-memory queue and writes to one or more create-handles.
  */
-public class CopyOnWriteInsertHandler<T extends HoodieRecordPayload>
+public class CopyOnWriteInsertHandler<T extends HoodieRecordPayload, I, K, O, P>
     extends BoundedInMemoryQueueConsumer<HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> {
 
   private HoodieWriteConfig config;
   private String instantTime;
   private boolean areRecordsSorted;
-  private HoodieTable<T> hoodieTable;
+  private HoodieTable<T, I, K, O, P> hoodieTable;
   private String idPrefix;
-  private SparkTaskContextSupplier sparkTaskContextSupplier;
-  private WriteHandleFactory<T> writeHandleFactory;
+  private TaskContextSupplier sparkTaskContextSupplier;
+  private WriteHandleFactory<T, I, K, O, P> writeHandleFactory;
 
   private final List<WriteStatus> statuses = new ArrayList<>();
   // Stores the open HoodieWriteHandle for each table partition path
@@ -54,9 +55,9 @@ public class CopyOnWriteInsertHandler<T extends HoodieRecordPayload>
   private Map<String, HoodieWriteHandle> handles = new HashMap<>();
 
   public CopyOnWriteInsertHandler(HoodieWriteConfig config, String instantTime,
-                                  boolean areRecordsSorted, HoodieTable<T> hoodieTable, String idPrefix,
-                                  SparkTaskContextSupplier sparkTaskContextSupplier,
-                                  WriteHandleFactory<T> writeHandleFactory) {
+                                  boolean areRecordsSorted, HoodieTable<T, I, K, O, P> hoodieTable, String idPrefix,
+                                  TaskContextSupplier sparkTaskContextSupplier,
+                                  WriteHandleFactory<T, I, K, O, P> writeHandleFactory) {
     this.config = config;
     this.instantTime = instantTime;
     this.areRecordsSorted = areRecordsSorted;

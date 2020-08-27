@@ -18,7 +18,7 @@
 
 package org.apache.hudi.table.action.commit;
 
-import org.apache.hudi.common.HoodieEngineContext;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
@@ -33,9 +33,11 @@ public class SparkUpsertCommitActionExecutor<T extends HoodieRecordPayload<T>>
 
   private JavaRDD<HoodieRecord<T>> inputRecordsRDD;
 
-  public SparkUpsertCommitActionExecutor(HoodieEngineContext context,
-                                         HoodieWriteConfig config, HoodieTable table,
-                                         String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+  public SparkUpsertCommitActionExecutor(HoodieSparkEngineContext context,
+                                         HoodieWriteConfig config,
+                                         HoodieTable table,
+                                         String instantTime,
+                                         JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
     super(context, config, table, instantTime, WriteOperationType.UPSERT);
     this.inputRecordsRDD = inputRecordsRDD;
   }

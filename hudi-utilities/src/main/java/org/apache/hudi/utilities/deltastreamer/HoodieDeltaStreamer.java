@@ -18,9 +18,12 @@
 
 package org.apache.hudi.utilities.deltastreamer;
 
-import org.apache.hudi.async.AbstractAsyncService;
-import org.apache.hudi.async.AsyncCompactService;
+import org.apache.hudi.asyc.AbstractAsyncService;
+import org.apache.hudi.asyc.BaseAsyncCompactService;
+import org.apache.hudi.asyc.HoodieSparkAsyncCompactService;
+import org.apache.hudi.client.HoodieSparkWriteClient;
 import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.bootstrap.index.HFileBootstrapIndex;
 import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.fs.FSUtils;
@@ -500,7 +503,7 @@ public class HoodieDeltaStreamer implements Serializable {
     /**
      * Async Compactor Service.
      */
-    private AsyncCompactService asyncCompactService;
+    private BaseAsyncCompactService asyncCompactService;
 
     /**
      * Table Type.
@@ -618,9 +621,9 @@ public class HoodieDeltaStreamer implements Serializable {
      * @param writeClient HoodieWriteClient
      * @return
      */
-    protected Boolean onInitializingWriteClient(HoodieWriteClient writeClient) {
+    protected Boolean onInitializingWriteClient(HoodieSparkWriteClient writeClient) {
       if (cfg.isAsyncCompactionEnabled()) {
-        asyncCompactService = new AsyncCompactService(jssc, writeClient);
+        asyncCompactService = new HoodieSparkAsyncCompactService(new HoodieSparkEngineContext(jssc), writeClient);
         // Enqueue existing pending compactions first
         HoodieTableMetaClient meta =
             new HoodieTableMetaClient(new Configuration(jssc.hadoopConfiguration()), cfg.targetBasePath, true);
@@ -661,7 +664,7 @@ public class HoodieDeltaStreamer implements Serializable {
       return jssc;
     }
 
-    public AsyncCompactService getAsyncCompactService() {
+    public BaseAsyncCompactService getAsyncCompactService() {
       return asyncCompactService;
     }
 

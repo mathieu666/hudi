@@ -53,7 +53,7 @@ public class ZeroToOneUpgradeHandler implements UpgradeHandler {
   @Override
   public void upgrade(HoodieWriteConfig config, HoodieEngineContext context, String instantTime) {
     // fetch pending commit info
-    HoodieSparkTable table = HoodieSparkTable.create(config, (HoodieSparkEngineContext) context);
+    HoodieSparkTable table = HoodieSparkTable.create(config, context);
     HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
     List<String> commits = inflightTimeline.getReverseOrderedInstants().map(HoodieInstant::getTimestamp)
         .collect(Collectors.toList());

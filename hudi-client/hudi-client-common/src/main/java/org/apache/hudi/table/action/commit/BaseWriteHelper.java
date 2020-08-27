@@ -37,7 +37,7 @@ import java.time.Instant;
  * @param <O> Type of outputs
  * @param <P> Type of record position [Key, Option[partitionPath, fileID]] in hoodie table
  */
-public abstract class BaseWriteHelper<T extends HoodieRecordPayload, I, K, O, P> {
+public abstract class BaseWriteHelper<T extends HoodieRecordPayload, I, K, O, P, R> {
 
   public HoodieWriteMetadata write(String instantTime,
                                    I inputRecordsRDD,
@@ -45,7 +45,7 @@ public abstract class BaseWriteHelper<T extends HoodieRecordPayload, I, K, O, P>
                                    HoodieTable<T, I, K, O, P> table,
                                    boolean shouldCombine,
                                    int shuffleParallelism,
-                                   BaseCommitActionExecutor<T, I, K, O, P> executor,
+                                   BaseCommitActionExecutor<T, I, K, O, P, R> executor,
                                    boolean performTagging) {
     try {
       // De-dupe/merge if needed

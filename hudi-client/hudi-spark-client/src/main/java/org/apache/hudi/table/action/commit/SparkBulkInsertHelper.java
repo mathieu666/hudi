@@ -44,8 +44,8 @@ import java.util.stream.IntStream;
  *
  * @param <T>
  */
-public class SparkBulkInsertHelper<T extends HoodieRecordPayload> extends BaseBulkInsertHelper<T, JavaRDD<HoodieRecord<T>>,
-    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
+public class SparkBulkInsertHelper<T extends HoodieRecordPayload, R> extends BaseBulkInsertHelper<T, JavaRDD<HoodieRecord<T>>,
+    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>, R> {
 
   private SparkBulkInsertHelper() {
   }
@@ -63,7 +63,7 @@ public class SparkBulkInsertHelper<T extends HoodieRecordPayload> extends BaseBu
                                                               String instantTime,
                                                               HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> table,
                                                               HoodieWriteConfig config,
-                                                              BaseCommitActionExecutor<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> executor,
+                                                              BaseCommitActionExecutor<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>, R> executor,
                                                               boolean performDedupe,
                                                               Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner) {
     HoodieWriteMetadata result = new HoodieWriteMetadata();

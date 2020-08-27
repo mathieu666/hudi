@@ -34,10 +34,10 @@ import org.apache.hudi.table.action.HoodieWriteMetadata;
  * @param <O> Type of outputs
  * @param <P> Type of record position [Key, Option[partitionPath, fileID]] in hoodie table
  */
-public abstract class BaseBulkInsertHelper<T extends HoodieRecordPayload, I, K, O, P> {
+public abstract class BaseBulkInsertHelper<T extends HoodieRecordPayload, I, K, O, P, R> {
 
   public abstract HoodieWriteMetadata<O> bulkInsert(I inputRecords, String instantTime,
                                                     HoodieTable<T, I, K, O, P> table, HoodieWriteConfig config,
-                                                    BaseCommitActionExecutor<T, I, K, O, P> executor, boolean performDedupe,
+                                                    BaseCommitActionExecutor<T, I, K, O, P, R> executor, boolean performDedupe,
                                                     Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner);
 }

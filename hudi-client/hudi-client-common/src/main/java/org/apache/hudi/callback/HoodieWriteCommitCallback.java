@@ -17,7 +17,6 @@
 
 package org.apache.hudi.callback;
 
-
 import org.apache.hudi.callback.common.HoodieWriteCommitCallbackMessage;
 
 /**

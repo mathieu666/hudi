@@ -54,7 +54,7 @@ import org.apache.hudi.table.BulkInsertPartitioner;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.hudi.table.action.savepoint.SavepointHelpers;
-import org.apache.hudi.table.upgrade.UpgradeDowngrade;
+import org.apache.hudi.table.upgrade.BaseUpgradeDowngrade;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -88,7 +88,7 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
   private transient HoodieWriteCommitCallback commitCallback;
 
   protected static final String LOOKUP_STR = "lookup";
-  private final boolean rollbackPending;
+  protected final boolean rollbackPending;
   protected transient Timer.Context compactionTimer;
   private transient AsyncCleanerService asyncCleanerService;
 
@@ -815,9 +815,11 @@ public abstract class AbstractHoodieWriteClient<T extends HoodieRecordPayload, I
    */
   protected HoodieTable<T, I, K, O, P> getTableAndInitCtx(WriteOperationType operationType, String instantTime) {
     HoodieTableMetaClient metaClient = createMetaClient(true);
-    UpgradeDowngrade.run(metaClient, HoodieTableVersion.current(), config, context, instantTime);
+    getUpgradeDowngrade(metaClient).run(metaClient, HoodieTableVersion.current(), config, context, instantTime);
     return getTableAndInitCtx(metaClient, operationType);
   }
+
+  protected abstract BaseUpgradeDowngrade getUpgradeDowngrade(HoodieTableMetaClient metaClient);
 
   protected abstract HoodieTable<T, I, K, O, P> getTableAndInitCtx(HoodieTableMetaClient metaClient, WriteOperationType operationType);
 

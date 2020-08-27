@@ -18,21 +18,17 @@
 
 package org.apache.hudi.execution;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.client.TaskContextSupplier;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.client.utils.LazyIterableIterator;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.common.util.queue.BoundedInMemoryExecutor;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.exception.HoodieException;
-import org.apache.hudi.io.SparkCreateHandleFactory;
 import org.apache.hudi.io.WriteHandleFactory;
 import org.apache.hudi.table.HoodieTable;
-
-import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 
 import java.util.Iterator;
 import java.util.List;
@@ -41,34 +37,21 @@ import java.util.function.Function;
 /**
  * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new files.
  */
-public class LazyInsertIterable<T extends HoodieRecordPayload,I,K,O,P>
+public abstract class BaseLazyInsertIterable<T extends HoodieRecordPayload>
     extends LazyIterableIterator<HoodieRecord<T>, List<WriteStatus>> {
 
   protected final HoodieWriteConfig hoodieConfig;
   protected final String instantTime;
   protected boolean areRecordsSorted;
-  protected final HoodieTable<T,I,K,O,P> hoodieTable;
+  protected final HoodieTable hoodieTable;
   protected final String idPrefix;
   protected TaskContextSupplier taskContextSupplier;
-  protected WriteHandleFactory<T,I,K,O,P> writeHandleFactory;
+  protected WriteHandleFactory writeHandleFactory;
 
-  public LazyInsertIterable(Iterator<HoodieRecord<T>> sortedRecordItr, HoodieWriteConfig config,
-                            String instantTime, HoodieTable<T,I,K,O,P> hoodieTable, String idPrefix,
-                            TaskContextSupplier taskContextSupplier) {
-    this(sortedRecordItr, true, config, instantTime, hoodieTable, idPrefix, taskContextSupplier);
-  }
-
-  public LazyInsertIterable(Iterator<HoodieRecord<T>> recordItr, boolean areRecordsSorted,
-                            HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O,P> hoodieTable,
-                            String idPrefix, TaskContextSupplier taskContextSupplier) {
-    this(recordItr, areRecordsSorted, config, instantTime, hoodieTable, idPrefix, taskContextSupplier,
-        new SparkCreateHandleFactory<>());
-  }
-
-  public LazyInsertIterable(Iterator<HoodieRecord<T>> recordItr, boolean areRecordsSorted,
-                            HoodieWriteConfig config, String instantTime, HoodieTable<T,I,K,O,P> hoodieTable,
-                            String idPrefix, TaskContextSupplier taskContextSupplier,
-                            WriteHandleFactory<T> writeHandleFactory) {
+  public BaseLazyInsertIterable(Iterator<HoodieRecord<T>> recordItr, boolean areRecordsSorted,
+                                HoodieWriteConfig config, String instantTime, HoodieTable hoodieTable,
+                                String idPrefix, TaskContextSupplier taskContextSupplier,
+                                WriteHandleFactory writeHandleFactory) {
     super(recordItr);
     this.areRecordsSorted = areRecordsSorted;
     this.hoodieConfig = config;
@@ -107,27 +90,6 @@ public class LazyInsertIterable<T extends HoodieRecordPayload,I,K,O,P>
 
   @Override
   protected void start() {}
-
-  @Override
-  protected List<WriteStatus> computeNext() {
-    // Executor service used for launching writer thread.
-    BoundedInMemoryExecutor<HoodieRecord<T>, HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> bufferedIteratorExecutor =
-        null;
-    try {
-      final Schema schema = new Schema.Parser().parse(hoodieConfig.getSchema());
-      bufferedIteratorExecutor =
-          new SparkBoundedInMemoryExecutor<>(hoodieConfig, inputItr, getInsertHandler(), getTransformFunction(schema));
-      final List<WriteStatus> result = bufferedIteratorExecutor.execute();
-      assert result != null && !result.isEmpty() && !bufferedIteratorExecutor.isRemaining();
-      return result;
-    } catch (Exception e) {
-      throw new HoodieException(e);
-    } finally {
-      if (null != bufferedIteratorExecutor) {
-        bufferedIteratorExecutor.shutdownNow();
-      }
-    }
-  }
 
   @Override
   protected void end() {}

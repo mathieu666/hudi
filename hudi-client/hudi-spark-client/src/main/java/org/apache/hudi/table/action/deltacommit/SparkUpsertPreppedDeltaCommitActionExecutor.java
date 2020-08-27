@@ -18,30 +18,29 @@
 
 package org.apache.hudi.table.action.deltacommit;
 
-import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.HoodieSparkEngineContext;
+import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
-
-import org.apache.hudi.table.action.commit.DeleteHelper;
 import org.apache.hudi.table.action.HoodieWriteMetadata;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
-public class DeleteDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends DeltaCommitActionExecutor<T> {
+public class SparkUpsertPreppedDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
+    extends SparkDeltaCommitActionExecutor<T> {
 
-  private final JavaRDD<HoodieKey> keys;
+  private final JavaRDD<HoodieRecord<T>> preppedRecords;
 
-  public DeleteDeltaCommitActionExecutor(JavaSparkContext jsc,
-      HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieKey> keys) {
-    super(jsc, config, table, instantTime, WriteOperationType.DELETE);
-    this.keys = keys;
+  public SparkUpsertPreppedDeltaCommitActionExecutor(HoodieSparkEngineContext context,
+                                                     HoodieWriteConfig config, HoodieTable table,
+                                                     String instantTime, JavaRDD<HoodieRecord<T>> preppedRecords) {
+    super(context, config, table, instantTime, WriteOperationType.UPSERT_PREPPED);
+    this.preppedRecords = preppedRecords;
   }
 
+  @Override
   public HoodieWriteMetadata execute() {
-    return DeleteHelper.execute(instantTime, keys, jsc, config, (HoodieTable<T>)table, this);
+    return super.execute(preppedRecords);
   }
 }

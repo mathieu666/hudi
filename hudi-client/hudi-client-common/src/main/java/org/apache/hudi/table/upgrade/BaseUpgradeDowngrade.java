@@ -24,7 +24,6 @@ import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTableVersion;
 import org.apache.hudi.common.util.FileIOUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.exception.HoodieUpgradeDowngradeException;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -39,14 +38,14 @@ import java.util.Properties;
 /**
  * Helper class to assist in upgrading/downgrading Hoodie when there is a version change.
  */
-public class UpgradeDowngrade {
+public abstract class BaseUpgradeDowngrade {
 
-  private static final Logger LOG = LogManager.getLogger(UpgradeDowngrade.class);
+  private static final Logger LOG = LogManager.getLogger(BaseUpgradeDowngrade.class);
   public static final String HOODIE_UPDATED_PROPERTY_FILE = "hoodie.properties.updated";
 
   private HoodieTableMetaClient metaClient;
-  private HoodieWriteConfig config;
-  private HoodieEngineContext context;
+  protected HoodieWriteConfig config;
+  protected HoodieEngineContext context;
   private transient FileSystem fs;
   private Path updatedPropsFilePath;
   private Path propsFilePath;
@@ -76,16 +75,10 @@ public class UpgradeDowngrade {
    * @param context instance of {@link HoodieEngineContext} to use.
    * @param instantTime current instant time that should not be touched.
    */
-  public static void run(HoodieTableMetaClient metaClient, HoodieTableVersion toVersion, HoodieWriteConfig config,
-                         HoodieEngineContext context, String instantTime) {
-    try {
-      new UpgradeDowngrade(metaClient, config, context).run(toVersion, instantTime);
-    } catch (IOException e) {
-      throw new HoodieUpgradeDowngradeException("Error during upgrade/downgrade to version:" + toVersion, e);
-    }
-  }
+  public abstract void run(HoodieTableMetaClient metaClient, HoodieTableVersion toVersion, HoodieWriteConfig config,
+                         HoodieEngineContext context, String instantTime);
 
-  private UpgradeDowngrade(HoodieTableMetaClient metaClient, HoodieWriteConfig config, HoodieEngineContext context) {
+  public BaseUpgradeDowngrade(HoodieTableMetaClient metaClient, HoodieWriteConfig config, HoodieEngineContext context) {
     this.metaClient = metaClient;
     this.config = config;
     this.context = context;
@@ -94,7 +87,7 @@ public class UpgradeDowngrade {
     this.propsFilePath = new Path(metaClient.getMetaPath(), HoodieTableConfig.HOODIE_PROPERTIES_FILE);
   }
 
-  private void run(HoodieTableVersion toVersion, String instantTime) throws IOException {
+  protected void run(HoodieTableVersion toVersion, String instantTime) throws IOException {
     // Fetch version from property file and current version
     HoodieTableVersion fromVersion = metaClient.getTableConfig().getTableVersion();
     if (toVersion.versionCode() == fromVersion.versionCode()) {
@@ -136,19 +129,7 @@ public class UpgradeDowngrade {
     }
   }
 
-  private void upgrade(HoodieTableVersion fromVersion, HoodieTableVersion toVersion, String instantTime) {
-    if (fromVersion == HoodieTableVersion.ZERO && toVersion == HoodieTableVersion.ONE) {
-      new ZeroToOneUpgradeHandler().upgrade(config, context, instantTime);
-    } else {
-      throw new HoodieUpgradeDowngradeException(fromVersion.versionCode(), toVersion.versionCode(), true);
-    }
-  }
+  protected abstract void upgrade(HoodieTableVersion fromVersion, HoodieTableVersion toVersion, String instantTime);
 
-  private void downgrade(HoodieTableVersion fromVersion, HoodieTableVersion toVersion, String instantTime) {
-    if (fromVersion == HoodieTableVersion.ONE && toVersion == HoodieTableVersion.ZERO) {
-      new OneToZeroDowngradeHandler().downgrade(config, context, instantTime);
-    } else {
-      throw new HoodieUpgradeDowngradeException(fromVersion.versionCode(), toVersion.versionCode(), false);
-    }
-  }
+  protected abstract void downgrade(HoodieTableVersion fromVersion, HoodieTableVersion toVersion, String instantTime);
 }

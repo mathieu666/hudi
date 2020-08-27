@@ -28,6 +28,8 @@ import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.table.timeline.TimelineMetadataUtils;
+import org.apache.hudi.common.util.HoodieTimer;
+import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ValidationUtils;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
@@ -39,11 +41,12 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class BaseRollbackActionExecutor<T extends HoodieRecordPayload, I, K, O, P> extends BaseActionExecutor<HoodieRollbackMetadata, T, I, K, O, P> {
+public abstract class BaseRollbackActionExecutor<T extends HoodieRecordPayload, I, K, O, P> extends BaseActionExecutor<T, I, K, O, P, HoodieRollbackMetadata> {
 
   private static final Logger LOG = LogManager.getLogger(BaseRollbackActionExecutor.class);
 
@@ -91,6 +94,27 @@ public abstract class BaseRollbackActionExecutor<T extends HoodieRecordPayload, 
   protected abstract List<HoodieRollbackStat> executeRollback() throws IOException;
 
   protected abstract List<HoodieRollbackStat> executeRollbackUsingFileListing(HoodieInstant instantToRollback);
+
+  @Override
+  public HoodieRollbackMetadata execute() {
+    HoodieTimer rollbackTimer = new HoodieTimer().startTimer();
+    List<HoodieRollbackStat> stats = doRollbackAndGetStats();
+    HoodieRollbackMetadata rollbackMetadata = TimelineMetadataUtils.convertRollbackMetadata(
+        instantTime,
+        Option.of(rollbackTimer.endTimer()),
+        Collections.singletonList(instantToRollback.getTimestamp()),
+        stats);
+    if (!skipTimelinePublish) {
+      finishRollback(rollbackMetadata);
+    }
+
+    // Finally, remove the marker files post rollback.
+    quietDeleteMarkerDir(table);
+
+    return rollbackMetadata;
+  }
+
+  protected abstract void quietDeleteMarkerDir(HoodieTable<T,I,K,O,P> table);
 
   private void validateSavepointRollbacks() {
     // Check if any of the commits is a savepoint - do not allow rollback on those commits

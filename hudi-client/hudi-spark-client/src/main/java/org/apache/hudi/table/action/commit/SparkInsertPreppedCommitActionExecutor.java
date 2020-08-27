@@ -18,7 +18,8 @@
 
 package org.apache.hudi.table.action.commit;
 
-import org.apache.hudi.common.HoodieEngineContext;
+import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
@@ -33,7 +34,7 @@ public class SparkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayloa
 
   private final JavaRDD<HoodieRecord<T>> preppedRecords;
 
-  public SparkInsertPreppedCommitActionExecutor(HoodieEngineContext context,
+  public SparkInsertPreppedCommitActionExecutor(HoodieSparkEngineContext context,
                                                 HoodieWriteConfig config, HoodieTable table,
                                                 String instantTime, JavaRDD<HoodieRecord<T>> preppedRecords) {
     super(context, config, table, instantTime, WriteOperationType.INSERT_PREPPED);
@@ -41,7 +42,7 @@ public class SparkInsertPreppedCommitActionExecutor<T extends HoodieRecordPayloa
   }
 
   @Override
-  public HoodieWriteMetadata execute() {
+  public HoodieWriteMetadata<JavaRDD<WriteStatus>> execute() {
     return super.execute(preppedRecords);
   }
 }

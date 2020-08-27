@@ -32,6 +32,7 @@ import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieRollbackException;
 import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.action.rollback.SparkCopyOnWriteRollbackActionExecutor;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
@@ -49,7 +50,7 @@ public class SparkCopyOnWriteRestoreActionExecutor<T extends HoodieRecordPayload
   protected HoodieRollbackMetadata rollbackInstant(HoodieInstant instantToRollback) {
     table.getMetaClient().reloadActiveTimeline();
     SparkCopyOnWriteRollbackActionExecutor rollbackActionExecutor = new SparkCopyOnWriteRollbackActionExecutor(
-        context,
+        (HoodieSparkEngineContext) context,
         config,
         table,
         HoodieActiveTimeline.createNewInstantTime(),

@@ -34,8 +34,8 @@ import scala.Tuple2;
  *
  * @param <T>
  */
-public class SparkWriteHelper<T extends HoodieRecordPayload> extends BaseWriteHelper<T, JavaRDD<HoodieRecord<T>>,
-    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
+public class SparkWriteHelper<T extends HoodieRecordPayload,R> extends BaseWriteHelper<T, JavaRDD<HoodieRecord<T>>,
+    JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>,R> {
   private SparkWriteHelper() {
   }
 

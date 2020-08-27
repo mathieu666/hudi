@@ -46,11 +46,11 @@ public abstract class BaseMarkerBasedRollbackStrategy<T extends HoodieRecordPayl
 
   private static final Logger LOG = LogManager.getLogger(BaseMarkerBasedRollbackStrategy.class);
 
-  private final HoodieTable<T, I, K, O, P> table;
+  protected final HoodieTable<T, I, K, O, P> table;
 
-  private final transient HoodieEngineContext context;
+  protected final transient HoodieEngineContext context;
 
-  private final HoodieWriteConfig config;
+  protected final HoodieWriteConfig config;
 
   private final String basePath;
 
@@ -64,12 +64,12 @@ public abstract class BaseMarkerBasedRollbackStrategy<T extends HoodieRecordPayl
     this.instantTime = instantTime;
   }
 
-  private HoodieRollbackStat undoMerge(String mergedBaseFilePath) throws IOException {
+  protected HoodieRollbackStat undoMerge(String mergedBaseFilePath) throws IOException {
     LOG.info("Rolling back by deleting the merged base file:" + mergedBaseFilePath);
     return deleteBaseFile(mergedBaseFilePath);
   }
 
-  private HoodieRollbackStat undoCreate(String createdBaseFilePath) throws IOException {
+  protected HoodieRollbackStat undoCreate(String createdBaseFilePath) throws IOException {
     LOG.info("Rolling back by deleting the created base file:" + createdBaseFilePath);
     return deleteBaseFile(createdBaseFilePath);
   }
@@ -84,7 +84,7 @@ public abstract class BaseMarkerBasedRollbackStrategy<T extends HoodieRecordPayl
         .build();
   }
 
-  private HoodieRollbackStat undoAppend(String appendBaseFilePath, HoodieInstant instantToRollback) throws IOException, InterruptedException {
+  protected HoodieRollbackStat undoAppend(String appendBaseFilePath, HoodieInstant instantToRollback) throws IOException, InterruptedException {
     Path baseFilePathForAppend = new Path(basePath, appendBaseFilePath);
     String fileId = FSUtils.getFileIdFromFilePath(baseFilePathForAppend);
     String baseCommitTime = FSUtils.getCommitTime(baseFilePathForAppend.getName());

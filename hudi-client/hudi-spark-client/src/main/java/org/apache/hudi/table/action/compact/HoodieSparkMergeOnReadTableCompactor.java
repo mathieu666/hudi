@@ -26,7 +26,14 @@ import org.apache.hudi.client.utils.SparkConfigUtils;
 import org.apache.hudi.common.HoodieEngineContext;
 import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.fs.FSUtils;
-import org.apache.hudi.common.model.*;
+import org.apache.hudi.common.model.CompactionOperation;
+import org.apache.hudi.common.model.HoodieBaseFile;
+import org.apache.hudi.common.model.HoodieFileGroupId;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodieLogFile;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.HoodieWriteStat.RuntimeStats;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.log.HoodieMergedLogRecordScanner;
@@ -55,7 +62,11 @@ import org.apache.spark.util.AccumulatorV2;
 import org.apache.spark.util.LongAccumulator;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -65,7 +76,6 @@ import static java.util.stream.Collectors.toList;
  * Compacts a hoodie table with merge on read storage. Computes all possible compactions,
  * passes it through a CompactionFilter and executes all the compactions and writes a new version of base files and make
  * a normal commit
- *
  */
 public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload> implements HoodieCompactor<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
 
@@ -85,7 +95,7 @@ public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload>
     }
     HoodieTableMetaClient metaClient = hoodieTable.getMetaClient();
     // Compacting is very similar to applying updates to existing file
-    HoodieSparkCopyOnWriteTable table = new HoodieSparkCopyOnWriteTable(config, jsc.hadoopConfiguration(), metaClient);
+    HoodieSparkCopyOnWriteTable table = new HoodieSparkCopyOnWriteTable(config, context, metaClient);
     List<CompactionOperation> operations = compactionPlan.getOperations().stream()
         .map(CompactionOperation::convertFromAvroRecordInstance).collect(toList());
     LOG.info("Compactor compacting " + operations + " files");
@@ -96,7 +106,7 @@ public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload>
   }
 
   private List<WriteStatus> compact(HoodieSparkCopyOnWriteTable hoodieCopyOnWriteTable, HoodieTableMetaClient metaClient,
-      HoodieWriteConfig config, CompactionOperation operation, String instantTime) throws IOException {
+                                    HoodieWriteConfig config, CompactionOperation operation, String instantTime) throws IOException {
     FileSystem fs = metaClient.getFs();
 
     Schema readerSchema = HoodieAvroUtils.addMetadataFields(new Schema.Parser().parse(config.getSchema()));
@@ -135,7 +145,7 @@ public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload>
     // new base parquet file.
     if (oldDataFileOpt.isPresent()) {
       result = hoodieCopyOnWriteTable.handleUpdate(instantTime, operation.getPartitionPath(),
-              operation.getFileId(), scanner.getRecords(),
+          operation.getFileId(), scanner.getRecords(),
           oldDataFileOpt.get());
     } else {
       result = hoodieCopyOnWriteTable.handleInsert(instantTime, operation.getPartitionPath(), operation.getFileId(),
@@ -159,9 +169,9 @@ public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload>
   }
 
   @Override
-  public HoodieCompactionPlan generateCompactionPlan(JavaSparkContext jsc, HoodieTable hoodieTable,
-      HoodieWriteConfig config, String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions)
-      throws IOException {
+  public HoodieCompactionPlan generateCompactionPlan(HoodieEngineContext context, HoodieTable<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> hoodieTable, HoodieWriteConfig config, String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions) throws IOException {
+
+    JavaSparkContext jsc = HoodieSparkEngineContext.getSparkContext(context);
 
     totalLogFiles = new LongAccumulator();
     totalFileSlices = new LongAccumulator();
@@ -212,7 +222,7 @@ public class HoodieSparkMergeOnReadTableCompactor<T extends HoodieRecordPayload>
     LOG.info("Total number of file slices " + totalFileSlices.value());
     // Filter the compactions with the passed in filter. This lets us choose most effective
     // compactions only
-    HoodieCompactionPlan compactionPlan = config.getCompactionStrategy().generateCo mpactionPlan(config, operations,
+    HoodieCompactionPlan compactionPlan = config.getCompactionStrategy().generateCompactionPlan(config, operations,
         CompactionUtils.getAllPendingCompactionPlans(metaClient).stream().map(Pair::getValue).collect(toList()));
     ValidationUtils.checkArgument(
         compactionPlan.getOperations().stream().noneMatch(

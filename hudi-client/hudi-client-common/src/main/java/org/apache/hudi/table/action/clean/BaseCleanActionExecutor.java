@@ -44,7 +44,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public abstract class BaseCleanActionExecutor<T extends HoodieRecordPayload, I, K, O, P> extends BaseActionExecutor<HoodieCleanMetadata, T, I, K, O, P> {
+public abstract class BaseCleanActionExecutor<T extends HoodieRecordPayload, I, K, O, P> extends BaseActionExecutor<T, I, K, O, P, HoodieCleanMetadata> {
 
   private static final long serialVersionUID = 1L;
   private static final Logger LOG = LogManager.getLogger(BaseCleanActionExecutor.class);
@@ -61,7 +61,7 @@ public abstract class BaseCleanActionExecutor<T extends HoodieRecordPayload, I, 
    */
   abstract HoodieCleanerPlan requestClean(HoodieEngineContext context);
 
-  private static Boolean deleteFileAndGetResult(FileSystem fs, String deletePathStr) throws IOException {
+  protected static Boolean deleteFileAndGetResult(FileSystem fs, String deletePathStr) throws IOException {
     Path deletePath = new Path(deletePathStr);
     LOG.debug("Working on delete path :" + deletePath);
     try {

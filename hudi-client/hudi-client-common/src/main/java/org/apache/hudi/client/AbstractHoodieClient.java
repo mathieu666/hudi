@@ -92,6 +92,7 @@ public abstract class AbstractHoodieClient implements Serializable, AutoCloseabl
       config.resetViewStorageConfig();
     }
   }
+
   /**
    * This method should be implemented as thread-safe.
    */

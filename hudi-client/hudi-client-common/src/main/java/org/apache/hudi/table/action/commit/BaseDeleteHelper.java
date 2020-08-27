@@ -33,7 +33,7 @@ import org.apache.hudi.table.action.HoodieWriteMetadata;
  * @param <O> Type of outputs
  * @param <P> Type of record position [Key, Option[partitionPath, fileID]] in hoodie table
  */
-public abstract class BaseDeleteHelper<T extends HoodieRecordPayload, I, K, O, P> {
+public abstract class BaseDeleteHelper<T extends HoodieRecordPayload, I, K, O, P, R> {
 
 
   /**
@@ -49,5 +49,5 @@ public abstract class BaseDeleteHelper<T extends HoodieRecordPayload, I, K, O, P
                                                  HoodieEngineContext context,
                                                  HoodieWriteConfig config,
                                                  HoodieTable<T, I, K, O, P> table,
-                                                 BaseCommitActionExecutor<T, I, K, O, P> deleteExecutor);
+                                                 BaseCommitActionExecutor<T, I, K, O, P, R> deleteExecutor);
 }

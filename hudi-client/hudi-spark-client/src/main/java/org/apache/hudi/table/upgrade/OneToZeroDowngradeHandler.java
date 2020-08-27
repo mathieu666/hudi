@@ -19,7 +19,6 @@
 package org.apache.hudi.table.upgrade;
 
 import org.apache.hudi.common.HoodieEngineContext;
-import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.config.HoodieWriteConfig;
@@ -38,7 +37,7 @@ public class OneToZeroDowngradeHandler implements DowngradeHandler {
   @Override
   public void downgrade(HoodieWriteConfig config, HoodieEngineContext context, String instantTime) {
     // fetch pending commit info
-    HoodieSparkTable table = HoodieSparkTable.create(config, (HoodieSparkEngineContext) context);
+    HoodieSparkTable table = HoodieSparkTable.create(config, context);
     HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
     List<HoodieInstant> commits = inflightTimeline.getReverseOrderedInstants().collect(Collectors.toList());
     for (HoodieInstant commitInstant : commits) {

@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hudi.client.HoodieSparkWriteClient;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.model.HoodieWriteStat;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
@@ -32,7 +34,7 @@ import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieException;
-import org.apache.hudi.table.HoodieTable;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -57,8 +59,8 @@ public class HoodieDataSourceInternalWriter implements DataSourceWriter {
   private final HoodieTableMetaClient metaClient;
   private final HoodieWriteConfig writeConfig;
   private final StructType structType;
-  private final HoodieWriteClient writeClient;
-  private final HoodieTable hoodieTable;
+  private final HoodieSparkWriteClient writeClient;
+  private final HoodieSparkTable hoodieTable;
   private final WriteOperationType operationType;
 
   public HoodieDataSourceInternalWriter(String instantTime, HoodieWriteConfig writeConfig, StructType structType,
@@ -67,11 +69,11 @@ public class HoodieDataSourceInternalWriter implements DataSourceWriter {
     this.writeConfig = writeConfig;
     this.structType = structType;
     this.operationType = WriteOperationType.BULK_INSERT;
-    this.writeClient  = new HoodieWriteClient<>(new JavaSparkContext(sparkSession.sparkContext()), writeConfig, true);
+    this.writeClient  = new HoodieSparkWriteClient<>(new HoodieSparkEngineContext(new JavaSparkContext(sparkSession.sparkContext())), writeConfig, true);
     writeClient.setOperationType(operationType);
     writeClient.startCommitWithTime(instantTime);
     this.metaClient = new HoodieTableMetaClient(configuration, writeConfig.getBasePath());
-    this.hoodieTable = HoodieTable.create(metaClient, writeConfig, metaClient.getHadoopConf());
+    this.hoodieTable = HoodieSparkTable.create(writeConfig, new HoodieSparkEngineContext(new JavaSparkContext(sparkSession.sparkContext())), metaClient);
   }
 
   @Override

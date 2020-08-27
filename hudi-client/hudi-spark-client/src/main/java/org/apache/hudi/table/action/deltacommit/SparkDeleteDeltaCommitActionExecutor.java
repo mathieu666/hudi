@@ -18,32 +18,30 @@
 
 package org.apache.hudi.table.action.deltacommit;
 
-import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.HoodieSparkEngineContext;
+import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
-
 import org.apache.hudi.table.action.HoodieWriteMetadata;
-import org.apache.hudi.table.action.commit.WriteHelper;
+import org.apache.hudi.table.action.commit.SparkDeleteHelper;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 
-public class UpsertDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
-    extends DeltaCommitActionExecutor<T> {
+public class SparkDeleteDeltaCommitActionExecutor<T extends HoodieRecordPayload<T>>
+    extends SparkDeltaCommitActionExecutor<T> {
 
-  private JavaRDD<HoodieRecord<T>> inputRecordsRDD;
+  private final JavaRDD<HoodieKey> keys;
 
-  public UpsertDeltaCommitActionExecutor(JavaSparkContext jsc,
-      HoodieWriteConfig config, HoodieTable table,
-      String instantTime, JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
-    super(jsc, config, table, instantTime, WriteOperationType.UPSERT);
-    this.inputRecordsRDD = inputRecordsRDD;
+  public SparkDeleteDeltaCommitActionExecutor(HoodieSparkEngineContext context,
+                                              HoodieWriteConfig config, HoodieTable table,
+                                              String instantTime, JavaRDD<HoodieKey> keys) {
+    super(context, config, table, instantTime, WriteOperationType.DELETE);
+    this.keys = keys;
   }
 
   @Override
   public HoodieWriteMetadata execute() {
-    return WriteHelper.write(instantTime, inputRecordsRDD, jsc, (HoodieTable<T>) table,
-        config.shouldCombineBeforeUpsert(), config.getUpsertShuffleParallelism(),this, true);
+    return SparkDeleteHelper.newInstance().execute(instantTime, keys, context, config, table, this);
   }
 }

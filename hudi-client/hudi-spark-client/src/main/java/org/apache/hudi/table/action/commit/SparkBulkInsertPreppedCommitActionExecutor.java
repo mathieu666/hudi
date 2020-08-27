@@ -18,7 +18,8 @@
 
 package org.apache.hudi.table.action.commit;
 
-import org.apache.hudi.common.HoodieEngineContext;
+import org.apache.hudi.client.WriteStatus;
+import org.apache.hudi.common.HoodieSparkEngineContext;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.WriteOperationType;
@@ -37,7 +38,7 @@ public class SparkBulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPa
   private final JavaRDD<HoodieRecord<T>> preppedInputRecordRdd;
   private final Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner;
 
-  public SparkBulkInsertPreppedCommitActionExecutor(HoodieEngineContext context,
+  public SparkBulkInsertPreppedCommitActionExecutor(HoodieSparkEngineContext context,
                                                     HoodieWriteConfig config, HoodieTable table,
                                                     String instantTime, JavaRDD<HoodieRecord<T>> preppedInputRecordRdd,
                                                     Option<BulkInsertPartitioner<T>> userDefinedBulkInsertPartitioner) {
@@ -47,7 +48,7 @@ public class SparkBulkInsertPreppedCommitActionExecutor<T extends HoodieRecordPa
   }
 
   @Override
-  public HoodieWriteMetadata execute() {
+  public HoodieWriteMetadata<JavaRDD<WriteStatus>> execute() {
     try {
       return SparkBulkInsertHelper.newInstance().bulkInsert(preppedInputRecordRdd, instantTime, table, config,
           this, false, userDefinedBulkInsertPartitioner);

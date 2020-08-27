@@ -18,11 +18,13 @@
 
 package org.apache.hudi.execution.bulkinsert;
 
+import org.apache.hudi.client.SparkTaskContextSupplier;
 import org.apache.hudi.client.WriteStatus;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.execution.LazyInsertIterable;
+import org.apache.hudi.execution.SparkLazyInsertIterable;
+import org.apache.hudi.io.SparkAppendHandleFactory;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.api.java.function.Function2;
@@ -54,7 +56,7 @@ public class BulkInsertMapFunction<T extends HoodieRecordPayload>
 
   @Override
   public Iterator<List<WriteStatus>> call(Integer partition, Iterator<HoodieRecord<T>> recordItr) {
-    return new LazyInsertIterable<>(recordItr, areRecordsSorted, config, instantTime, hoodieTable,
-        fileIDPrefixes.get(partition), hoodieTable.getTaskContextSupplier());
+    return new SparkLazyInsertIterable<>(recordItr, areRecordsSorted, config, instantTime, hoodieTable,
+        fileIDPrefixes.get(partition), new SparkTaskContextSupplier(), new SparkAppendHandleFactory<>());
   }
 }

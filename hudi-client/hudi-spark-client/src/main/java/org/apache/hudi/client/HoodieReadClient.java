@@ -33,6 +33,8 @@ import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIndexException;
 import org.apache.hudi.index.HoodieIndex;
+import org.apache.hudi.index.HoodieSparkIndexFactory;
+import org.apache.hudi.table.HoodieSparkTable;
 import org.apache.hudi.table.HoodieTable;
 
 import org.apache.spark.SparkConf;
@@ -96,8 +98,8 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
     final String basePath = clientConfig.getBasePath();
     // Create a Hoodie table which encapsulated the commits and files visible
     HoodieTableMetaClient metaClient = new HoodieTableMetaClient(hadoopConf, basePath, true);
-    this.hoodieTable = HoodieTable.create(metaClient, clientConfig, hadoopConf);
-    this.index = HoodieIndex.createIndex(clientConfig);
+    this.hoodieTable = HoodieSparkTable.create(clientConfig, context, metaClient);
+    this.index = HoodieSparkIndexFactory.createIndex(clientConfig);
     this.sqlContextOpt = Option.empty();
   }
 
@@ -161,7 +163,7 @@ public class HoodieReadClient<T extends HoodieRecordPayload> implements Serializ
    * FullFilePath value is not present, then the key is not found. If the FullFilePath value is present, it is the path
    * component (without scheme) of the URI underlying file
    */
-  public JavaPairRDD<HoodieKey, Option<String>> checkExists(JavaRDD<HoodieKey> hoodieKeys) {
+  public JavaPairRDD<HoodieKey, Option<Pair<String, String>>> checkExists(JavaRDD<HoodieKey> hoodieKeys) {
     return index.fetchRecordLocation(hoodieKeys, context, hoodieTable);
   }
 

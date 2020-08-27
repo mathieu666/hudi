@@ -44,7 +44,7 @@ import org.apache.spark.api.java.JavaRDD;
 import java.io.IOException;
 import java.util.List;
 
-public class SparkRunCompactionActionExecutor<T extends HoodieRecordPayload> extends BaseActionExecutor<HoodieWriteMetadata<JavaRDD<WriteStatus>>, T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>> {
+public class SparkRunCompactionActionExecutor<T extends HoodieRecordPayload> extends BaseActionExecutor<T, JavaRDD<HoodieRecord<T>>, JavaRDD<HoodieKey>, JavaRDD<WriteStatus>, JavaPairRDD<HoodieKey, Option<Pair<String, String>>>, HoodieWriteMetadata<JavaRDD<WriteStatus>>> {
 
   public SparkRunCompactionActionExecutor(HoodieSparkEngineContext context,
                                           HoodieWriteConfig config,
