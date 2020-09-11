@@ -147,7 +147,7 @@ public class WriteJob {
      *  FLink checkpoint interval.
      */
     @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
-    public Long checkpointInterval = 1000 * 60L;
+    public Long checkpointInterval = 1000 * 5L;
 
     /**
      *  InstantTime save path.
