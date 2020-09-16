@@ -4,20 +4,26 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
 import org.apache.hudi.writer.common.HoodieWriteInput;
 import org.apache.hudi.writer.constant.Operation;
-import org.apache.hudi.writer.source.SourceReader;
+import org.apache.hudi.writer.function.Json2HoodieRecordMap;
+import org.apache.hudi.writer.utils.UtilHelpers;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class WriteJob {
 
@@ -32,15 +38,26 @@ public class WriteJob {
     env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
+    TypedProperties props = UtilHelpers.getProps(cfg);
+    Properties kafkaProps = getKafkaProps(props);
+
+    DataStream<String> kafkaSource =
+        env.addSource(new FlinkKafkaConsumer<>(kafkaProps.getProperty("hoodie.deltastreamer.source.kafka.topic"), new SimpleStringSchema(), kafkaProps));
+
     // 0. read from source
-    DataStream<HoodieWriteInput<HoodieRecord>> incomingRecords = env.addSource(new SourceReader());
+    DataStream<HoodieWriteInput<HoodieRecord>> incomingRecords =
+        kafkaSource.map(new Json2HoodieRecordMap(cfg))
+            .map(HoodieWriteInput::new)
+            .returns(new TypeHint<HoodieWriteInput<HoodieRecord>>() {
+            });
 
     // 1. generate instantTime
     // 2. partition by partitionPath
     // 3. collect records, tag location, prepare write operations
     // 4. trigger write operation, start compact and rollback (if any)
     incomingRecords
-        .transform("instantTimeGenerator", TypeInformation.of(new TypeHint<HoodieWriteInput<HoodieRecord>>(){}), new InstantGenerateOperator())
+        .transform("instantTimeGenerator", TypeInformation.of(new TypeHint<HoodieWriteInput<HoodieRecord>>() {
+        }), new InstantGenerateOperator())
         .setParallelism(1)
         .keyBy(new HoodieRecordKeySelector())
         .process(new WriteProcessWindowFunction())
@@ -49,6 +66,13 @@ public class WriteJob {
         .setParallelism(1);
 
     env.execute("Hudi upsert via Flink");
+  }
+
+  private static Properties getKafkaProps(TypedProperties cfg) {
+    Properties result = new Properties();
+    result.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, cfg.get("hoodie.deltastreamer.source.kafka.topic"));
+    result.put(ConsumerConfig.GROUP_ID_CONFIG, cfg.get("hoodie.deltastreamer.source.kafka.group.id"));
+    return result;
   }
 
   public static class Config extends Configuration {
@@ -144,13 +168,13 @@ public class WriteJob {
     public String checkpoint = null;
 
     /**
-     *  FLink checkpoint interval.
+     * FLink checkpoint interval.
      */
     @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
     public Long checkpointInterval = 1000 * 5L;
 
     /**
-     *  InstantTime save path.
+     * InstantTime save path.
      */
     @Parameter(names = {"--instant-time-path"}, description = "InstantTime save path.")
     public String instantTimePath = propsFilePath;

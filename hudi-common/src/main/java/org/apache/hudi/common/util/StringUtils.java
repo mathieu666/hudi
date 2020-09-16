@@ -94,4 +94,8 @@ public class StringUtils {
   private static boolean stringIsNullOrEmpty(@Nullable String string) {
     return string == null || string.isEmpty();
   }
+
+  public static String objToString(@Nullable Object obj) {
+    return obj == null ? null : obj.toString();
+  }
 }

@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.config.DFSPropertiesConfiguration;
+import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.writer.WriteJob;
@@ -92,4 +93,9 @@ public class UtilHelpers {
     return new Configuration();
   }
 
+  public static TypedProperties getProps(WriteJob.Config cfg) {
+    return UtilHelpers.readConfig(
+        FSUtils.getFs(cfg.propsFilePath, getHadoopConf()),
+        new Path(cfg.propsFilePath), cfg.configs).getConfig();
+  }
 }

@@ -20,7 +20,6 @@ package org.apache.hudi.common.model;
 
 import org.apache.hudi.avro.HoodieAvroUtils;
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.exception.HoodieIOException;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -37,14 +36,10 @@ public class AvroBinaryTestPayload implements HoodieRecordPayload {
 
   public AvroBinaryTestPayload(Option<GenericRecord> record) {
 
-    try {
-      if (record.isPresent()) {
-        recordBytes = HoodieAvroUtils.avroToBytes(record.get());
-      } else {
-        recordBytes = new byte[0];
-      }
-    } catch (IOException io) {
-      throw new HoodieIOException("unable to convert payload to bytes");
+    if (record.isPresent()) {
+      recordBytes = HoodieAvroUtils.avroToBytes(record.get());
+    } else {
+      recordBytes = new byte[0];
     }
   }
 

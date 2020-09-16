@@ -33,6 +33,8 @@ import org.apache.hudi.exception.HoodieNotSupportedException;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
+import org.apache.hudi.writer.keygen.KeyGenerator;
+import org.apache.hudi.writer.source.DataSourceWriteOptions;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -178,5 +180,22 @@ public class DataSourceUtils {
     HoodieWriteConfig writeConfig =
         HoodieWriteConfig.newBuilder().withPath(parameters.get("path")).withProps(parameters).build();
     return dropDuplicates(hadoopConf, incomingHoodieRecords, writeConfig);
+  }
+
+  /**
+   * Create a key generator class via reflection, passing in any configs needed.
+   * <p>
+   * If the class name of key generator is configured through the properties file, i.e., {@code props}, use the
+   * corresponding key generator class; otherwise, use the default key generator class specified in {@code
+   * DataSourceWriteOptions}.
+   */
+  public static KeyGenerator createKeyGenerator(TypedProperties props) throws IOException {
+    String keyGeneratorClass = props.getString(DataSourceWriteOptions.KEYGENERATOR_CLASS_OPT_KEY,
+        DataSourceWriteOptions.DEFAULT_KEYGENERATOR_CLASS_OPT_VAL);
+    try {
+      return (KeyGenerator) ReflectionUtils.loadClass(keyGeneratorClass, props);
+    } catch (Throwable e) {
+      throw new IOException("Could not load key generator class " + keyGeneratorClass, e);
+    }
   }
 }
