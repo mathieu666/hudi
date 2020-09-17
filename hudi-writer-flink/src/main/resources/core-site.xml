@@ -1,0 +1,13 @@
+<configuration>
+
+  <!-- 制定HDFS的老大（NameNode）的地址 -->
+  <property>
+    　　<name>fs.defaultFS</name>
+    　　<value>hdfs://localhost:8020</value>
+  </property>
+  <!-- 指定hadoop运行时产生文件的存储目录 -->
+  <property>
+    　　<name>hadoop.tmp.dir</name>
+    　　<value>/Users/wangxianghu/modules/hadoop-2.7.3/tmp</value>
+  </property>
+</configuration>

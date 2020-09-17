@@ -6,7 +6,7 @@ import org.apache.hudi.writer.keygen.SimpleKeyGenerator;
 
 public class DataSourceWriteOptions {
   /**
-   * The write operation, that this write should do
+   * The write operation, that this write should do.
    *
    * Default: upsert()
    */
@@ -86,7 +86,7 @@ public class DataSourceWriteOptions {
   public static String DEFAULT_HIVE_STYLE_PARTITIONING_OPT_VAL = "false";
 
   /**
-   * Key generator class, that implements will extract the key out of incoming record
+   * Key generator class, that implements will extract the key out of incoming record.
    *
    */
   public static String KEYGENERATOR_CLASS_OPT_KEY = "hoodie.datasource.write.keygenerator.class";
@@ -107,14 +107,14 @@ public class DataSourceWriteOptions {
   public static String DEFAULT_INSERT_DROP_DUPS_OPT_VAL = "false";
 
   /**
-   * Flag to indicate how many times streaming job should retry for a failed microbatch
+   * Flag to indicate how many times streaming job should retry for a failed microbatch.
    * By default 3
    */
   public static String STREAMING_RETRY_CNT_OPT_KEY = "hoodie.datasource.write.streaming.retry.count";
   public static String DEFAULT_STREAMING_RETRY_CNT_OPT_VAL = "3";
 
   /**
-   * Flag to indicate how long (by millisecond) before a retry should issued for failed microbatch
+   * Flag to indicate how long (by millisecond) before a retry should issued for failed microbatch.
    * By default 2000 and it will be doubled by every retry
    */
   public static String STREAMING_RETRY_INTERVAL_MS_OPT_KEY = "hoodie.datasource.write.streaming.retry.interval.ms";

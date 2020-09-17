@@ -30,6 +30,7 @@ import org.apache.hudi.writer.config.HoodieCompactionConfig;
 import org.apache.hudi.writer.config.HoodieIndexConfig;
 import org.apache.hudi.writer.config.HoodieWriteConfig;
 import org.apache.hudi.writer.index.HoodieIndex;
+import org.apache.hudi.writer.schema.FilebasedSchemaProvider;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -37,8 +38,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
-
-import static org.apache.hudi.writer.source.HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA;
 
 /**
  * Bunch of helper methods.
@@ -83,9 +82,8 @@ public class UtilHelpers {
             .withProps(readConfig(fs, new Path(cfg.propsFilePath), cfg.configs)
                 .getConfig());
 
+    builder = builder.withSchema(new FilebasedSchemaProvider(getProps(cfg)).getTargetSchema().toString());
     HoodieWriteConfig config = builder.build();
-    config.setSchema(TRIP_EXAMPLE_SCHEMA);
-
     return config;
   }
 

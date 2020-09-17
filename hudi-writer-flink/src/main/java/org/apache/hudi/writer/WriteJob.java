@@ -38,15 +38,14 @@ public class WriteJob {
     env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
-    TypedProperties props = UtilHelpers.getProps(cfg);
-    Properties kafkaProps = getKafkaProps(props);
+    Properties kafkaProps = getKafkaProps(cfg);
 
     DataStream<String> kafkaSource =
-        env.addSource(new FlinkKafkaConsumer<>(kafkaProps.getProperty("hoodie.deltastreamer.source.kafka.topic"), new SimpleStringSchema(), kafkaProps));
+        env.addSource(new FlinkKafkaConsumer<>(cfg.kafkaTopic, new SimpleStringSchema(), kafkaProps)).name("Kafka source");
 
     // 0. read from source
     DataStream<HoodieWriteInput<HoodieRecord>> incomingRecords =
-        kafkaSource.map(new Json2HoodieRecordMap(cfg))
+        kafkaSource.map(new Json2HoodieRecordMap(cfg)).name("Json to HoodieRecord map")
             .map(HoodieWriteInput::new)
             .returns(new TypeHint<HoodieWriteInput<HoodieRecord>>() {
             });
@@ -68,14 +67,22 @@ public class WriteJob {
     env.execute("Hudi upsert via Flink");
   }
 
-  private static Properties getKafkaProps(TypedProperties cfg) {
+  private static Properties getKafkaProps(Config cfg) {
     Properties result = new Properties();
-    result.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, cfg.get("hoodie.deltastreamer.source.kafka.topic"));
-    result.put(ConsumerConfig.GROUP_ID_CONFIG, cfg.get("hoodie.deltastreamer.source.kafka.group.id"));
+    result.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, cfg.kafkaBootstrapServers);
+    result.put(ConsumerConfig.GROUP_ID_CONFIG, cfg.kafkaGroupId);
     return result;
   }
 
   public static class Config extends Configuration {
+    @Parameter(names = {"--kafka-topic"}, description = "kafka topic", required = true)
+    public String kafkaTopic;
+
+    @Parameter(names = {"--kafka-group-id"}, description = "kafka consumer group id", required = true)
+    public String kafkaGroupId;
+
+    @Parameter(names = {"--kafka-bootstrap-servers"}, description = "kafka bootstrap.servers", required = true)
+    public String kafkaBootstrapServers;
 
     @Parameter(names = {"--target-base-path"},
         description = "base path for the target hoodie table. "

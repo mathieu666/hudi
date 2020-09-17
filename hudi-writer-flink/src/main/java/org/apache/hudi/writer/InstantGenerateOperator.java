@@ -47,7 +47,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
     // get configs from runtimeContext
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
     // hadoopConf
-    serializableHadoopConf = new SerializableConfiguration(new Configuration());
+    serializableHadoopConf = new SerializableConfiguration(UtilHelpers.getHadoopConf());
     // Hadoop FileSystem
     fs = FSUtils.getFs(cfg.targetBasePath, serializableHadoopConf.get());
     // HoodieWriteConfig

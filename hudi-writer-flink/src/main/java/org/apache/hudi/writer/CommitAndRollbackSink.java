@@ -114,11 +114,11 @@ public class CommitAndRollbackSink extends RichSinkFunction<HoodieWriteOutput<Li
     // get configs from runtimeContext
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
 
+    // hadoopConf
+    serializableHadoopConf = new SerializableConfiguration(UtilHelpers.getHadoopConf());
+
     // HoodieWriteConfig
     writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
-
-    // hadoopConf
-    serializableHadoopConf = new SerializableConfiguration(new org.apache.hadoop.conf.Configuration());
 
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);

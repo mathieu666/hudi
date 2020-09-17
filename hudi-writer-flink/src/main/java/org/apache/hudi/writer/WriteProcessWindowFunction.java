@@ -107,7 +107,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
 
     // hadoopConf
-    serializableHadoopConf = new SerializableConfiguration(new org.apache.hadoop.conf.Configuration());
+    serializableHadoopConf = new SerializableConfiguration(UtilHelpers.getHadoopConf());
 
     // HoodieWriteConfig
     writeConfig = UtilHelpers.getHoodieClientConfig(cfg);

@@ -20,7 +20,6 @@ import java.io.IOException;
 public class Json2HoodieRecordMap implements MapFunction<String, HoodieRecord> {
   private final WriteJob.Config cfg;
   private TypedProperties props;
-  private AvroConvertor convertor;
   private KeyGenerator keyGenerator;
 
   private static Logger logger = LoggerFactory.getLogger(Json2HoodieRecordMap.class);
@@ -32,7 +31,7 @@ public class Json2HoodieRecordMap implements MapFunction<String, HoodieRecord> {
 
   @Override
   public HoodieRecord map(String value) throws Exception {
-    convertor = new AvroConvertor(new FilebasedSchemaProvider(props).getSourceSchema());
+    AvroConvertor convertor = new AvroConvertor(new FilebasedSchemaProvider(props).getSourceSchema());
     GenericRecord gr = convertor.fromJson(value);
 
     HoodieRecordPayload payload = DataSourceUtils.createPayload(cfg.payloadClassName, gr,
