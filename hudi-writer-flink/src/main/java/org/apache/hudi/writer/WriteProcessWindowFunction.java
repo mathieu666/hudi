@@ -1,5 +1,6 @@
 package org.apache.hudi.writer;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
@@ -27,7 +28,7 @@ import java.util.List;
 /**
  *
  */
-public class WriteProcessWindowFunction extends KeyedProcessFunction<String, HoodieWriteInput<HoodieRecord>, HoodieWriteOutput<List<WriteStatus>>> implements CheckpointedFunction {
+public class WriteProcessWindowFunction extends KeyedProcessFunction<String, HoodieWriteInput<HoodieRecord>, Tuple2<String, List<WriteStatus>>> implements CheckpointedFunction {
 
   private static final Logger LOG = LoggerFactory.getLogger(WriteProcessWindowFunction.class);
   /**
@@ -53,10 +54,11 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
    */
   private List<HoodieRecord> records = new LinkedList<>();
 
-  private Collector<HoodieWriteOutput<List<WriteStatus>>> output;
+  private Collector<Tuple2<String, List<WriteStatus>>> output;
+  private int indexOfThisSubtask;
 
   @Override
-  public void processElement(HoodieWriteInput<HoodieRecord> value, Context ctx, Collector<HoodieWriteOutput<List<WriteStatus>>> out) throws Exception {
+  public void processElement(HoodieWriteInput<HoodieRecord> value, Context ctx, Collector<Tuple2<String, List<WriteStatus>>> out) throws Exception {
     records.add(value.getInputs());
     LOG.info("Receive 1 record, current records size = [{}]", records.size());
     if (output == null) {
@@ -69,30 +71,34 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     if (records.isEmpty()) {
       return;
     }
+    long checkpointId = context.getCheckpointId();
 
-    // get instantTime
-    String instantTime = getInflightInstantTime();
-    LOG.info("WriteProcessWindowFunction get instantTime = {}", instantTime);
+    //执行 snapshot 之前先获取有哪些新的 instant
+    HoodieInstant hoodieInstant = getInflightInstantTime();
+
+    String instantTime = "";
+
+    //有数据就一定要有 hoodieInstant
+    if (hoodieInstant == null) {
+      throw new RuntimeException("执行 snapshot 发现找不到事务 whit index [" + indexOfThisSubtask + "] checkpoint id [" + checkpointId + "]");
+    }
+
+    instantTime = hoodieInstant.getTimestamp();
+    LOG.warn("执行 snapshotState [" + checkpointId + "] 当前事务为 [" + instantTime + "] 当前批次大小 [" + records.size() + "]");
 
     // start write and get the result
     HoodieWriteOutput<List<WriteStatus>> writeStatus;
     HoodieWriteInput<List<HoodieRecord>> inputs = new HoodieWriteInput<>(records);
-    if (cfg.operation == Operation.INSERT) {
-      writeStatus = writeClient.insert(inputs, instantTime);
-    } else if (cfg.operation == Operation.UPSERT) {
-      writeStatus = writeClient.upsert(inputs, instantTime);
-    } else if (cfg.operation == Operation.BULK_INSERT) {
-      writeStatus = writeClient.bulkInsert(inputs, instantTime);
-    } else {
-      throw new HoodieDeltaStreamerException("Unknown operation :" + cfg.operation);
-    }
+    writeStatus = writeClient.upsert(inputs, instantTime);
     if (null != writeStatus && null != writeStatus.getOutput()) {
-      output.collect(writeStatus);
-
+      output.collect(new Tuple2<>(instantTime, writeStatus.getOutput()));
       // 输出writeStatus
-      LOG.info("Emit [{}] writeStatus to Sink", writeStatus.getOutput().size());
-      records.clear();
+      LOG.warn("执行 snapshotState [" + checkpointId + "] 当前事务为 [" + instantTime + "] 下发数据条数 [{}]", writeStatus.getOutput().size());
+      //清理缓存
+    } else {
+      LOG.warn("执行 snapshotState [" + checkpointId + "] 当前事务为 [" + instantTime + "]  records.values 为空");
     }
+    records.clear();
   }
 
   @Override
@@ -103,6 +109,7 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
+    this.indexOfThisSubtask = getRuntimeContext().getIndexOfThisSubtask();
     // get configs from runtimeContext
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
 
@@ -116,9 +123,9 @@ public class WriteProcessWindowFunction extends KeyedProcessFunction<String, Hoo
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
   }
 
-  private String getInflightInstantTime() {
+  private HoodieInstant getInflightInstantTime() {
     HoodieTableMetaClient meta = new HoodieTableMetaClient(serializableHadoopConf.get(), cfg.targetBasePath,
         cfg.payloadClassName);
-    return meta.getActiveTimeline().filter(HoodieInstant::isRequested).lastInstant().get().getTimestamp();
+    return meta.getActiveTimeline().filter(HoodieInstant::isRequested).lastInstant().get();
   }
 }

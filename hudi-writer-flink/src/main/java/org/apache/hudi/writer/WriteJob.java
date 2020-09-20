@@ -7,6 +7,8 @@ import com.beust.jcommander.ParameterException;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -15,6 +17,7 @@ import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
+import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.common.HoodieWriteInput;
 import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.function.Json2HoodieRecordMap;
@@ -59,8 +62,9 @@ public class WriteJob {
         }), new InstantGenerateOperator())
         .setParallelism(1)
         .keyBy(new HoodieRecordKeySelector())
-        .process(new WriteProcessWindowFunction())
-        .setParallelism(4)
+        .transform("WriteProcessOperator", TypeInformation.of(new TypeHint<Tuple4<String, List<WriteStatus>, Integer, Boolean>>() {
+        }), new WriteProcessOperator())
+        .setParallelism(cfg.parallelism)
         .addSink(new CommitAndRollbackSink())
         .setParallelism(1);
 
@@ -83,6 +87,9 @@ public class WriteJob {
 
     @Parameter(names = {"--kafka-bootstrap-servers"}, description = "kafka bootstrap.servers", required = true)
     public String kafkaBootstrapServers;
+
+    @Parameter(names = {"--parallelism"}, description = "parallelism of flink operator")
+    public Integer parallelism;
 
     @Parameter(names = {"--target-base-path"},
         description = "base path for the target hoodie table. "

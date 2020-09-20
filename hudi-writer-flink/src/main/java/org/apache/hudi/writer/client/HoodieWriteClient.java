@@ -60,10 +60,7 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -433,7 +430,7 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     startCommit(instantTime);
   }
 
-  private void startCommit(String instantTime) {
+  public void startCommit(String instantTime) {
     LOG.info("Generate a new instant time " + instantTime);
     HoodieTableMetaClient metaClient = createMetaClient(true);
     // if there are pending compactions, their instantTime must not be greater than that of this instant time
@@ -729,4 +726,10 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     }
   }
 
+  public List<String> getRollbackPendingCommits() {
+    HoodieTable<T> table = HoodieTable.create(config, hadoopConf);
+    HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
+    return inflightTimeline.getReverseOrderedInstants().map(HoodieInstant::getTimestamp)
+        .collect(Collectors.toList());
+  }
 }
