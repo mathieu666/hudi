@@ -7,13 +7,11 @@ import com.beust.jcommander.ParameterException;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.hudi.common.config.TypedProperties;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.OverwriteWithLatestAvroPayload;
@@ -21,7 +19,6 @@ import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.common.HoodieWriteInput;
 import org.apache.hudi.writer.constant.Operation;
 import org.apache.hudi.writer.function.Json2HoodieRecordMap;
-import org.apache.hudi.writer.utils.UtilHelpers;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import java.util.ArrayList;
@@ -137,10 +134,6 @@ public class WriteJob {
             + "allows a SQL query templated to be passed as a transformation function)")
     public String transformerClassName = null;
 
-    @Parameter(names = {"--source-limit"}, description = "Maximum amount of data to read from source. "
-        + "Default: No limit For e.g: DFS-Source => max bytes to read, Kafka-Source => max events to read")
-    public long sourceLimit = Long.MAX_VALUE;
-
     @Parameter(names = {"--op"}, description = "Takes one of these values : UPSERT (default), INSERT (use when input "
         + "is purely new data/inserts to gain speed)", converter = OperationConvertor.class)
     public Operation operation = Operation.UPSERT;
@@ -174,12 +167,6 @@ public class WriteJob {
     @Parameter(names = {"--disable-compaction"},
         description = "Compaction is enabled for MoR table by default. This flag disables it ")
     public Boolean forceDisableCompaction = false;
-
-    /**
-     * Resume Delta Streamer from this checkpoint.
-     */
-    @Parameter(names = {"--checkpoint"}, description = "Resume Delta Streamer from this checkpoint.")
-    public String checkpoint = null;
 
     /**
      * FLink checkpoint interval.

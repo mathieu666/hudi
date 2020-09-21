@@ -10,16 +10,12 @@ import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.config.SerializableConfiguration;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.StringUtils;
-import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.client.WriteStatus;
 import org.apache.hudi.writer.common.HoodieWriteInput;
@@ -29,9 +25,10 @@ import org.apache.hudi.writer.utils.UtilHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, List<WriteStatus>, Integer, Boolean>> implements OneInputStreamOperator<HoodieWriteInput<HoodieRecord>, Tuple4<String, List<WriteStatus>, Integer, Boolean>> {
 
@@ -61,7 +58,6 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
 
   private int indexOfThisSubtask;
   String instantTime = "";
-  private transient FileSystem fs;
 
   private ListState<Tuple4<String, List<WriteStatus>, Integer, Boolean>> upsertState = null;
   private ListState<String> instantState = null;
@@ -76,8 +72,6 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
       serializableHadoopConf = new SerializableConfiguration(new org.apache.hadoop.conf.Configuration());
       // HoodieWriteConfig
       writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
-
-      fs = FSUtils.getFs(cfg.targetBasePath, serializableHadoopConf.get());
 
       // writeClient
       writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
@@ -99,9 +93,10 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
       //执行 snapshot 之前先获取有哪些新的 instant
       HoodieInstant hoodieInstant = getInflightInstantTime();
 
+      // 没数据，mock数据凑数
       if (records.isEmpty()) {
-        if (output != null && hoodieInstant != null) {
-          //下发数据凑数  有可能  hoodieInstant 是 历史的 未提交的 hoodieInstant 所以这里过了一下
+        if (hoodieInstant != null) {
+          // 下发数据凑数  有可能  hoodieInstant 是 历史的 未提交的 hoodieInstant 所以这里过了一下
           String newInstant = hoodieInstant.getTimestamp();
           if (StringUtils.isNullOrEmpty(instantTime) || Long.parseLong(instantTime) <= Long.parseLong(newInstant)) {
             Tuple4 tuple4 = new Tuple4(newInstant, new ArrayList<WriteStatus>(), getRuntimeContext().getIndexOfThisSubtask(), false);
@@ -158,16 +153,13 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
           records.clear();
         }
       }
-  } catch(
-  Exception e)
+    } catch (Exception e) {
+      LOG.error("SnapshotState WriteProcessWindowFunction error: " + Thread.currentThread().getId() + ";" + this);
+      e.printStackTrace();
+      throw e;
+    }
 
-  {
-    LOG.error("SnapshotState WriteProcessWindowFunction error: " + Thread.currentThread().getId() + ";" + this);
-    e.printStackTrace();
-    throw e;
   }
-
-}
 
   @Override
   public void initializeState(StateInitializationContext context) throws Exception {
@@ -207,25 +199,6 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
       return hoodieInstantOption.get();
     } else {
       return null;
-    }
-  }
-
-  public void deleteInstantFile(HoodieInstant instant) {
-    LOG.warn("Deleting instant " + instant);
-    Path inFlightCommitFilePath = new Path(cfg.targetBasePath + "/.hoodie", instant.getFileName());
-    try {
-      boolean exists = fs.exists(inFlightCommitFilePath);
-      if (!exists) {
-        return;
-      }
-      boolean result = fs.delete(inFlightCommitFilePath, false);
-      if (result) {
-        LOG.warn("Removed instant " + instant);
-      } else {
-        throw new HoodieIOException("Could not delete instant " + instant);
-      }
-    } catch (IOException e) {
-      throw new HoodieIOException("Could not remove inflight commit " + inFlightCommitFilePath, e);
     }
   }
 

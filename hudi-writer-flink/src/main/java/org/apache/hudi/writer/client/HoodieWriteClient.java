@@ -60,7 +60,10 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -581,7 +584,7 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
    * @return RDD of Write Status
    */
   private HoodieWriteOutput<List<WriteStatus>> runCompaction(HoodieInstant compactionInstant, HoodieActiveTimeline activeTimeline,
-                                          boolean autoCommit) throws IOException {
+                                                             boolean autoCommit) throws IOException {
     HoodieTableMetaClient metaClient = createMetaClient(true);
     HoodieCompactionPlan compactionPlan =
         CompactionUtils.getCompactionPlan(metaClient, compactionInstant.getTimestamp());

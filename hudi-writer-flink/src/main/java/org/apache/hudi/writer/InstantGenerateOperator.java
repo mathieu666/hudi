@@ -7,7 +7,6 @@ import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.apache.flink.util.CollectionUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -49,8 +48,8 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
   }
 
   @Override
-    public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
-      super.prepareSnapshotPreBarrier(checkpointId);
+  public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
+    super.prepareSnapshotPreBarrier(checkpointId);
     //第一步检测之前的 instant 是否都已提交 等不到就抛异常
     if (!StringUtils.isNullOrEmpty(latestTimes)) {
       doChecker();
@@ -78,7 +77,9 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
     writeConfig = UtilHelpers.getHoodieClientConfig(cfg);
     // writeClient
     writeClient = new HoodieWriteClient<>(serializableHadoopConf.get(), writeConfig, true);
+
     commitNum = 0L;
+    // init table
     initTable();
   }
 
@@ -118,7 +119,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
   }
 
   /**
-   * 开启 N 个 instant
+   * 开启 N 个 instant.
    *
    * @param checkpointId
    */
@@ -129,33 +130,31 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
   }
 
   /**
-   * 检测上一个checkpoint 的 instant 是否都已提交
+   * 检测上一个checkpoint 的 instant 是否都已提交.
    * 如果超时 10s 都存在有 未提交的 instant 就报错
    */
   private void doChecker() throws InterruptedException {
-    //获取 未提交的事务
+    // 获取未提交的事务
     List<String> rollbackPendingCommits = writeClient.getRollbackPendingCommits();
     int tryTimes = 1;
     boolean hasNoCommit = true;
 
-    while (!CollectionUtil.isNullOrEmpty(rollbackPendingCommits) && hasNoCommit) {
+    while (hasNoCommit) {
       StringBuffer sb = new StringBuffer();
       if (rollbackPendingCommits.contains(latestTimes)) {
         //清空 sb
         rollbackPendingCommits.forEach(x -> sb.append(x).append(","));
 
-        LOG.error("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}]", latestTimes, sb.toString(), tryTimes);
+        LOG.warn("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}]", latestTimes, sb.toString(), tryTimes);
 
         Thread.sleep(1000);
         rollbackPendingCommits = writeClient.getRollbackPendingCommits();
         tryTimes++;
         if (tryTimes >= 10) {
           LOG.error("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}], throw exception !!", latestTimes, sb.toString(), tryTimes);
-          throw new RuntimeException("Lateliest transaction [" + latestTimes + "] is not completed.until try " + tryTimes + " times.");
+          throw new RuntimeException("Latest transaction [" + latestTimes + "] is not completed.until try " + tryTimes + " times.");
         }
-      }
-      //交集 为空 代表 所以事务都不需要回滚（都已提交）
-      else {
+      } else {
         LOG.warn("Latest transaction [{}] is completed! Completed transaction,try times [{}]", latestTimes, tryTimes);
         hasNoCommit = false;
       }

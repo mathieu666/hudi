@@ -1,14 +1,11 @@
 package org.apache.hudi.writer;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.hadoop.util.ThreadUtil;
 import org.apache.hudi.common.config.SerializableConfiguration;
 import org.apache.hudi.common.model.HoodieTableType;
-import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
@@ -24,17 +21,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
-
-public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<WriteStatus>,Integer,Boolean>> /*implements CheckpointListener*/ {
+public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<WriteStatus>, Integer, Boolean>> {
   private static final Logger LOG = LoggerFactory.getLogger(CommitAndRollbackSink.class);
   /**
    * Job conf.
@@ -57,67 +52,9 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
 
   private Map<String, List<List<WriteStatus>>> allWriteResults = new LinkedHashMap();
   private transient Compactor compactor;
-  private transient ScheduledExecutorService scheduledExecutorService = null;
 
-  private Long commitTime = 0L;
   private transient Object lock = null;
   private Integer upsertParalleSize = 0;
-
-//  @Override
-//  public void notifyCheckpointComplete(long l) throws Exception {
-//    if (allWriteResults.isEmpty()) {
-//      return;
-//    }
-//    String instantTime = getInstantTime();
-//    LOG.info("CommitAndRollbackSink Get instantTime = {}", instantTime);
-//
-//    // commit and rollback
-//    long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).reduce(Long::sum).orElse(0L);
-//    long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).reduce(Long::sum).orElse(0L);
-//    boolean hasErrors = totalErrorRecords > 0;
-//
-//    Option<String> scheduledCompactionInstant = Option.empty();
-//
-//    if (!hasErrors || cfg.commitOnErrors) {
-//      HashMap<String, String> checkpointCommitMetadata = new HashMap<>();
-//      if (hasErrors) {
-//        LOG.warn("Some records failed to be merged but forcing commit since commitOnErrors set. Errors/Total="
-//            + totalErrorRecords + "/" + totalRecords);
-//      }
-//
-//      boolean success = writeClient.commit(instantTime, new HoodieWriteOutput<>(writeResults), Option.of(checkpointCommitMetadata));
-//      if (success) {
-//        LOG.info("Commit " + instantTime + " successful!");
-//        // Schedule compaction if needed
-//        if (cfg.isAsyncCompactionEnabled() && HoodieTableType.MERGE_ON_READ.name().equals(cfg.tableType)) {
-//          scheduledCompactionInstant = writeClient.scheduleCompaction(Option.empty());
-//          if (scheduledCompactionInstant.isPresent()) {
-//            compactor.compact(new HoodieInstant(HoodieInstant.State.REQUESTED, HoodieTimeline.COMPACTION_ACTION, scheduledCompactionInstant.get()));
-//          }
-//        }
-//      } else {
-//        LOG.info("Commit " + instantTime + " failed!");
-//        throw new HoodieException("Commit " + instantTime + " failed!");
-//      }
-//    } else {
-//      LOG.error("Delta Sync found errors when writing. Errors/Total=" + totalErrorRecords + "/" + totalRecords);
-//      LOG.error("Printing out the top 100 errors");
-//      writeResults.stream().filter(WriteStatus::hasErrors).limit(100).forEach(ws -> {
-//        LOG.error("Global error :", ws.getGlobalError());
-//        if (ws.getErrors().size() > 0) {
-//          ws.getErrors().forEach((key, value) -> LOG.trace("Error for key:" + key + " is " + value));
-//        }
-//      });
-//      // Rolling back instant
-//      writeClient.rollback(instantTime);
-//      throw new HoodieException("Commit " + instantTime + " failed and rolled-back !");
-//    }
-//
-//    // clear writeStatuses and wait for next checkpoint
-//    writeResults.clear();
-//  }
-
-
 
   @Override
   public void open(Configuration parameters) throws Exception {
@@ -138,41 +75,6 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     compactor = new Compactor(writeClient, serializableHadoopConf.get());
 
     lock = new Object();
-
-    // 初始化检测线程
-    commitTime = System.currentTimeMillis();
-    scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-    scheduledExecutorService.scheduleWithFixedDelay(doCheck(), 5, 5, TimeUnit.SECONDS);
-
-  }
-
-  private Runnable doCheck() {
-    return () -> {
-      synchronized (lock) {
-        boolean b1 = allWriteResults.size() >= upsertParalleSize / 2;
-        boolean b2 = System.currentTimeMillis() - commitTime >= 5 * 1000;
-        //减少检测线程日志输出
-        boolean shuoldPrint = b1 || b2;
-        if (shuoldPrint) {
-          LOG.warn("hudi commit check begin!");
-        }
-        try {
-          checkerAdCommit();
-        } catch (Exception e) {
-          LOG.error("hudi commit checker do commit  failed!", e);
-          throw new RuntimeException("hudi commit failed");
-        }
-        if (shuoldPrint) {
-          LOG.warn("hudi commit check end!");
-        }
-      }
-    };
-  }
-
-  private String getInstantTime() {
-    HoodieTableMetaClient meta = new HoodieTableMetaClient(serializableHadoopConf.get(), cfg.targetBasePath,
-        cfg.payloadClassName);
-    return meta.getActiveTimeline().filter(HoodieInstant::isInflight).lastInstant().get().getTimestamp();
   }
 
   @Override
@@ -180,24 +82,21 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     try {
       String key = value.f0;
       synchronized (lock) {
-        commitTime = System.currentTimeMillis();
-        if (null != value) {
-          //一边收数据一边缓存 当数据到齐了 或者 时间到点 就提交事务
-          if (allWriteResults.containsKey(key)) {
-            // 把数据 数据放到对应的位置上
-            allWriteResults.get(key).set(value.f2,value.f1);
-          } else {
-            //固定长度
-            List<List<WriteStatus>> lists = new ArrayList<>(upsertParalleSize);
-            for (int i = 0; i < upsertParalleSize ;  i++){
-              lists.add(null);
-            }
-            lists.set(value.f2,value.f1);
-            allWriteResults.put(key, lists);
+        // 缓存数据
+        if (allWriteResults.containsKey(key)) {
+          // 把数据 数据放到对应的位置上
+          allWriteResults.get(key).set(value.f2, value.f1);
+        } else {
+          //固定长度
+          List<List<WriteStatus>> lists = new ArrayList<>(upsertParalleSize);
+          for (int i = 0; i < upsertParalleSize; i++) {
+            lists.add(null);
           }
+          lists.set(value.f2, value.f1);
+          allWriteResults.put(key, lists);
         }
         //每次收到数据进行一次检测提交
-        checkerAdCommit();
+        checkAndCommit();
       }
     } catch (Exception e) {
       LOG.error("Invoke CommitAndRollbackSink error: " + Thread.currentThread().getId() + ";" + this);
@@ -207,29 +106,28 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
   }
 
   /**
-   * 检测 提交
+   * 检测 提交.
    *
    * @throws Exception
    */
-  private void checkerAdCommit() throws Exception {
+  private boolean checkAndCommit() throws Exception {
     if (allWriteResults.isEmpty()) {
-      commitTime = System.currentTimeMillis();
-      return;
+      return false;
     }
 
     // 对hashMap 进行检查看是否有 数据已经到齐，如果到齐了则进行提交
     List<Tuple2<String, Integer>> instants = new ArrayList<>(allWriteResults.size());
     allWriteResults.forEach((k, v) -> {
       int i = 0;
-      for(List<WriteStatus> ls : v){
-        if(ls != null){
-          i ++;
+      for (List<WriteStatus> ls : v) {
+        if (ls != null) {
+          i++;
         }
       }
       instants.add(new Tuple2<>(k, i));
     });
 
-    if (CollectionUtils.isNotEmpty(instants)) {
+    if (instants.isEmpty()) {
       instants.forEach(x -> {
         LOG.warn("CheckerAdCommit 当前事务 [" + x.f0 + "] 到达条数 [" + x.f1 + "] 并行行度为 [" + upsertParalleSize + "] 是否可以提交 [" + (x.f1 >= upsertParalleSize) + "]");
       });
@@ -239,8 +137,10 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
         doCommit(instantTime);
         //移除数据
         allWriteResults.remove(instantTime);
+        return true;
       }
     }
+    return false;
 
   }
 
@@ -262,9 +162,9 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
 
     List<List<WriteStatus>> lists = allWriteResults.get(instantTime);
     //获取数据
-    List<WriteStatus> writeResults = lists.stream().flatMap(x -> x.stream()).collect(Collectors.toList());
+    List<WriteStatus> writeResults = lists.stream().flatMap(Collection::stream).collect(Collectors.toList());
 
-    if (writeResults != null && lists.size() != upsertParalleSize) {
+    if (lists.size() != upsertParalleSize) {
       LOG.error("Commit 当前事务但是数据到达条数 [" + lists.size() + "] 与数据并行度 [" + upsertParalleSize + "] 不一致 继续等待");
       throw new RuntimeException("Commit 当前事务但是数据到达条数 [" + lists.size() + "] 与数据并行度 [" + upsertParalleSize + "] 不一致 继续等待");
     }
@@ -275,7 +175,7 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     });
     LOG.warn(sb.toString());
 
-    if (CollectionUtils.isEmpty(writeResults)) {
+    if (writeResults.isEmpty()) {
       LOG.warn("Commit 当前事务 [{}] 但是数据为空 ", instantTime);
       return;
     }
@@ -285,7 +185,7 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
 
     // commit and rollback
     long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).reduce(Long::sum).orElse(0L);
-    long totalRecords = writeResults.stream().map(x -> x.getTotalRecords()).reduce(Long::sum).orElse(0L);
+    long totalRecords = writeResults.stream().map(WriteStatus::getTotalRecords).reduce(Long::sum).orElse(0L);
     boolean hasErrors = totalErrorRecords > 0;
 
     Option<String> scheduledCompactionInstant = Option.empty();
@@ -314,7 +214,7 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     } else {
       LOG.error("Delta Sync found errors when writing. Errors/Total=" + totalErrorRecords + "/" + totalRecords);
       LOG.error("Printing out the top 100 errors");
-      writeResults.stream().filter(x -> x.hasErrors()).limit(100).forEach(ws -> {
+      writeResults.stream().filter(WriteStatus::hasErrors).limit(100).forEach(ws -> {
         LOG.error("Global error :", ws.getGlobalError());
         if (ws.getErrors().size() > 0) {
           ws.getErrors().forEach((key, value) -> LOG.trace("Error for key:" + key + " is " + value));

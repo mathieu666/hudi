@@ -21,6 +21,7 @@ public class Json2HoodieRecordMap implements MapFunction<String, HoodieRecord> {
   private final WriteJob.Config cfg;
   private TypedProperties props;
   private KeyGenerator keyGenerator;
+  private AvroConvertor convertor;
 
   private static Logger logger = LoggerFactory.getLogger(Json2HoodieRecordMap.class);
 
@@ -31,9 +32,7 @@ public class Json2HoodieRecordMap implements MapFunction<String, HoodieRecord> {
 
   @Override
   public HoodieRecord map(String value) throws Exception {
-    AvroConvertor convertor = new AvroConvertor(new FilebasedSchemaProvider(props).getSourceSchema());
     GenericRecord gr = convertor.fromJson(value);
-
     HoodieRecordPayload payload = DataSourceUtils.createPayload(cfg.payloadClassName, gr,
         (Comparable) HoodieAvroUtils.getNestedFieldVal(gr, cfg.sourceOrderingField, false));
 
@@ -42,6 +41,7 @@ public class Json2HoodieRecordMap implements MapFunction<String, HoodieRecord> {
 
   private void init() {
     this.props = UtilHelpers.getProps(cfg);
+    convertor = new AvroConvertor(new FilebasedSchemaProvider(props).getSourceSchema());
     try {
       keyGenerator = DataSourceUtils.createKeyGenerator(props);
     } catch (IOException e) {
