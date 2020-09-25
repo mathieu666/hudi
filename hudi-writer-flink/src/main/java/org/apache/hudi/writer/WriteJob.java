@@ -9,6 +9,7 @@ import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
@@ -38,14 +39,18 @@ public class WriteJob {
     env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
 
+    if (cfg.flinkCheckPointPath != null) {
+      env.setStateBackend(new FsStateBackend(cfg.flinkCheckPointPath));
+    }
+
     Properties kafkaProps = getKafkaProps(cfg);
 
     DataStream<String> kafkaSource =
-        env.addSource(new FlinkKafkaConsumer<>(cfg.kafkaTopic, new SimpleStringSchema(), kafkaProps)).name("Kafka source");
+        env.addSource(new FlinkKafkaConsumer<>(cfg.kafkaTopic, new SimpleStringSchema(), kafkaProps)).name("kafka_source").uid("kafka_source_uid");
 
     // 0. read from source
     DataStream<HoodieWriteInput<HoodieRecord>> incomingRecords =
-        kafkaSource.map(new Json2HoodieRecordMap(cfg)).name("Json to HoodieRecord map")
+        kafkaSource.map(new Json2HoodieRecordMap(cfg)).name("json_to_record").uid("json_to_record_uid")
             .map(HoodieWriteInput::new)
             .returns(new TypeHint<HoodieWriteInput<HoodieRecord>>() {
             });
@@ -62,7 +67,7 @@ public class WriteJob {
         .transform("WriteProcessOperator", TypeInformation.of(new TypeHint<Tuple4<String, List<WriteStatus>, Integer, Boolean>>() {
         }), new WriteProcessOperator())
         .setParallelism(cfg.parallelism)
-        .addSink(new CommitAndRollbackSink())
+        .addSink(new CommitAndRollbackSink()).name("commit_and_rollback_sink").uid("commit_and_rollback_sink_uid")
         .setParallelism(1);
 
     env.execute("Hudi upsert via Flink");
@@ -87,6 +92,9 @@ public class WriteJob {
 
     @Parameter(names = {"--parallelism"}, description = "parallelism of flink operator")
     public Integer parallelism;
+
+    @Parameter(names = {"--flink-checkpoint-path"}, description = "flink checkpoint path")
+    public String flinkCheckPointPath;
 
     @Parameter(names = {"--target-base-path"},
         description = "base path for the target hoodie table. "

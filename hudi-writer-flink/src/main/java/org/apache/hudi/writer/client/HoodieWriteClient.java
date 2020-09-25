@@ -729,10 +729,10 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
     }
   }
 
-  public List<String> getRollbackPendingCommits() {
+  public List<String> getInflightsAndRequestedInstants(String commitType) {
     HoodieTable<T> table = HoodieTable.create(config, hadoopConf);
-    HoodieTimeline inflightTimeline = table.getMetaClient().getCommitsTimeline().filterPendingExcludingCompaction();
-    return inflightTimeline.getReverseOrderedInstants().map(HoodieInstant::getTimestamp)
+    HoodieTimeline unCompletedTimeline = table.getMetaClient().getCommitsTimeline().filterInflightsAndRequested();
+    return unCompletedTimeline.getInstants().filter(x -> x.getAction().equals(commitType)).map(HoodieInstant::getTimestamp)
         .collect(Collectors.toList());
   }
 }

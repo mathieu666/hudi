@@ -1,6 +1,5 @@
 package org.apache.hudi.writer;
 
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -9,7 +8,6 @@ import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.HoodieTimeline;
 import org.apache.hudi.common.util.Option;
-import org.apache.hudi.common.util.StringUtils;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.writer.client.HoodieWriteClient;
 import org.apache.hudi.writer.client.WriteStatus;
@@ -26,7 +24,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<WriteStatus>, Integer, Boolean>> {
@@ -79,24 +76,22 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
 
   @Override
   public void invoke(Tuple4<String, List<WriteStatus>, Integer, Boolean> value, Context context) throws Exception {
+    LOG.info(" Sink 收到数据 instantTime = [{}], subtaskId = [{}]", value.f0, value.f2);
     try {
       String key = value.f0;
       synchronized (lock) {
         // 缓存数据
         if (allWriteResults.containsKey(key)) {
           // 把数据 数据放到对应的位置上
-          allWriteResults.get(key).set(value.f2, value.f1);
+          allWriteResults.get(key).add(value.f1);
         } else {
           //固定长度
-          List<List<WriteStatus>> lists = new ArrayList<>(upsertParalleSize);
-          for (int i = 0; i < upsertParalleSize; i++) {
-            lists.add(null);
-          }
-          lists.set(value.f2, value.f1);
+          List<List<WriteStatus>> lists = new ArrayList<>();
+          lists.add(value.f1);
           allWriteResults.put(key, lists);
         }
         //每次收到数据进行一次检测提交
-        checkAndCommit();
+        checkAndCommit(key);
       }
     } catch (Exception e) {
       LOG.error("Invoke CommitAndRollbackSink error: " + Thread.currentThread().getId() + ";" + this);
@@ -110,78 +105,28 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
    *
    * @throws Exception
    */
-  private boolean checkAndCommit() throws Exception {
-    if (allWriteResults.isEmpty()) {
+  private boolean checkAndCommit(String instantTime) throws Exception {
+    List<List<WriteStatus>> writeStatus = allWriteResults.get(instantTime);
+    if (writeStatus.size() == upsertParalleSize) {
+      LOG.info("事务 [{}] 当前到达分区数据数 = [{}], 已达到提交标准, 开始提交！", instantTime, writeStatus.size());
+      doCommit(instantTime);
+      allWriteResults.remove(instantTime);
+      LOG.info("事务 [{}] 提交完毕", instantTime);
+      return true;
+    } else {
+      LOG.info("事务 [{}] 当前到达分区数据数 = [{}], 未达到提交标准, 总分区数为 [{}]", instantTime, writeStatus.size(), upsertParalleSize);
       return false;
     }
-
-    // 对hashMap 进行检查看是否有 数据已经到齐，如果到齐了则进行提交
-    List<Tuple2<String, Integer>> instants = new ArrayList<>(allWriteResults.size());
-    allWriteResults.forEach((k, v) -> {
-      int i = 0;
-      for (List<WriteStatus> ls : v) {
-        if (ls != null) {
-          i++;
-        }
-      }
-      instants.add(new Tuple2<>(k, i));
-    });
-
-    if (instants.isEmpty()) {
-      instants.forEach(x -> {
-        LOG.warn("CheckerAdCommit 当前事务 [" + x.f0 + "] 到达条数 [" + x.f1 + "] 并行行度为 [" + upsertParalleSize + "] 是否可以提交 [" + (x.f1 >= upsertParalleSize) + "]");
-      });
-
-      List<String> collect = instants.stream().filter(x -> x.f1 >= upsertParalleSize).map(x -> x.f0).sorted().collect(Collectors.toList());
-      for (String instantTime : collect) {
-        doCommit(instantTime);
-        //移除数据
-        allWriteResults.remove(instantTime);
-        return true;
-      }
-    }
-    return false;
-
   }
 
   public void doCommit(String instantTime) throws Exception {
-
-    if (StringUtils.isNullOrEmpty(instantTime)) {
-      Set<String> strings = allWriteResults.keySet();
-      StringBuffer sb = new StringBuffer();
-      strings.forEach(x -> sb.append(x).append(" "));
-      throw new RuntimeException("Do commit but instant is empty! instantTime: [" + instantTime + "] buffer instantTime [" + sb + "]");
-    }
-
-    if (!allWriteResults.containsKey(instantTime)) {
-      Set<String> strings = allWriteResults.keySet();
-      StringBuffer sb = new StringBuffer();
-      strings.forEach(x -> sb.append(x).append(" "));
-      throw new RuntimeException("Commit 当前事务,但是收到的数据时间戳 [" + sb.toString() + "] 不包含待提交时间戳 [" + instantTime + "]");
-    }
 
     List<List<WriteStatus>> lists = allWriteResults.get(instantTime);
     //获取数据
     List<WriteStatus> writeResults = lists.stream().flatMap(Collection::stream).collect(Collectors.toList());
 
-    if (lists.size() != upsertParalleSize) {
-      LOG.error("Commit 当前事务但是数据到达条数 [" + lists.size() + "] 与数据并行度 [" + upsertParalleSize + "] 不一致 继续等待");
-      throw new RuntimeException("Commit 当前事务但是数据到达条数 [" + lists.size() + "] 与数据并行度 [" + upsertParalleSize + "] 不一致 继续等待");
-    }
-
-    StringBuffer sb = new StringBuffer("Commit 当前集合数据为 ");
-    allWriteResults.forEach((k, v) -> {
-      sb.append("[").append(k).append("->").append(v.size()).append("]").append(" ");
-    });
-    LOG.warn(sb.toString());
-
-    if (writeResults.isEmpty()) {
-      LOG.warn("Commit 当前事务 [{}] 但是数据为空 ", instantTime);
-      return;
-    }
-
     //循环对 snapshot 事务 进行提交
-    LOG.warn("准备对事务[{}] 进行周期提交!", instantTime);
+    LOG.warn("准备对事务[{}] 进行提交!", instantTime);
 
     // commit and rollback
     long totalErrorRecords = writeResults.stream().map(WriteStatus::getTotalErrorRecords).reduce(Long::sum).orElse(0L);
@@ -229,10 +174,5 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     // clear writeStatuses and wait for next checkpoint
     writeResults.clear();
     allWriteResults.remove(instantTime);
-    sb.delete(0, sb.length());
-    allWriteResults.forEach((k, v) -> {
-      sb.append("[").append(k).append("->").append(v.size()).append("]").append(" ");
-    });
-    LOG.warn("结束对事务[{}] 进行周期提交! 剩余 instant {}", instantTime, sb);
   }
 }

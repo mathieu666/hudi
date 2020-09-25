@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteInput<HoodieRecord>> implements OneInputStreamOperator<HoodieWriteInput<HoodieRecord>, HoodieWriteInput<HoodieRecord>> {
@@ -36,13 +37,18 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
   private SerializableConfiguration serializableHadoopConf;
   private transient FileSystem fs;
   private transient Long commitNum = 0L;
-  private String latestTimes = "";
-  private ListState<String> latestTimesState = null;
+  // 空字符串代表 第一次启动程序或上一个instant已完成
+  private String latestInstant = "";
+  List<String> latestInstantList = new ArrayList<>(1);
+  private transient ListState<String> latestInstantState;
+  private List<StreamRecord> records = new LinkedList();
+  private transient ListState<StreamRecord> recordsState;
 
   @Override
   public void processElement(StreamRecord element) throws Exception {
     if (element.getValue() != null) {
       commitNum++;
+      records.add(element);
       output.collect(element);
     }
   }
@@ -50,15 +56,16 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
   @Override
   public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
     super.prepareSnapshotPreBarrier(checkpointId);
-    //第一步检测之前的 instant 是否都已提交 等不到就抛异常
-    if (!StringUtils.isNullOrEmpty(latestTimes)) {
+    // 第一步检测之前的 instant 是否都已提交 等不到就抛异常
+    if (!StringUtils.isNullOrEmpty(latestInstant)) {
       doChecker();
-      latestTimes = "";
+      // 上一个instant完成，将latestInstant置空
+      latestInstant = "";
     }
 
     // 有数据 才开启 INSTANT
     if (commitNum > 0) {
-      latestTimes = startNewInstant(checkpointId);
+      latestInstant = startNewInstant(checkpointId);
       commitNum = 0L;
     }
     super.prepareSnapshotPreBarrier(checkpointId);
@@ -125,7 +132,7 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
    */
   private String startNewInstant(long checkpointId) {
     String newTime = startCommit();
-    LOG.warn("开启 checkpoint [" + checkpointId + "],启动新事务 [" + newTime + "]");
+    LOG.info("create instant [{}], at checkpoint [{}]", newTime, checkpointId);
     return newTime;
   }
 
@@ -135,27 +142,28 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
    */
   private void doChecker() throws InterruptedException {
     // 获取未提交的事务
-    List<String> rollbackPendingCommits = writeClient.getRollbackPendingCommits();
+    String commitType = cfg.tableType.equals("COPY_ON_WRITE") ? "commit" : "deltacommit";
+    LOG.info("InstantGenerateOperator query latest instant [{}]", latestInstant);
+    List<String> rollbackPendingCommits = writeClient.getInflightsAndRequestedInstants(commitType);
     int tryTimes = 1;
     boolean hasNoCommit = true;
-
     while (hasNoCommit) {
       StringBuffer sb = new StringBuffer();
-      if (rollbackPendingCommits.contains(latestTimes)) {
+      if (rollbackPendingCommits.contains(latestInstant)) {
         //清空 sb
         rollbackPendingCommits.forEach(x -> sb.append(x).append(","));
 
-        LOG.warn("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}]", latestTimes, sb.toString(), tryTimes);
+        LOG.warn("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}]", latestInstant, sb.toString(), tryTimes);
 
         Thread.sleep(1000);
-        rollbackPendingCommits = writeClient.getRollbackPendingCommits();
+        rollbackPendingCommits = writeClient.getInflightsAndRequestedInstants(commitType);
         tryTimes++;
         if (tryTimes >= 10) {
-          LOG.error("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}], throw exception !!", latestTimes, sb.toString(), tryTimes);
-          throw new RuntimeException("Latest transaction [" + latestTimes + "] is not completed.until try " + tryTimes + " times.");
+          LOG.error("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}], throw exception !!", latestInstant, sb.toString(), tryTimes);
+          throw new RuntimeException("Latest transaction [" + latestInstant + "] is not completed.until try " + tryTimes + " times.");
         }
       } else {
-        LOG.warn("Latest transaction [{}] is completed! Completed transaction,try times [{}]", latestTimes, tryTimes);
+        LOG.warn("Latest transaction [{}] is completed! Completed transaction,try times [{}]", latestInstant, tryTimes);
         hasNoCommit = false;
       }
     }
@@ -163,24 +171,37 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
 
   @Override
   public void initializeState(StateInitializationContext context) throws Exception {
-    ListStateDescriptor lateliestTimesStateDescriptor = new ListStateDescriptor<String>("latestTimesState", String.class);
-    latestTimesState = context.getOperatorStateStore().getListState(lateliestTimesStateDescriptor);
+    // instantState
+    ListStateDescriptor<String> latestInstantStateDescriptor = new ListStateDescriptor<String>("latestInstant", String.class);
+    latestInstantState = context.getOperatorStateStore().getListState(latestInstantStateDescriptor);
+
+    // recordState
+    ListStateDescriptor<StreamRecord> recordsStateDescriptor = new ListStateDescriptor<StreamRecord>("recordsState", StreamRecord.class);
+    recordsState = context.getOperatorStateStore().getListState(recordsStateDescriptor);
+
     if (context.isRestored()) {
-      Iterator<String> iterator = latestTimesState.get().iterator();
-      if (iterator.hasNext()) {
-        latestTimes = iterator.next();
-        LOG.warn("InstantGenerateOperator initializeState get latestTimes [{}]", latestTimes);
-      }
+      Iterator<String> latestInstantIterator = latestInstantState.get().iterator();
+      latestInstantIterator.forEachRemaining(x -> latestInstant = x);
+      LOG.info("InstantGenerateOperator initializeState get latestInstant [{}]", latestInstant);
+
+      Iterator<StreamRecord> recordIterator = recordsState.get().iterator();
+      records.clear();
+      recordIterator.forEachRemaining(x -> records.add(x));
     }
   }
 
   @Override
   public void snapshotState(StateSnapshotContext functionSnapshotContext) throws Exception {
-    if (!StringUtils.isNullOrEmpty(latestTimes)) {
-      List<String> strings = new ArrayList<>(1);
-      strings.add(latestTimes);
-      latestTimesState.update(strings);
-      LOG.warn("InstantGenerateOperator snapshotState update latestTimes [{}]", latestTimes);
+    if (latestInstantList.isEmpty()) {
+      latestInstantList.add(latestInstant);
+    } else {
+      latestInstantList.set(0, latestInstant);
     }
+    latestInstantState.update(latestInstantList);
+    LOG.info("InstantGenerateOperator snapshotState update latestInstant [{}]", latestInstant);
+
+    recordsState.update(records);
+    LOG.info("InstantGenerateOperator snapshotState update recordsState size = [{}]", records.size());
+    records.clear();
   }
 }
