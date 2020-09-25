@@ -58,7 +58,7 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
     super.open(parameters);
     // get configs from runtimeContext
     cfg = (WriteJob.Config) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
-    upsertParalleSize = cfg.parallelism;
+    upsertParalleSize = getRuntimeContext().getExecutionConfig().getParallelism();
     // hadoopConf
     serializableHadoopConf = new SerializableConfiguration(UtilHelpers.getHadoopConf());
 

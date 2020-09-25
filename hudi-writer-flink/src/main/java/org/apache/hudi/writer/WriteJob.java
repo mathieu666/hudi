@@ -38,6 +38,7 @@ public class WriteJob {
     }
     env.enableCheckpointing(cfg.checkpointInterval);
     env.getConfig().setGlobalJobParameters(cfg);
+    env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
 
     if (cfg.flinkCheckPointPath != null) {
       env.setStateBackend(new FsStateBackend(cfg.flinkCheckPointPath));
@@ -66,7 +67,7 @@ public class WriteJob {
         .keyBy(new HoodieRecordKeySelector())
         .transform("WriteProcessOperator", TypeInformation.of(new TypeHint<Tuple4<String, List<WriteStatus>, Integer, Boolean>>() {
         }), new WriteProcessOperator())
-        .setParallelism(cfg.parallelism)
+        .setParallelism(env.getParallelism())
         .addSink(new CommitAndRollbackSink()).name("commit_and_rollback_sink").uid("commit_and_rollback_sink_uid")
         .setParallelism(1);
 
@@ -90,9 +91,6 @@ public class WriteJob {
     @Parameter(names = {"--kafka-bootstrap-servers"}, description = "kafka bootstrap.servers", required = true)
     public String kafkaBootstrapServers;
 
-    @Parameter(names = {"--parallelism"}, description = "parallelism of flink operator")
-    public Integer parallelism;
-
     @Parameter(names = {"--flink-checkpoint-path"}, description = "flink checkpoint path")
     public String flinkCheckPointPath;
 
@@ -115,56 +113,21 @@ public class WriteJob {
     public String propsFilePath =
         "file://" + System.getProperty("user.dir") + "/src/test/resources/delta-streamer-config/dfs-source.properties";
 
-    @Parameter(names = {"--hoodie-conf"}, description = "Any configuration that can be set in the properties file "
-        + "(using the CLI parameter \"--propsFilePath\") can also be passed command line using this parameter")
-    public List<String> configs = new ArrayList<>();
-
-    @Parameter(names = {"--source-ordering-field"}, description = "Field within source record to decide how"
-        + " to break ties between records with same key in input data. Default: 'ts' holding unix timestamp of record")
-    public String sourceOrderingField = "ts";
 
     @Parameter(names = {"--payload-class"}, description = "subclass of HoodieRecordPayload, that works off "
         + "a GenericRecord. Implement your own, if you want to do something other than overwriting existing value")
     public String payloadClassName = OverwriteWithLatestAvroPayload.class.getName();
 
-    @Parameter(names = {"--schemaprovider-class"}, description = "subclass of org.apache.hudi.utilities.schema"
-        + ".SchemaProvider to attach schemas to input & target table data, built in options: "
-        + "org.apache.hudi.utilities.schema.FilebasedSchemaProvider."
-        + "Source (See org.apache.hudi.utilities.sources.Source) implementation can implement their own SchemaProvider."
-        + " For Sources that return Dataset<Row>, the schema is obtained implicitly. "
-        + "However, this CLI option allows overriding the schemaprovider returned by Source.")
-    public String schemaProviderClassName = null;
-
-    @Parameter(names = {"--transformer-class"},
-        description = "subclass of org.apache.hudi.utilities.transform.Transformer"
-            + ". Allows transforming raw source Dataset to a target Dataset (conforming to target schema) before "
-            + "writing. Default : Not set. E:g - org.apache.hudi.utilities.transform.SqlQueryBasedTransformer (which "
-            + "allows a SQL query templated to be passed as a transformation function)")
-    public String transformerClassName = null;
-
     @Parameter(names = {"--op"}, description = "Takes one of these values : UPSERT (default), INSERT (use when input "
         + "is purely new data/inserts to gain speed)", converter = OperationConvertor.class)
     public Operation operation = Operation.UPSERT;
 
-    @Parameter(names = {"--filter-dupes"},
-        description = "Should duplicate records from source be dropped/filtered out before insert/bulk-insert")
-    public Boolean filterDupes = false;
-
     @Parameter(names = {"--enable-hive-sync"}, description = "Enable syncing to hive")
     public Boolean enableHiveSync = false;
-
-    @Parameter(names = {"--max-pending-compactions"},
-        description = "Maximum number of outstanding inflight/requested compactions. Delta Sync will not happen unless"
-            + "outstanding compactions is less than this number")
-    public Integer maxPendingCompactions = 5;
 
     @Parameter(names = {"--continuous"}, description = "Delta Streamer runs in continuous mode running"
         + " source-fetch -> Transform -> Hudi Write in loop")
     public Boolean continuousMode = true;
-
-    @Parameter(names = {"--min-sync-interval-seconds"},
-        description = "the min sync interval of each sync in continuous mode")
-    public Integer minSyncIntervalSeconds = 0;
 
     @Parameter(names = {"--commit-on-errors"}, description = "Commit even when some records failed to be written")
     public Boolean commitOnErrors = false;
@@ -181,12 +144,6 @@ public class WriteJob {
      */
     @Parameter(names = {"--checkpoint-interval"}, description = "FLink checkpoint interval.")
     public Long checkpointInterval = 1000 * 5L;
-
-    /**
-     * InstantTime save path.
-     */
-    @Parameter(names = {"--instant-time-path"}, description = "InstantTime save path.")
-    public String instantTimePath = propsFilePath;
 
     @Parameter(names = {"--help", "-h"}, help = true)
     public Boolean help = false;
