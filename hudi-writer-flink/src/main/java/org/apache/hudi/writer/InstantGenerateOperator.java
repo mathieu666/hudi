@@ -138,16 +138,16 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
 
   /**
    * 检测上一个checkpoint 的 instant 是否都已提交.
-   * 如果超时 10s 都存在有 未提交的 instant 就报错
    */
   private void doChecker() throws InterruptedException {
     // 获取未提交的事务
     String commitType = cfg.tableType.equals("COPY_ON_WRITE") ? "commit" : "deltacommit";
     LOG.info("InstantGenerateOperator query latest instant [{}]", latestInstant);
     List<String> rollbackPendingCommits = writeClient.getInflightsAndRequestedInstants(commitType);
-    int tryTimes = 1;
+    int tryTimes = 0;
     boolean hasNoCommit = true;
     while (hasNoCommit) {
+      tryTimes++;
       StringBuffer sb = new StringBuffer();
       if (rollbackPendingCommits.contains(latestInstant)) {
         //清空 sb
@@ -157,11 +157,6 @@ public class InstantGenerateOperator extends AbstractStreamOperator<HoodieWriteI
 
         Thread.sleep(1000);
         rollbackPendingCommits = writeClient.getInflightsAndRequestedInstants(commitType);
-        tryTimes++;
-        if (tryTimes >= 10) {
-          LOG.error("Latest transaction [{}] is not completed! unCompleted transaction:[{}],try times [{}], throw exception !!", latestInstant, sb.toString(), tryTimes);
-          throw new RuntimeException("Latest transaction [" + latestInstant + "] is not completed.until try " + tryTimes + " times.");
-        }
       } else {
         LOG.warn("Latest transaction [{}] is completed! Completed transaction,try times [{}]", latestInstant, tryTimes);
         hasNoCommit = false;

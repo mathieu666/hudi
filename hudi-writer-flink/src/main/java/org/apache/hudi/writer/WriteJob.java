@@ -113,6 +113,13 @@ public class WriteJob {
     public String propsFilePath =
         "file://" + System.getProperty("user.dir") + "/src/test/resources/delta-streamer-config/dfs-source.properties";
 
+    @Parameter(names = {"--hoodie-conf"}, description = "Any configuration that can be set in the properties file "
+        + "(using the CLI parameter \"--props\") can also be passed command line using this parameter.")
+    public List<String> configs = new ArrayList<>();
+
+    @Parameter(names = {"--source-ordering-field"}, description = "Field within source record to decide how"
+        + " to break ties between records with same key in input data. Default: 'ts' holding unix timestamp of record")
+    public String sourceOrderingField = "ts";
 
     @Parameter(names = {"--payload-class"}, description = "subclass of HoodieRecordPayload, that works off "
         + "a GenericRecord. Implement your own, if you want to do something other than overwriting existing value")
@@ -121,6 +128,10 @@ public class WriteJob {
     @Parameter(names = {"--op"}, description = "Takes one of these values : UPSERT (default), INSERT (use when input "
         + "is purely new data/inserts to gain speed)", converter = OperationConvertor.class)
     public Operation operation = Operation.UPSERT;
+
+    @Parameter(names = {"--filter-dupes"},
+        description = "Should duplicate records from source be dropped/filtered out before insert/bulk-insert")
+    public Boolean filterDupes = false;
 
     @Parameter(names = {"--enable-hive-sync"}, description = "Enable syncing to hive")
     public Boolean enableHiveSync = false;
