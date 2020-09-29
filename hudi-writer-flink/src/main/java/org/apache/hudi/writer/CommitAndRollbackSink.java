@@ -18,12 +18,10 @@ import org.apache.hudi.writer.utils.UtilHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<WriteStatus>, Integer, Boolean>> {
@@ -47,10 +45,9 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
    */
   private transient HoodieWriteClient writeClient;
 
-  private Map<String, List<List<WriteStatus>>> allWriteResults = new LinkedHashMap();
+  private List<List<WriteStatus>> allWriteResults = new LinkedList<>();
   private transient Compactor compactor;
 
-  private transient Object lock = null;
   private Integer upsertParalleSize = 0;
 
   @Override
@@ -70,32 +67,17 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
 
     // Compactor
     compactor = new Compactor(writeClient, serializableHadoopConf.get());
-
-    lock = new Object();
   }
 
   @Override
   public void invoke(Tuple4<String, List<WriteStatus>, Integer, Boolean> value, Context context) throws Exception {
-    LOG.info(" Sink 收到数据 instantTime = [{}], subtaskId = [{}]", value.f0, value.f2);
+    LOG.info(" Sink 收到数据 instantTime = [{}], subtaskId = [{}] 的数据, size = [{}]", value.f0, value.f2, value.f1.size());
     try {
-      String key = value.f0;
-      synchronized (lock) {
-        // 缓存数据
-        if (allWriteResults.containsKey(key)) {
-          // 把数据 数据放到对应的位置上
-          allWriteResults.get(key).add(value.f1);
-        } else {
-          //固定长度
-          List<List<WriteStatus>> lists = new ArrayList<>();
-          lists.add(value.f1);
-          allWriteResults.put(key, lists);
-        }
-        //每次收到数据进行一次检测提交
-        checkAndCommit(key);
-      }
+      allWriteResults.add(value.f1);
+      //每次收到数据进行一次检测提交
+      checkAndCommit(value.f0);
     } catch (Exception e) {
       LOG.error("Invoke CommitAndRollbackSink error: " + Thread.currentThread().getId() + ";" + this);
-      e.printStackTrace();
       throw e;
     }
   }
@@ -106,24 +88,21 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
    * @throws Exception
    */
   private boolean checkAndCommit(String instantTime) throws Exception {
-    List<List<WriteStatus>> writeStatus = allWriteResults.get(instantTime);
-    if (writeStatus.size() == upsertParalleSize) {
-      LOG.info("事务 [{}] 当前到达分区数据数 = [{}], 已达到提交标准, 开始提交！", instantTime, writeStatus.size());
+    if (allWriteResults.size() == upsertParalleSize) {
+      LOG.info("事务 [{}] 已达到提交标准, 开始提交！", instantTime);
       doCommit(instantTime);
-      allWriteResults.remove(instantTime);
+      allWriteResults.clear();
       LOG.info("事务 [{}] 提交完毕", instantTime);
       return true;
     } else {
-      LOG.info("事务 [{}] 当前到达分区数据数 = [{}], 未达到提交标准, 总分区数为 [{}]", instantTime, writeStatus.size(), upsertParalleSize);
+      LOG.info("事务 [{}] 未达到提交标准, 已到达分区数 = [{}/{}]", instantTime, allWriteResults.size(), upsertParalleSize);
       return false;
     }
   }
 
   public void doCommit(String instantTime) throws Exception {
-
-    List<List<WriteStatus>> lists = allWriteResults.get(instantTime);
     //获取数据
-    List<WriteStatus> writeResults = lists.stream().flatMap(Collection::stream).collect(Collectors.toList());
+    List<WriteStatus> writeResults = allWriteResults.stream().flatMap(Collection::stream).collect(Collectors.toList());
 
     //循环对 snapshot 事务 进行提交
     LOG.warn("准备对事务[{}] 进行提交!", instantTime);
@@ -170,9 +149,5 @@ public class CommitAndRollbackSink extends RichSinkFunction<Tuple4<String, List<
       //失败不能回滚
       throw new HoodieException("Commit " + instantTime + " failed and rolled-back !");
     }
-
-    // clear writeStatuses and wait for next checkpoint
-    writeResults.clear();
-    allWriteResults.remove(instantTime);
   }
 }

@@ -82,28 +82,23 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
     if (latestInstant != null) {
       String instantTimestamp = latestInstant.getTimestamp();
       // 当前算子所在分区没数据，mock 空数据下发
+      Tuple4 tuple4 = new Tuple4(instantTimestamp, new ArrayList<WriteStatus>(), getRuntimeContext().getIndexOfThisSubtask(), false);
       if (records.isEmpty()) {
         LOG.info("执行 snapshotState, 当前分区无数据 subtask id = [{}] 执行 snapshotState [{}}] 当前事务为 [{}]", indexOfThisSubtask, checkpointId, instantTimestamp);
-        Tuple4 tuple4 = new Tuple4(instantTimestamp, new ArrayList<WriteStatus>(), getRuntimeContext().getIndexOfThisSubtask(), false);
         output.collect(new StreamRecord<>(tuple4));
-        incomeRecordsState.update(records);
       } else {
         LOG.info("执行 snapshotState, 当前分区有数据 subtask id = [{}] 执行 snapshotState [{}}] 当前事务为 [{}], 数据条数为 [{}]", indexOfThisSubtask, checkpointId, instantTimestamp, records.size());
         long t1 = System.currentTimeMillis();
-
         HoodieWriteOutput<List<WriteStatus>> writeStatus = writeClient.upsert(new HoodieWriteInput<>(records), instantTimestamp);
-        List<WriteStatus> writeStatusOutput = writeStatus.getOutput();
-        if (null != writeStatusOutput) {
-          Tuple4 tuple4 = new Tuple4(instantTimestamp, writeStatusOutput, getRuntimeContext().getIndexOfThisSubtask(), false);
-          output.collect(new StreamRecord<>(tuple4));
-          long t2 = System.currentTimeMillis();
-          // 输出writeStatus
-          LOG.warn("执行 snapshotState [" + checkpointId + "] 当前事务为 [" + instantTimestamp + "] 下发数据条数 [{}],处理条数 [{}] 耗时 [{}]", writeStatusOutput.size(), records.size(), (t2 - t1));
-          incomeRecordsState.update(records);
-          //清理缓存
-          records.clear();
-        }
+        tuple4.f1 = writeStatus.getOutput();
+        output.collect(new StreamRecord<>(tuple4));
+        long t2 = System.currentTimeMillis();
+        // 输出writeStatus
+        LOG.info("执行 snapshotState [" + checkpointId + "] 当前事务为 [" + instantTimestamp + "] 下发数据条数 [{}],处理条数 [{}] 耗时 [{}]", writeStatus.getOutput().size(), records.size(), (t2 - t1));
       }
+      incomeRecordsState.update(records);
+      //清理缓存
+      records.clear();
     }
   }
 
