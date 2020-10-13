@@ -45,7 +45,9 @@ public class WriteHelper<T extends HoodieRecordPayload<T>> {
       HoodieWriteInput<List<HoodieRecord<T>>> taggedRecords = inputRecordsRDD;
       if (performTagging) {
         // perform index loop up to get existing location of records
+        long start = System.currentTimeMillis();
         taggedRecords = tag(inputRecordsRDD, hadoopConf, table);
+        System.out.println("### tag 耗时 ：" + (System.currentTimeMillis() - start) + "毫秒");
       }
       Duration indexLookupDuration = Duration.between(lookupBegin, Instant.now());
 

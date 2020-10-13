@@ -90,6 +90,7 @@ public class WriteProcessOperator extends AbstractStreamOperator<Tuple4<String, 
         LOG.info("执行 snapshotState, 当前分区有数据 subtask id = [{}] 执行 snapshotState [{}}] 当前事务为 [{}], 数据条数为 [{}]", indexOfThisSubtask, checkpointId, instantTimestamp, records.size());
         long t1 = System.currentTimeMillis();
         HoodieWriteOutput<List<WriteStatus>> writeStatus = writeClient.upsert(new HoodieWriteInput<>(records), instantTimestamp);
+        System.out.println("### 写操共耗时 ：" + (System.currentTimeMillis() - t1) + "毫秒");
         tuple4.f1 = writeStatus.getOutput();
         output.collect(new StreamRecord<>(tuple4));
         long t2 = System.currentTimeMillis();

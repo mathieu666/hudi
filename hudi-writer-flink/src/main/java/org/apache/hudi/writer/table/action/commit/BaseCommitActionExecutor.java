@@ -83,14 +83,24 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
 
     WorkloadProfile profile = null;
     if (isWorkloadProfileNeeded()) {
+      long a = System.currentTimeMillis();
       profile = new WorkloadProfile(inputRecordsRDD);
+      long b = System.currentTimeMillis();
+      System.out.println("### profile" + (b - a) + " 毫秒");
       LOG.info("Workload profile :" + profile);
       saveWorkloadProfileMetadataToInflight(profile, instantTime);
+      long c = System.currentTimeMillis();
+      System.out.println(" ### 改状态耗时 ：" + (c - b) + " 毫秒");
     }
 
     // partition using the insert partitioner
+    long d = System.currentTimeMillis();
     final Partitioner partitioner = getPartitioner(profile);
+    long e = System.currentTimeMillis();
+    System.out.println("### 获取分区器耗时 ： " + (e - d) + " 毫秒");
     Map<Integer, List<HoodieRecord<T>>> partitionedRecords = partition(inputRecordsRDD, partitioner);
+    long f = System.currentTimeMillis();
+    System.out.println("### 分区耗时 ： " + (f - e) + " 毫秒");
     List<WriteStatus> writeStatusRDD = new LinkedList<>();
     partitionedRecords.forEach((partition, records) -> {
       if (WriteOperationType.isChangingRecords(operationType)) {
@@ -99,7 +109,10 @@ public abstract class BaseCommitActionExecutor<T extends HoodieRecordPayload<T>>
         handleInsertPartition(instantTime, partition, records.iterator(), partitioner).forEachRemaining(writeStatusRDD::addAll);
       }
     });
+    long g = System.currentTimeMillis();
+    System.out.println("### 写耗时 ： " + (g - f) + " 毫秒");
     updateIndexAndCommitIfNeeded(new HoodieWriteOutput<>(writeStatusRDD), result);
+    System.out.println("uodate index 耗时 ： " + (System.currentTimeMillis() - g));
     return result;
   }
 
