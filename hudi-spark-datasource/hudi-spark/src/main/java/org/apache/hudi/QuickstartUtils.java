@@ -194,7 +194,7 @@ public class QuickstartUtils {
      */
     public List<String> generateDeletes(List<Row> rows) {
       return rows.stream().map(row ->
-          convertToString(row.getAs("uuid"), row.getAs("partitionpath"))).filter(os -> os.isPresent()).map(os -> os.get())
+          convertToString(row.getAs("uuid"), row.getAs("partitionpath"), row.getAs("ts"))).filter(os -> os.isPresent()).map(os -> os.get())
           .collect(Collectors.toList());
     }
 
@@ -215,10 +215,10 @@ public class QuickstartUtils {
     }
   }
 
-  private static Option<String> convertToString(String uuid, String partitionPath) {
+  private static Option<String> convertToString(String uuid, String partitionPath, long ts) {
     StringBuffer stringBuffer = new StringBuffer();
     stringBuffer.append("{");
-    stringBuffer.append("\"ts\": 0.0,");
+    stringBuffer.append("\"ts\": \"" + ts + "\",");
     stringBuffer.append("\"uuid\": \"" + uuid + "\",");
     stringBuffer.append("\"partitionpath\": \"" + partitionPath + "\"");
     stringBuffer.append("}");
