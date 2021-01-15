@@ -29,14 +29,14 @@
   <groupId>org.apache.hudi</groupId>
   <artifactId>hudi</artifactId>
   <packaging>pom</packaging>
-  <version>0.6.1-SNAPSHOT</version>
+  <version>0.6.0-window</version>
   <description>Apache Hudi brings stream style processing on big data</description>
   <url>https://github.com/apache/hudi</url>
   <name>Hudi</name>
 
   <modules>
     <module>hudi-common</module>
-    <module>hudi-cli</module>
+<!--    <module>hudi-cli</module>-->
     <module>hudi-client</module>
     <module>hudi-hadoop-mr</module>
     <module>hudi-spark-datasource</module>
@@ -47,14 +47,14 @@
 <!--    <module>packaging/hudi-hive-sync-bundle</module>-->
     <module>packaging/hudi-spark-bundle</module>
 <!--    <module>packaging/hudi-presto-bundle</module>-->
-    <module>packaging/hudi-utilities-bundle</module>
-    <module>packaging/hudi-timeline-server-bundle</module>
-    <module>docker/hoodie/hadoop</module>
+<!--    <module>packaging/hudi-utilities-bundle</module>-->
+<!--    <module>packaging/hudi-timeline-server-bundle</module>-->
+<!--    <module>docker/hoodie/hadoop</module>-->
 <!--    <module>hudi-integ-test</module>-->
 <!--    <module>packaging/hudi-integ-test-bundle</module>-->
 <!--    <module>hudi-examples</module>-->
-    <module>hudi-flink</module>
-    <module>packaging/hudi-flink-bundle</module>
+<!--    <module>hudi-flink</module>-->
+<!--    <module>packaging/hudi-flink-bundle</module>-->
   </modules>
 
   <licenses>
