@@ -459,4 +459,45 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <!-- This profile helps to make things run out of the box in IntelliJ -->
+    <!-- Its adds Flink's core classes to the runtime class path. -->
+    <!-- Otherwise they are missing in IntelliJ, because the dependency is 'provided' -->
+    <profile>
+      <id>hudi-utilities-dependencies-for-debug</id>
+      <activation>
+        <property>
+          <name>idea.version</name>
+        </property>
+      </activation>
+
+      <dependencies>
+        <!-- Spark dependencies -->
+        <dependency>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>spark-core_${scala.binary.version}</artifactId>
+          <scope>compile</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>spark-sql_${scala.binary.version}</artifactId>
+          <scope>compile</scope>
+        </dependency>
+
+
+        <!-- Hadoop dependencies -->
+        <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-common</artifactId>
+          <scope>compile</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-auth</artifactId>
+          <scope>compile</scope>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
 </project>

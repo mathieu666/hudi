@@ -347,7 +347,7 @@
     <!-- Its adds Flink's core classes to the runtime class path. -->
     <!-- Otherwise they are missing in IntelliJ, because the dependency is 'provided' -->
     <profile>
-      <id>add-dependencies-for-IDEA</id>
+      <id>hudi-flink-dependencies-for-debug</id>
       <activation>
         <property>
           <name>idea.version</name>
