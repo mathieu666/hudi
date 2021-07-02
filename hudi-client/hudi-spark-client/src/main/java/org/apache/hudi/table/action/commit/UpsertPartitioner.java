@@ -75,6 +75,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
   private WorkloadProfile profile;
   /**
    * Helps decide which bucket an incoming update should go to.
+   * 需要更新的 文件ID -> 桶索引号 映射
    */
   private HashMap<String, Integer> updateLocationToBucket;
   /**
@@ -83,6 +84,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
   private HashMap<String, List<InsertBucketCumulativeWeightPair>> partitionPathToInsertBucketInfos;
   /**
    * Remembers what type each bucket is for later.
+   * 记录每个bucket的信息： bucket索引 -> 桶信息
    */
   private HashMap<Integer, BucketInfo> bucketInfoMap;
 
@@ -157,12 +159,14 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
   private void assignInserts(WorkloadProfile profile, HoodieEngineContext context) {
     // for new inserts, compute buckets depending on how many records we have for each partition
     Set<String> partitionPaths = profile.getPartitionPaths();
+    // 根据以前提交的（ActiveTimeline中记录的）数据估算记录的平均大小
     long averageRecordSize =
         averageBytesPerRecord(table.getMetaClient().getActiveTimeline().getCommitTimeline().filterCompletedInstants(),
             config);
     LOG.info("AvgRecordSize => " + averageRecordSize);
 
     Map<String, List<SmallFile>> partitionSmallFilesMap =
+        // 记载每个分区中的小文件
         getSmallFilesForPartitions(new ArrayList<String>(partitionPaths), context);
 
     Map<String, Set<String>> partitionPathToPendingClusteringFileGroupsId = getPartitionPathToPendingClusteringFileGroupsId();
@@ -184,6 +188,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
         List<Long> recordsPerBucket = new ArrayList<>();
 
         // first try packing this into one of the smallFiles
+        // 这里有些浪费，当小文件较多，新增数据较少时，后面会跑空循环
         for (SmallFile smallFile : smallFiles) {
           long recordsToAppend = Math.min((config.getParquetMaxFileSize() - smallFile.sizeBytes) / averageRecordSize,
               totalUnassignedInserts);
@@ -275,7 +280,9 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
           .getLatestBaseFilesBeforeOrOn(partitionPath, latestCommitTime.getTimestamp()).collect(Collectors.toList());
 
       for (HoodieBaseFile file : allFiles) {
+        // 小于100M 即为小文件
         if (file.getFileSize() < config.getParquetSmallFileLimit()) {
+          // 小文件的全路径名
           String filename = file.getFileName();
           SmallFile sf = new SmallFile();
           sf.location = new HoodieRecordLocation(FSUtils.getCommitTime(filename), FSUtils.getFileId(filename));
@@ -336,7 +343,9 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
    * records pack into one file.
    */
   protected static long averageBytesPerRecord(HoodieTimeline commitTimeline, HoodieWriteConfig hoodieWriteConfig) {
+    // 默认 1KB
     long avgSize = hoodieWriteConfig.getCopyOnWriteRecordSizeEstimate();
+    // 小文件阈值 ： 默认100M （默认单条记录1KB, 100M条以下都认为是小文件）
     long fileSizeThreshold = (long) (hoodieWriteConfig.getRecordSizeEstimationThreshold() * hoodieWriteConfig.getParquetSmallFileLimit());
     try {
       if (!commitTimeline.empty()) {
@@ -348,6 +357,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
               .fromBytes(commitTimeline.getInstantDetails(instant).get(), HoodieCommitMetadata.class);
           long totalBytesWritten = commitMetadata.fetchTotalBytesWritten();
           long totalRecordsWritten = commitMetadata.fetchTotalRecordsWritten();
+          // 如果ActiveTimeLine中 记录的commits 总共写的数据量大于小文件阈值，并且总记录数大于 0. 则二者相除为平均记录大小
           if (totalBytesWritten > fileSizeThreshold && totalRecordsWritten > 0) {
             avgSize = (long) Math.ceil((1.0 * totalBytesWritten) / totalRecordsWritten);
             break;

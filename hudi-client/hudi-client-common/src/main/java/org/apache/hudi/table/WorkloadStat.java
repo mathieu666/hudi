@@ -29,10 +29,13 @@ import java.util.HashMap;
  */
 public class WorkloadStat implements Serializable {
 
+  // 当前批次新增记录数
   private long numInserts = 0L;
 
+  // 当前批次更新记录数
   private long numUpdates = 0L;
 
+  // HashMap<FileId, Pair<InstantTime, numUpdates>>
   private HashMap<String, Pair<String, Long>> updateLocationToCount;
 
   public WorkloadStat() {
@@ -48,6 +51,7 @@ public class WorkloadStat implements Serializable {
     if (updateLocationToCount.containsKey(location.getFileId())) {
       accNumUpdates = updateLocationToCount.get(location.getFileId()).getRight();
     }
+    // 记录该批次数据，会更新的文件 -> Pair<更新时间, 更新数据条数> 的信息
     updateLocationToCount.put(
         location.getFileId(),
         Pair.of(location.getInstantTime(), numUpdates + accNumUpdates));

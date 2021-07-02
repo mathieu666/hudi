@@ -25,10 +25,7 @@ import org.apache.hudi.common.table.view.TableFileSystemView.SliceView;
  * A consolidated file-system view interface exposing both complete slice and basefile only views along with
  * update operations.
  */
-public interface SyncableFileSystemView
-    extends TableFileSystemView, BaseFileOnlyView, SliceView {
-
-
+public interface SyncableFileSystemView extends TableFileSystemView, BaseFileOnlyView, SliceView {
 
   /**
    * Allow View to release resources and close.
@@ -42,7 +39,7 @@ public interface SyncableFileSystemView
 
   /**
    * Read the latest timeline and refresh the file-system view to match the current state of the file-system. The
-   * refresh can either be done incrementally (from reading file-slices in metadata files) or from scratch by reseting
+   * refresh can either be done incrementally (from reading file-slices in metadata files) or from scratch by resetting
    * view storage.
    */
   void sync();

@@ -146,32 +146,38 @@ public abstract class BaseSparkCommitActionExecutor<T extends HoodieRecordPayloa
   }
 
   private Pair<HashMap<String, WorkloadStat>, WorkloadStat> buildProfile(JavaRDD<HoodieRecord<T>> inputRecordsRDD) {
+    // 分区负载状态Map
     HashMap<String, WorkloadStat> partitionPathStatMap = new HashMap<>();
     WorkloadStat globalStat = new WorkloadStat();
 
-    // group the records by partitionPath + currentLocation combination, count the number of
-    // records in each partition
+    // 以 partitionPath + currentLocation 做key 分组，统计每个分区内的记录数
     Map<Tuple2<String, Option<HoodieRecordLocation>>, Long> partitionLocationCounts = inputRecordsRDD
         .mapToPair(record -> new Tuple2<>(
             new Tuple2<>(record.getPartitionPath(), Option.ofNullable(record.getCurrentLocation())), record))
         .countByKey();
 
-    // count the number of both inserts and updates in each partition, update the counts to workLoadStats
+    // 统计每个分区内 insert 和 update 的数量，将该统计数字维护到 WorkloadStat
     for (Map.Entry<Tuple2<String, Option<HoodieRecordLocation>>, Long> e : partitionLocationCounts.entrySet()) {
+      // 分区
       String partitionPath = e.getKey()._1();
+      // 分区内记录数
       Long count = e.getValue();
+      // 当前记录在表中的位置
       Option<HoodieRecordLocation> locOption = e.getKey()._2();
 
+      // 分区负载状态Map中不包含当前分区，创建新的负载状态保存在Map中
       if (!partitionPathStatMap.containsKey(partitionPath)) {
         partitionPathStatMap.put(partitionPath, new WorkloadStat());
       }
 
+      // 如果位置信息存在，说明当前记录需要执行的是更新操作
       if (locOption.isPresent()) {
-        // update
+        // 更新 需要update的记录数
         partitionPathStatMap.get(partitionPath).addUpdates(locOption.get(), count);
+        // 当前批次全部的负载状态信息 更新数也累加一下
         globalStat.addUpdates(locOption.get(), count);
       } else {
-        // insert
+        // 如果位置信息不存在，则为新增的插入数据
         partitionPathStatMap.get(partitionPath).addInserts(count);
         globalStat.addInserts(count);
       }
