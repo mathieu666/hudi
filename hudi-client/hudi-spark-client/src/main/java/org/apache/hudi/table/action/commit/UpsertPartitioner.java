@@ -187,8 +187,7 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
         List<Integer> bucketNumbers = new ArrayList<>();
         List<Long> recordsPerBucket = new ArrayList<>();
 
-        // first try packing this into one of the smallFiles
-        // 这里有些浪费，当小文件较多，新增数据较少时，后面会跑空循环
+        // 遍历小文件，优先把 insert 写到小文件（这里只是指派，不是真的写）
         for (SmallFile smallFile : smallFiles) {
           long recordsToAppend = Math.min((config.getParquetMaxFileSize() - smallFile.sizeBytes) / averageRecordSize,
               totalUnassignedInserts);
@@ -212,13 +211,16 @@ public class UpsertPartitioner<T extends HoodieRecordPayload<T>> extends Partiti
           }
         }
 
-        // if we have anything more, create new insert buckets, like normal
+        // 如果小文件写完后还有 inserts 数据没写，则写到新文件
         if (totalUnassignedInserts > 0) {
+          // 每个桶可以写的数据量 默认500K
           long insertRecordsPerBucket = config.getCopyOnWriteInsertSplitSize();
+          // 如果需要自动优化insert数据片的大小（默认需要），则用parquet文件的最大值（默认120M）除以平均记录大小计算
           if (config.shouldAutoTuneInsertSplits()) {
             insertRecordsPerBucket = config.getParquetMaxFileSize() / averageRecordSize;
           }
 
+          // 计算还需要多少个桶
           int insertBuckets = (int) Math.ceil((1.0 * totalUnassignedInserts) / insertRecordsPerBucket);
           LOG.info("After small file assignment: unassignedInserts => " + totalUnassignedInserts
               + ", totalInsertBuckets => " + insertBuckets + ", recordsPerBucket => " + insertRecordsPerBucket);
