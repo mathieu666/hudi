@@ -169,8 +169,7 @@ public class BootstrapExecutor  implements Serializable {
 
   private void initializeTable() throws IOException {
     if (fs.exists(new Path(cfg.targetBasePath))) {
-      throw new HoodieException("target base path already exists at " + cfg.targetBasePath
-          + ". Cannot bootstrap data on top of an existing table");
+      return;
     }
     HoodieTableMetaClient.withPropertyBuilder()
         .setTableType(cfg.tableType)
