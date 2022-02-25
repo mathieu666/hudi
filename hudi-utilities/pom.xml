@@ -152,6 +152,7 @@
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
       <version>${kafka.version}</version>
+      <scope>compile</scope>
     </dependency>
 
     <!-- Pulsar -->
@@ -210,6 +211,7 @@
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
+      <scope>compile</scope>
       <exclusions>
         <exclusion>
           <groupId>javax.servlet</groupId>
@@ -225,6 +227,7 @@
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_${scala.binary.version}</artifactId>
+      <scope>compile</scope>
       <exclusions>
         <exclusion>
           <groupId>javax.servlet</groupId>
@@ -236,23 +239,26 @@
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-avro_${scala.binary.version}</artifactId>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
 
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-streaming_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-streaming-kafka-0-10_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-streaming-kafka-0-10_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
       <classifier>tests</classifier>
     </dependency>
 
@@ -312,7 +318,7 @@
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka_${scala.binary.version}</artifactId>
       <version>${kafka.version}</version>
-      <scope>test</scope>
+      <scope>compile</scope>
     </dependency>
 
     <!-- Httpcomponents -->
@@ -325,10 +331,17 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-auth</artifactId>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-common</artifactId>
+      <scope>compile</scope>
       <exclusions>
         <exclusion>
           <groupId>javax.servlet</groupId>
@@ -340,13 +353,16 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <classifier>tests</classifier>
-      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <classifier>tests</classifier>
-      <scope>test</scope>
+      <scope>compile</scope>
       <exclusions>
         <exclusion>
           <groupId>org.mortbay.jetty</groupId>
@@ -368,6 +384,7 @@
       <groupId>${hive.groupid}</groupId>
       <artifactId>hive-jdbc</artifactId>
       <version>${hive.version}</version>
+      <scope>compile</scope>
       <exclusions>
         <exclusion>
           <groupId>org.slf4j</groupId>
@@ -387,6 +404,13 @@
       <groupId>${hive.groupid}</groupId>
       <artifactId>hive-service</artifactId>
       <version>${hive.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>${hive.groupid}</groupId>
+      <artifactId>hive-exec</artifactId>
+      <version>${hive.version}</version>
+      <scope>compile</scope>
     </dependency>
 
     <!-- Hoodie - Test -->

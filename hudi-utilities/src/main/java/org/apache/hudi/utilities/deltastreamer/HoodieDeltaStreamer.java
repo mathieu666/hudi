@@ -56,13 +56,13 @@ import org.apache.hudi.utilities.IdentitySplitter;
 import org.apache.hudi.utilities.UtilHelpers;
 import org.apache.hudi.utilities.checkpointing.InitialCheckPointProvider;
 import org.apache.hudi.utilities.schema.SchemaProvider;
-import org.apache.hudi.utilities.sources.JsonDFSSource;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hudi.utilities.sources.JsonKafkaSource;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -222,16 +222,15 @@ public class HoodieDeltaStreamer implements Serializable {
 
     @Parameter(names = {"--target-base-path"},
         description = "base path for the target hoodie table. "
-            + "(Will be created if did not exist first time around. If exists, expected to be a hoodie table)",
-        required = true)
-    public String targetBasePath;
+            + "(Will be created if did not exist first time around. If exists, expected to be a hoodie table)")
+    public String targetBasePath = "file:///Users/wangxianghu/test/hudi/deltastreamer/target_table";
 
     // TODO: How to obtain hive configs to register?
-    @Parameter(names = {"--target-table"}, description = "name of the target table", required = true)
-    public String targetTableName;
+    @Parameter(names = {"--target-table"}, description = "name of the target table")
+    public String targetTableName = "deltastreamer_test_prometheus";
 
-    @Parameter(names = {"--table-type"}, description = "Type of table. COPY_ON_WRITE (or) MERGE_ON_READ", required = true)
-    public String tableType;
+    @Parameter(names = {"--table-type"}, description = "Type of table. COPY_ON_WRITE (or) MERGE_ON_READ")
+    public String tableType = "COPY_ON_WRITE";
 
     @Parameter(names = {"--base-file-format"}, description = "File format for the base files. PARQUET (or) HFILE", required = false)
     public String baseFileFormat = "PARQUET";
@@ -241,7 +240,7 @@ public class HoodieDeltaStreamer implements Serializable {
         + "used, but recommend use to provide basic things like metrics endpoints, hive configs etc. For sources, refer"
         + "to individual classes, for supported properties."
         + " Properties in this file can be overridden by \"--hoodie-conf\"")
-    public String propsFilePath = DEFAULT_DFS_SOURCE_PROPERTIES;
+    public String propsFilePath = "file:///Users/wangxianghu/github/hudi/hudi-utilities/src/test/resources/delta-streamer-config/kafka-prometheus.properties";
 
     @Parameter(names = {"--hoodie-conf"}, description = "Any configuration that can be set in the properties file "
         + "(using the CLI parameter \"--props\") can also be passed command line using this parameter. This can be repeated",
@@ -252,7 +251,7 @@ public class HoodieDeltaStreamer implements Serializable {
         description = "Subclass of org.apache.hudi.utilities.sources to read data. "
             + "Built-in options: org.apache.hudi.utilities.sources.{JsonDFSSource (default), AvroDFSSource, "
             + "JsonKafkaSource, AvroKafkaSource, HiveIncrPullSource}")
-    public String sourceClassName = JsonDFSSource.class.getName();
+    public String sourceClassName = JsonKafkaSource.class.getName();
 
     @Parameter(names = {"--source-ordering-field"}, description = "Field within source record to decide how"
         + " to break ties between records with same key in input data. Default: 'ts' holding unix timestamp of record")
@@ -268,7 +267,7 @@ public class HoodieDeltaStreamer implements Serializable {
         + "Source (See org.apache.hudi.utilities.sources.Source) implementation can implement their own SchemaProvider."
         + " For Sources that return Dataset<Row>, the schema is obtained implicitly. "
         + "However, this CLI option allows overriding the schemaprovider returned by Source.")
-    public String schemaProviderClassName = null;
+    public String schemaProviderClassName = "org.apache.hudi.utilities.schema.FilebasedSchemaProvider";
 
     @Parameter(names = {"--transformer-class"},
         description = "A subclass or a list of subclasses of org.apache.hudi.utilities.transform.Transformer"
@@ -509,10 +508,10 @@ public class HoodieDeltaStreamer implements Serializable {
   public static final Config getConfig(String[] args) {
     Config cfg = new Config();
     JCommander cmd = new JCommander(cfg, null, args);
-    if (cfg.help || args.length == 0) {
-      cmd.usage();
-      System.exit(1);
-    }
+//    if (cfg.help || args.length == 0) {
+//      cmd.usage();
+//      System.exit(1);
+//    }
     return cfg;
   }
 

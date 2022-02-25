@@ -2337,8 +2337,8 @@ public class HoodieWriteConfig extends HoodieConfig {
               .fromProperties(writeConfig.getProps()).build());
       writeConfig.setDefaultOnCondition(!isMetricsConfigSet, HoodieMetricsConfig.newBuilder().fromProperties(
           writeConfig.getProps()).build());
-      writeConfig.setDefaultOnCondition(!isBootstrapConfigSet,
-          HoodieBootstrapConfig.newBuilder().fromProperties(writeConfig.getProps()).build());
+//      writeConfig.setDefaultOnCondition(!isBootstrapConfigSet,
+//          HoodieBootstrapConfig.newBuilder().fromProperties(writeConfig.getProps()).build());
       writeConfig.setDefaultOnCondition(!isMemoryConfigSet, HoodieMemoryConfig.newBuilder().fromProperties(
           writeConfig.getProps()).build());
       writeConfig.setDefaultOnCondition(!isViewConfigSet,
