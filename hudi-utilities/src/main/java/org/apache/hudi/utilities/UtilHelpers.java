@@ -123,10 +123,20 @@ public class UtilHelpers {
   }
 
   public static SchemaProvider createSchemaProvider(String schemaProviderClass, TypedProperties cfg,
-      JavaSparkContext jssc) throws IOException {
+                                                    JavaSparkContext jssc) throws IOException {
     try {
       return StringUtils.isNullOrEmpty(schemaProviderClass) ? null
           : (SchemaProvider) ReflectionUtils.loadClass(schemaProviderClass, cfg, jssc);
+    } catch (Throwable e) {
+      throw new IOException("Could not load schema provider class " + schemaProviderClass, e);
+    }
+  }
+
+  public static SchemaProvider createSchemaProvider(String schemaProviderClass, TypedProperties cfg,
+                                                    SparkSession sparkSession) throws IOException {
+    try {
+      return StringUtils.isNullOrEmpty(schemaProviderClass) ? null
+          : (SchemaProvider) ReflectionUtils.loadClass(schemaProviderClass, cfg, sparkSession);
     } catch (Throwable e) {
       throw new IOException("Could not load schema provider class " + schemaProviderClass, e);
     }
@@ -154,7 +164,7 @@ public class UtilHelpers {
   public static InitialCheckPointProvider createInitialCheckpointProvider(
       String className, TypedProperties props) throws IOException {
     try {
-      return (InitialCheckPointProvider) ReflectionUtils.loadClass(className, new Class<?>[] {TypedProperties.class}, props);
+      return (InitialCheckPointProvider) ReflectionUtils.loadClass(className, new Class<?>[]{TypedProperties.class}, props);
     } catch (Throwable e) {
       throw new IOException("Could not load initial checkpoint provider class " + className, e);
     }
@@ -262,6 +272,20 @@ public class UtilHelpers {
     SparkConf sparkConf = buildSparkConf(appName, sparkMaster);
     sparkConf.set("spark.executor.memory", sparkMemory);
     return new JavaSparkContext(sparkConf);
+  }
+
+  public static SparkSession buildSparkSession(String appName, String sparkMaster) {
+    return SparkSession.builder()
+        .config(buildSparkConf(appName, sparkMaster))
+        .enableHiveSupport()
+        .getOrCreate();
+  }
+
+  public static SparkSession buildSparkSession(String appName, String sparkMaster, Map<String, String> additionalSparkConfigs) {
+    return SparkSession.builder()
+        .config(buildSparkConf(appName, sparkMaster, additionalSparkConfigs))
+        .enableHiveSupport()
+        .getOrCreate();
   }
 
   /**
@@ -411,21 +435,21 @@ public class UtilHelpers {
   }
 
   public static SchemaProviderWithPostProcessor wrapSchemaProviderWithPostProcessor(SchemaProvider provider,
-      TypedProperties cfg, JavaSparkContext jssc, List<String> transformerClassNames) {
+                                                                                    TypedProperties cfg, JavaSparkContext jssc, List<String> transformerClassNames) {
 
     if (provider == null) {
       return null;
     }
 
-    if (provider instanceof  SchemaProviderWithPostProcessor) {
-      return (SchemaProviderWithPostProcessor)provider;
+    if (provider instanceof SchemaProviderWithPostProcessor) {
+      return (SchemaProviderWithPostProcessor) provider;
     }
 
     String schemaPostProcessorClass = cfg.getString(Config.SCHEMA_POST_PROCESSOR_PROP, null);
     boolean enableSparkAvroPostProcessor = Boolean.parseBoolean(cfg.getString(SparkAvroPostProcessor.Config.SPARK_AVRO_POST_PROCESSOR_PROP_ENABLE, "true"));
 
     if (transformerClassNames != null && !transformerClassNames.isEmpty()
-            && enableSparkAvroPostProcessor && StringUtils.isNullOrEmpty(schemaPostProcessorClass)) {
+        && enableSparkAvroPostProcessor && StringUtils.isNullOrEmpty(schemaPostProcessorClass)) {
       schemaPostProcessorClass = SparkAvroPostProcessor.class.getName();
     }
 
