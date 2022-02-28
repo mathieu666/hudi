@@ -40,6 +40,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.streaming.kafka010.OffsetRange;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -56,7 +57,7 @@ import java.util.stream.Collectors;
 /**
  * Source to read data from Kafka, incrementally.
  */
-public class KafkaOffsetGen {
+public class KafkaOffsetGen implements Serializable {
 
   private static final Logger LOG = LogManager.getLogger(KafkaOffsetGen.class);
 

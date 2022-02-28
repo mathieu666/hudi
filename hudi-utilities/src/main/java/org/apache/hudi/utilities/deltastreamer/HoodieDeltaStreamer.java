@@ -18,6 +18,7 @@
 
 package org.apache.hudi.utilities.deltastreamer;
 
+import com.alibaba.fastjson.JSON;
 import org.apache.hudi.DataSourceWriteOptions;
 import org.apache.hudi.async.AsyncClusteringService;
 import org.apache.hudi.async.AsyncCompactService;
@@ -629,6 +630,7 @@ public class HoodieDeltaStreamer implements Serializable {
         this.schemaProvider = UtilHelpers.wrapSchemaProviderWithPostProcessor(
             UtilHelpers.createSchemaProvider(cfg.schemaProviderClassName, props, jssc), props, jssc, cfg.transformerClassNames);
       }
+      LOG.info("schema="+ this.schemaProvider.getSourceSchema().toString());
 
       deltaSync = new DeltaSync(cfg, sparkSession, schemaProvider, props, jssc, fs, conf,
           this::onInitializingWriteClient);

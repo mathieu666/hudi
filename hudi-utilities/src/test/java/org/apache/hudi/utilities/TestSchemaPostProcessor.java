@@ -19,10 +19,8 @@
 package org.apache.hudi.utilities;
 
 import org.apache.hudi.common.config.TypedProperties;
-import org.apache.hudi.utilities.schema.SchemaPostProcessor;
+import org.apache.hudi.utilities.schema.*;
 import org.apache.hudi.utilities.schema.SchemaPostProcessor.Config;
-import org.apache.hudi.utilities.schema.SchemaProvider;
-import org.apache.hudi.utilities.schema.SparkAvroPostProcessor;
 import org.apache.hudi.utilities.testutils.UtilitiesTestBase;
 
 import org.apache.avro.Schema;
@@ -56,6 +54,20 @@ public class TestSchemaPostProcessor extends UtilitiesTestBase {
     SchemaProvider provider =
         UtilHelpers.wrapSchemaProviderWithPostProcessor(
         UtilHelpers.createSchemaProvider(DummySchemaProvider.class.getName(), properties, jsc),
+            properties, jsc,null);
+
+    Schema schema = provider.getSourceSchema();
+    assertEquals(schema.getType(), Type.RECORD);
+    assertEquals(schema.getName(), "test");
+    assertNotNull(schema.getField("testString"));
+  }
+
+  @Test
+  public void testAddDelete() throws IOException {
+    properties.put(Config.SCHEMA_POST_PROCESSOR_PROP, DeleteSupportSchemaPostProcessor.class.getName());
+    SchemaProvider provider =
+        UtilHelpers.wrapSchemaProviderWithPostProcessor(
+            UtilHelpers.createSchemaProvider(DummySchemaProvider.class.getName(), properties, sparkSession),
             properties, jsc,null);
 
     Schema schema = provider.getSourceSchema();
