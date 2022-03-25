@@ -247,7 +247,6 @@ public class KafkaOffsetGen {
       // Determine the offset ranges to read from
       if (lastCheckpointStr.isPresent() && !lastCheckpointStr.get().isEmpty() && checkTopicCheckpoint(lastCheckpointStr)) {
         fromOffsets = fetchValidOffsets(consumer, lastCheckpointStr, topicPartitions);
-        metrics.updateDeltaStreamerKafkaDelayCountMetrics(delayOffsetCalculation(lastCheckpointStr, topicPartitions, consumer));
       } else {
         switch (autoResetValue) {
           case EARLIEST:
@@ -266,6 +265,8 @@ public class KafkaOffsetGen {
 
       // Obtain the latest offsets.
       toOffsets = consumer.endOffsets(topicPartitions);
+      // update kafka delay to metrics
+      metrics.updateDeltaStreamerKafkaDelayCountMetrics(calculateDelayOffset(fromOffsets, toOffsets));
     }
 
     // Come up with final set of OffsetRanges to read (account for new partitions, limit number of events)
@@ -285,6 +286,16 @@ public class KafkaOffsetGen {
     }
 
     return CheckpointUtils.computeOffsetRanges(fromOffsets, toOffsets, numEvents);
+  }
+
+  private long calculateDelayOffset(Map<TopicPartition, Long> fromOffsets, Map<TopicPartition, Long> toOffsets) {
+    long delayCount = 0;
+    for (Map.Entry<TopicPartition, Long> topicPartitionToCount : toOffsets.entrySet()) {
+      long fromCount = fromOffsets.get(topicPartitionToCount.getKey()) == null ? 0L : fromOffsets.get(topicPartitionToCount.getKey());
+      long toCount = topicPartitionToCount.getValue();
+      delayCount += toCount - fromCount;
+    }
+    return delayCount;
   }
 
   /**
@@ -315,18 +326,6 @@ public class KafkaOffsetGen {
     Pattern pattern = Pattern.compile("[-+]?[0-9]+(\\.[0-9]+)?");
     Matcher isNum = pattern.matcher(lastCheckpointStr.get());
     return isNum.matches() && (lastCheckpointStr.get().length() == 13 || lastCheckpointStr.get().length() == 10);
-  }
-
-  private Long delayOffsetCalculation(Option<String> lastCheckpointStr, Set<TopicPartition> topicPartitions, KafkaConsumer consumer) {
-    Long delayCount = 0L;
-    Map<TopicPartition, Long> checkpointOffsets = CheckpointUtils.strToOffsets(lastCheckpointStr.get());
-    Map<TopicPartition, Long> lastOffsets = consumer.endOffsets(topicPartitions);
-
-    for (Map.Entry<TopicPartition, Long> entry : lastOffsets.entrySet()) {
-      Long offect = checkpointOffsets.getOrDefault(entry.getKey(), 0L);
-      delayCount += entry.getValue() - offect > 0 ? entry.getValue() - offect : 0L;
-    }
-    return delayCount;
   }
 
   /**
