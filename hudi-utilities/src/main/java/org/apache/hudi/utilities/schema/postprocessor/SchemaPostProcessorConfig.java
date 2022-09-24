@@ -16,14 +16,18 @@
  * limitations under the License.
  */
 
-package org.apache.hudi.utilities.schema.postprocessor.add;
+package org.apache.hudi.utilities.schema.postprocessor;
 
 import org.apache.hudi.common.config.ConfigProperty;
 
 /**
  * Base configs to describe a primitive type column.
  */
-public class BaseSchemaPostProcessorConfig {
+public class SchemaPostProcessorConfig {
+
+  // ------------------------------------------------------------------------
+  //  Base Options
+  // ------------------------------------------------------------------------
 
   public static final ConfigProperty<String> SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP = ConfigProperty
       .key("hoodie.deltastreamer.schemaprovider.schema_post_processor.add.column.name")
@@ -49,5 +53,24 @@ public class BaseSchemaPostProcessorConfig {
       .key("hoodie.deltastreamer.schemaprovider.schema_post_processor.add.column.doc")
       .noDefaultValue()
       .withDocumentation("Docs about new column");
+
+  // ------------------------------------------------------------------------
+  //  Options for decimal
+  // ------------------------------------------------------------------------
+
+  public static final ConfigProperty<String> SCHEMA_POST_PROCESSOR_ADD_COLUMN_DECIMAL_PRECISION = ConfigProperty
+      .key("hoodie.deltastreamer.schemaprovider.schema_post_processor.add.column.decimal.precision")
+      .noDefaultValue()
+      .withDocumentation("Precision of decimal column");
+
+  public static final ConfigProperty<String> SCHEMA_POST_PROCESSOR_ADD_COLUMN_DECIMAL_SCALE = ConfigProperty
+      .key("hoodie.deltastreamer.schemaprovider.schema_post_processor.add.column.decimal.scale")
+      .noDefaultValue()
+      .withDocumentation("Scale of decimal column");
+
+  public static final ConfigProperty<Integer> SCHEMA_POST_PROCESSOR_ADD_COLUMN_DECIMAL_SIZE = ConfigProperty
+      .key("hoodie.deltastreamer.schemaprovider.schema_post_processor.add.column.decimal.size")
+      .defaultValue(5)
+      .withDocumentation("Size of decimal column");
 
 }

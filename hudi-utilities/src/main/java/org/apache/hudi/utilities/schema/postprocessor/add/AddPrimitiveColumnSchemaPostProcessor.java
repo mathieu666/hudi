@@ -25,6 +25,7 @@ import org.apache.hudi.utilities.exception.HoodieSchemaPostProcessException;
 import org.apache.hudi.utilities.schema.SchemaPostProcessor;
 
 import org.apache.avro.Schema;
+import org.apache.hudi.utilities.schema.postprocessor.SchemaPostProcessorConfig;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public class AddPrimitiveColumnSchemaPostProcessor extends SchemaPostProcessor {
 
   @Override
   public Schema processSchema(Schema schema) {
-    String newColumnName = this.config.getString(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key());
+    String newColumnName = this.config.getString(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key());
 
     if (schema.getField(newColumnName) != null) {
       throw new HoodieSchemaPostProcessException(String.format("Column %s already exist!", newColumnName));
@@ -69,13 +70,13 @@ public class AddPrimitiveColumnSchemaPostProcessor extends SchemaPostProcessor {
 
   private Schema.Field buildNewColumn() {
 
-    String columnName = this.config.getString(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key());
-    String type = this.config.getString(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_TYPE_PROP.key()).toUpperCase(Locale.ROOT);
-    String doc = this.config.getString(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DOC_PROP.key(), null);
-    Object defaultValue = this.config.getOrDefault(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DEFAULT_PROP.key(),
+    String columnName = this.config.getString(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key());
+    String type = this.config.getString(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_TYPE_PROP.key()).toUpperCase(Locale.ROOT);
+    String doc = this.config.getString(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DOC_PROP.key(), null);
+    Object defaultValue = this.config.getOrDefault(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DEFAULT_PROP.key(),
         null);
-    boolean nullable = this.config.getBoolean(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.key(),
-        BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.defaultValue());
+    boolean nullable = this.config.getBoolean(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.key(),
+        SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.defaultValue());
 
     ValidationUtils.checkArgument(!StringUtils.isNullOrEmpty(columnName));
     ValidationUtils.checkArgument(!StringUtils.isNullOrEmpty(type));

@@ -27,7 +27,7 @@ import org.apache.hudi.utilities.schema.SchemaPostProcessor;
 import org.apache.hudi.utilities.schema.SchemaPostProcessor.Config;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 import org.apache.hudi.utilities.schema.SparkAvroPostProcessor;
-import org.apache.hudi.utilities.schema.postprocessor.add.BaseSchemaPostProcessorConfig;
+import org.apache.hudi.utilities.schema.postprocessor.SchemaPostProcessorConfig;
 import org.apache.hudi.utilities.testutils.UtilitiesTestBase;
 import org.apache.hudi.utilities.transform.FlatteningTransformer;
 
@@ -159,9 +159,9 @@ public class TestSchemaPostProcessor extends UtilitiesTestBase {
   @ParameterizedTest
   @MethodSource("configParams")
   public void testAddPrimitiveTypeColumn(String type) {
-    properties.put(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key(), "primitive_column");
-    properties.put(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_TYPE_PROP.key(), type);
-    properties.put(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DOC_PROP.key(), "primitive column test");
+    properties.put(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NAME_PROP.key(), "primitive_column");
+    properties.put(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_TYPE_PROP.key(), type);
+    properties.put(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_DOC_PROP.key(), "primitive column test");
 
     AddPrimitiveColumnSchemaPostProcessor processor = new AddPrimitiveColumnSchemaPostProcessor(properties, null);
     Schema schema = new Schema.Parser().parse(ORIGINAL_SCHEMA);
@@ -175,7 +175,7 @@ public class TestSchemaPostProcessor extends UtilitiesTestBase {
     assertNotEquals(type, newColumn.schema().getType().getName());
 
     // test not nullable
-    properties.put(BaseSchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.key(), false);
+    properties.put(SchemaPostProcessorConfig.SCHEMA_POST_PROCESSOR_ADD_COLUMN_NULLABLE_PROP.key(), false);
     targetSchema = processor.processSchema(schema);
     newColumn = targetSchema.getField("primitive_column");
     assertEquals(type, newColumn.schema().getType().getName());
